@@ -119,6 +119,6 @@ namespace Manyworld
         }
 
         /// <summary>우리 동네: 노을빛 저지대 옅은 안개.</summary>
-        public static Look Home => new Look { density = 0.03f, height = 2.2f, brightness = 0.8f, turbulence = 0.5f, wind = 0.015f, distant = 0.12f, ambient = 0.35f, albedo = new Color(1f, 0.9f, 0.8f) };
+        public static Look Home => new Look { density = 0.03f, height = 2.2f, brightness = 0.8f, turbulence = 0.5f, wind = 0.015f, distant = 0f, ambient = 0.35f, albedo = new Color(1f, 0.9f, 0.8f) }; // 원거리 안개는 하늘까지 덮어서 끈다
     }
 }

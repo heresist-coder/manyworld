@@ -48,6 +48,15 @@ namespace Manyworld.Tests
                 Capture(Path.Combine(dir, $"world_{n}_aerial.png"));
                 Camera.main.transform.SetPositionAndRotation(mc.Car.transform.position + new Vector3(-6, 3, -6), Quaternion.LookRotation(mc.Car.transform.position - (mc.Car.transform.position + new Vector3(-6, 3, -6))));
                 Capture(Path.Combine(dir, $"world_{n}_tico.png"));
+                // 게이트 정면, 마을(장터거리) 근경
+                var gate = mc.Layout.gatePos + new Vector3(-8, 0, -6);
+                var gcam = gate + Quaternion.Euler(0, 40, 0) * new Vector3(0, 3.5f, -16f);
+                Camera.main.transform.SetPositionAndRotation(gcam, Quaternion.LookRotation(gate + Vector3.up * 3.5f - gcam));
+                Capture(Path.Combine(dir, $"world_{n}_gate.png"));
+                var village = mc.Layout.midpointPos;
+                var vcam = village + new Vector3(-30, 9, -34);
+                Camera.main.transform.SetPositionAndRotation(vcam, Quaternion.LookRotation(village + Vector3.up * 2f - vcam));
+                Capture(Path.Combine(dir, $"world_{n}_village.png"));
                 pc.target = keep;
                 Object.Destroy(mc.gameObject);
                 yield return null;

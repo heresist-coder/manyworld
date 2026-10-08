@@ -68,6 +68,10 @@ namespace Manyworld.EditorTools
             transparent.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             Save(transparent, dir + "/GrayboxTransparent.mat");
 
+            // 하늘: 런타임에 색만 바꾼다
+            var skyShader = Shader.Find("Skybox/Procedural");
+            if (skyShader != null) Save(new Material(skyShader), dir + "/Sky.mat");
+
             // 지형: 머티리얼을 비워 두면 안 그려지는 경우가 있어 URP Terrain/Lit을 명시한다 (빌드에서도 빠지지 않게 에셋으로)
             var terrainShader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
             if (terrainShader != null) Save(new Material(terrainShader), dir + "/Terrain.mat");

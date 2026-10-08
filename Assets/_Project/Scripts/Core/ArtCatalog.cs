@@ -28,6 +28,8 @@ namespace Manyworld
         public GameObject[] grass;
         public GameObject[] farmBuildings;
         public GameObject[] fences;
+        public GameObject[] hamletProps;   // 우물 등
+        public GameObject[] skyline;       // 우리 동네 담 너머 원경 건물
 
         [Header("인물 (Tripo, Mixamo 뼈대)")]
         public GameObject driverModel;

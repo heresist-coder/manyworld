@@ -110,6 +110,21 @@ MonoBehaviour:
   - {fileID: 1731819059591772, guid: 8157d7b10c2fa75449c20daa36513d38, type: 3}
   - {fileID: 1679096892086428, guid: d1c03d059e1691742ba1b2311fbe2254, type: 3}
   - {fileID: 1436398286074176, guid: aa7a79e53bee7d64e9b1fb9894a773a5, type: 3}
+  hamletProps:
+  - {fileID: 3347129475782373409, guid: ece35f78a1fec9e4085a8b2a5f15148a, type: 3}
+  - {fileID: 1436398286074176, guid: aa7a79e53bee7d64e9b1fb9894a773a5, type: 3}
+  skyline:
+  - {fileID: 7341141224093614120, guid: c4d0d8e95c0a0c54790e3126cb769f22, type: 3}
+  - {fileID: 566954460314382553, guid: 9c328a2c1d009e7468ac66283d3b936c, type: 3}
+  - {fileID: 6642977639803817546, guid: 95d4e707f622fd14ebebd29e5ce9433f, type: 3}
+  - {fileID: 1285033169873511074, guid: 280c33a9ac992ab4b955012050b43581, type: 3}
+  - {fileID: 1553162320331620836, guid: 2cad905697e490e42af49bfd7fbf9e04, type: 3}
+  - {fileID: 1134269088030432655, guid: 59f8c79961637544ab1eea1a8f0c2281, type: 3}
+  - {fileID: 2238721772479261120, guid: 65bd83fe1935094408f69a69058ed89d, type: 3}
+  - {fileID: 3037715190804207714, guid: b9a7865890ad3cd45bf0634979243307, type: 3}
+  - {fileID: 1293391846435280077, guid: 5d99032999c9c8c43bd6781f974032ab, type: 3}
+  - {fileID: 4461688303847079993, guid: 1777bc34707d1cd4a82accb11fe13f42, type: 3}
+  - {fileID: 3459195881841066666, guid: df8ec80861bc7b04a9e11ee64dcad2ad, type: 3}
   driverModel: {fileID: 919132149155446097, guid: 5fd2bddfa5a8213478f4c1a433da55f8, type: 3}
   companionModel: {fileID: 919132149155446097, guid: 601f3bee0760c1e41a9fb6e29cc4e918, type: 3}
   humanoidController: {fileID: 9100000, guid: 14d8bd2cc3b89314bb631b2210616fe7, type: 2}

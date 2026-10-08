@@ -193,16 +193,8 @@ namespace Manyworld
             sun = lightGo.AddComponent<Light>();
             sun.type = LightType.Directional;
             sun.shadows = LightShadows.Soft;
-            sun.transform.rotation = Quaternion.Euler(28f, -35f, 0f); // 겨울 오후의 비스듬한 빛
-            sun.color = new Color(0.82f, 0.88f, 1f);
-            sun.intensity = 1.1f;
-
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = Spec.skyTint * 0.9f;
             RenderSettings.fog = false;
             var cam = Camera.main;
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = Spec.skyTint;
 
             if (Spec.terrain == TerrainMod.Fog)
             {
@@ -217,25 +209,22 @@ namespace Manyworld
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
                 RenderSettings.fogColor = new Color(0.66f, 0.6f, 0.3f);
                 RenderSettings.fogDensity = 0.04f;
-                cam.backgroundColor = RenderSettings.fogColor;
-                sun.color = new Color(1f, 0.9f, 0.55f);
                 FilterLeft = FilterDuration;
                 Ledger.filtersUsed = 1;
                 Ledger.Charge("방독면 필터", CallLedger.FilterCost);
             }
             if (Spec.rules.HasFlag(WorldRule.EternalNight))
             {
-                sun.intensity = 0.04f;
-                sun.color = new Color(0.4f, 0.45f, 0.7f);
-                RenderSettings.ambientLight = new Color(0.07f, 0.075f, 0.1f);
                 RenderSettings.fog = true;
                 RenderSettings.fogMode = FogMode.ExponentialSquared;
                 RenderSettings.fogColor = new Color(0.01f, 0.01f, 0.02f);
                 RenderSettings.fogDensity = Mathf.Max(RenderSettings.fogDensity, 0.03f);
-                cam.backgroundColor = new Color(0.01f, 0.01f, 0.02f);
                 Toast("F: 손전등");
             }
             if (Spec.rules.HasFlag(WorldRule.SoundReactive)) Noise.WorldMultiplier = 2.5f;
+
+            // 하늘·해·환경광·후처리 (같은 구도인데 차갑고 뒤틀린 톤)
+            WorldLook.Apply(WorldLook.ForWorld(Spec), sun, transform, cam);
 
             // 볼류메트릭 안개(있으면). 거리 안개는 겹치지 않게 절반으로
             if (VolumetricAtmosphere.Create(transform, new Vector3(WorldTerrainBuilder.Size / 2, 0, WorldTerrainBuilder.Size / 2), WorldTerrainBuilder.Size + 80f, VolumetricAtmosphere.ForWorld(Spec), sun) != null)

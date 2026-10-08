@@ -263,6 +263,8 @@ namespace Manyworld.EditorTools
             cat.farmBuildings = Prefabs("SM_Bld_Farmhouse_01", "SM_Bld_Farmhouse_02", "SM_Bld_Barn_01", "SM_Bld_Barn_02", "SM_Bld_Silo_01",
                 "SM_Bld_Shelter_01", "SM_Bld_Outhouse_01", "SM_Bld_Stone_Cabin_01", "SM_Bld_WaterTower_01");
             cat.fences = Prefabs("SM_Prop_Fence_Wood_01", "SM_Prop_Fence_Wire_01", "SM_Prop_StoneWall_01");
+            cat.hamletProps = Prefabs("SM_Prop_Well_01", "SM_Prop_StoneWall_01");
+            cat.skyline = Prefabs(Enumerable.Range(1, 11).Select(i => $"SM_Gen_Bld_Background_{i:00}").ToArray());
 
             const string fx = "Assets/118 sprite effects bundle";
             cat.muzzleFlash = FirstPrefabIn(fx + "/MuzzleFlashes/_prefabs");

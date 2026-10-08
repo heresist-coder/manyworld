@@ -58,8 +58,10 @@ namespace Manyworld
             var layout = new MissionLayout { root = root };
 
             // 우리 세계는 따뜻하고, 멀티버스는 같은 구도인데 차갑고 뒤틀린 톤
-            Color ground = isHome ? new Color(0.45f, 0.42f, 0.36f) : new Color(0.32f, 0.34f, 0.35f);
-            Color road = isHome ? new Color(0.30f, 0.29f, 0.28f) : new Color(0.20f, 0.21f, 0.22f);
+            // 우리 동네: 흙 마당, 아스팔트 골목, 시멘트 연석
+            Color ground = isHome ? new Color(0.42f, 0.4f, 0.32f) : new Color(0.32f, 0.34f, 0.35f);
+            Color road = isHome ? new Color(0.24f, 0.24f, 0.25f) : new Color(0.20f, 0.21f, 0.22f);
+            Color curb = new Color(0.58f, 0.56f, 0.52f);
             Color wallA = isHome ? new Color(0.78f, 0.70f, 0.58f) : new Color(0.55f, 0.57f, 0.58f);
             Color wallB = isHome ? new Color(0.70f, 0.60f, 0.52f) : new Color(0.46f, 0.48f, 0.50f);
             if (spec != null && spec.rules.HasFlag(WorldRule.ToxicGas))
@@ -69,16 +71,27 @@ namespace Manyworld
             }
 
             Graybox.Box(root, "Ground", new Vector3(0, -0.5f, 0), new Vector3(Half * 2 + 20, 1, Half * 2 + 20), ground);
+            if (isHome) // 담 밖까지 땅이 이어진다 (원경 아래 허공이 안 보이게)
+                Graybox.Box(root, "OuterGround", new Vector3(0, -0.55f, 0), new Vector3(700f, 1f, 700f), new Color(0.38f, 0.36f, 0.3f), false);
             for (int i = 0; i <= Blocks; i++)
             {
                 float p = -Half + RoadWidth / 2f + i * Pitch;
                 Graybox.Box(root, "RoadX", new Vector3(0, 0.01f, p), new Vector3(Half * 2, 0.02f, RoadWidth), road, false);
                 Graybox.Box(root, "RoadZ", new Vector3(p, 0.012f, 0), new Vector3(RoadWidth, 0.02f, Half * 2), road, false);
+                if (isHome)
+                {
+                    // 가운데 점선 (빛바랜 노란 페인트)
+                    for (float t = -Half + 6f; t < Half - 6f; t += 7f)
+                    {
+                        Graybox.Box(root, "Lane", new Vector3(t, 0.025f, p), new Vector3(2.4f, 0.01f, 0.18f), new Color(0.75f, 0.65f, 0.35f), false);
+                        Graybox.Box(root, "Lane", new Vector3(p, 0.026f, t), new Vector3(0.18f, 0.01f, 2.4f), new Color(0.75f, 0.65f, 0.35f), false);
+                    }
+                }
             }
 
             // 외곽 담장
-            float wallH = 4f;
-            Color fence = new Color(0.25f, 0.25f, 0.27f);
+            float wallH = isHome ? 2.4f : 4f;
+            Color fence = isHome ? new Color(0.55f, 0.53f, 0.49f) : new Color(0.25f, 0.25f, 0.27f); // 우리 동네: 시멘트 담
             Graybox.Box(root, "Fence_N", new Vector3(0, wallH / 2, Half + 1), new Vector3(Half * 2 + 4, wallH, 1), fence);
             Graybox.Box(root, "Fence_S", new Vector3(0, wallH / 2, -Half - 1), new Vector3(Half * 2 + 4, wallH, 1), fence);
             Graybox.Box(root, "Fence_E", new Vector3(Half + 1, wallH / 2, 0), new Vector3(1, wallH, Half * 2 + 4), fence);
@@ -105,7 +118,12 @@ namespace Manyworld
                     float w = 7f + (float)baseRng.NextDouble() * 3.5f;
                     float d = 7f + (float)baseRng.NextDouble() * 3.5f;
                     bool tint = baseRng.NextDouble() < 0.5;
-                    if (roll < 0.18) continue; // 빈 필지
+                    if (roll < 0.18)
+                    {
+                        // 빈 필지: 풀밭과 나무 한두 그루 (우리 동네만)
+                        if (isHome) PlantLot(root, center + new Vector3((lx - 0.5f) * BlockSize / 2f, 0, (lz - 0.5f) * BlockSize / 2f), baseRng);
+                        continue;
+                    }
 
                     var lotCenter = center + new Vector3((lx - 0.5f) * BlockSize / 2f, 0, (lz - 0.5f) * BlockSize / 2f);
 
@@ -168,6 +186,19 @@ namespace Manyworld
 
             layout.midpointPos = new Vector3(0, 0, 0);
             if (ArtCatalog.HasTown) PlaceStreetProps(root, layout);
+            if (isHome)
+            {
+                BuildCurbs(root, curb);
+                BuildSkyline(root);
+                // 골목 전봇대와 처진 전깃줄
+                for (int i = 1; i < Blocks; i++)
+                {
+                    float line = -Half + RoadWidth / 2f + i * Pitch;
+                    var pts = new System.Collections.Generic.List<Vector3>();
+                    for (float t = -Half + 2f; t <= Half - 2f; t += 4f) pts.Add(new Vector3(t, 0, line));
+                    WorldTerrainBuilder.PlacePowerLines(root, pts, null, 4.4f); // 연석 위
+                }
+            }
 
             if (!isHome)
             {
@@ -184,6 +215,64 @@ namespace Manyworld
 
             if (!isHome) CollectSpawnPoints(layout, spec);
             return layout;
+        }
+
+        /// <summary>담 너머 원경: 동네가 계속 이어지는 것처럼 보이게 (Synty 배경 건물).</summary>
+        static void BuildSkyline(Transform root)
+        {
+            var art = ArtCatalog.Instance;
+            if (art == null || art.skyline == null || art.skyline.Length == 0) return;
+            var rng = new System.Random(77);
+            for (int i = 0; i < 40; i++)
+            {
+                float ang = i / 40f * Mathf.PI * 2f;
+                float dist = Half + 120f + (float)rng.NextDouble() * 80f; // 멀리, 안개 속 서울 원경
+                var p = new Vector3(Mathf.Cos(ang) * dist, 0, Mathf.Sin(ang) * dist);
+                var prefab = ArtCatalog.Pick(art.skyline, rng.Next(100));
+                if (prefab == null) continue;
+                var face = Quaternion.LookRotation(new Vector3(-p.x, 0, -p.z));
+                var b = ArtCatalog.PlaceNatural(prefab, root, p, face, out _);
+                ArtCatalog.SetLayer(b, 2);
+            }
+        }
+
+        /// <summary>길가 연석 (인도 턱). 차가 살짝 넘을 수 있는 높이.</summary>
+        static void BuildCurbs(Transform root, Color curb)
+        {
+            for (int i = 0; i <= Blocks; i++)
+            {
+                float p = -Half + RoadWidth / 2f + i * Pitch;
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    float off = side * (RoadWidth / 2f + 0.4f);
+                    for (int b = 0; b < Blocks; b++)
+                    {
+                        float c = BlockCenter(b);
+                        Graybox.Box(root, "Curb", new Vector3(c, 0.06f, p + off), new Vector3(BlockSize, 0.12f, 0.8f), curb, false);
+                        Graybox.Box(root, "Curb", new Vector3(p + off, 0.061f, c), new Vector3(0.8f, 0.12f, BlockSize), curb, false);
+                    }
+                }
+            }
+        }
+
+        /// <summary>빈 필지에 풀밭과 나무.</summary>
+        static void PlantLot(Transform root, Vector3 c, System.Random rng)
+        {
+            Graybox.Box(root, "Grass", c + new Vector3(0, 0.015f, 0), new Vector3(BlockSize / 2f - 1f, 0.02f, BlockSize / 2f - 1f), new Color(0.36f, 0.42f, 0.26f), false);
+            var art = ArtCatalog.Instance;
+            if (art == null || art.trees == null || art.trees.Length == 0) return;
+            int n = 1 + rng.Next(2);
+            for (int k = 0; k < n; k++)
+            {
+                var prefab = ArtCatalog.Pick(art.trees, rng.Next(100));
+                if (prefab == null) continue;
+                var p = c + new Vector3((float)rng.NextDouble() * 6f - 3f, 0, (float)rng.NextDouble() * 6f - 3f);
+                var t = ArtCatalog.PlaceNatural(prefab, root, p, Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0), out var b);
+                // 너무 큰 나무는 줄인다
+                if (b.size.y > 9f) t.transform.localScale *= 9f / b.size.y;
+                var col = Graybox.Box(root, "TreeCollider", new Vector3(p.x, 1.5f, p.z), new Vector3(0.5f, 3f, 0.5f), Color.gray);
+                col.GetComponent<Renderer>().enabled = false;
+            }
         }
 
         /// <summary>Synty 건물 앞쪽 축 보정 (프리팹 정면이 +Z가 아니면 여기서 돌린다).</summary>
@@ -257,19 +346,45 @@ namespace Manyworld
             var ring = new GameObject("Gate");
             ring.transform.SetParent(root, false);
             ring.transform.localPosition = pos;
-            int segments = 18;
-            float radius = 4.5f;
+            const int segments = 28;
+            const float radius = 6.5f;
+            float centerY = radius * 0.55f; // 아래쪽은 땅에 묻혔다
+            var metal = Graybox.Mat(new Color(0.3f, 0.29f, 0.27f));
+            var rust = Graybox.Mat(new Color(0.38f, 0.25f, 0.18f));
             for (int i = 0; i < segments; i++)
             {
                 float a = i / (float)segments * Mathf.PI * 2f;
-                var p = new Vector3(Mathf.Cos(a) * radius, Mathf.Sin(a) * radius + 2.2f, 0);
-                if (p.y < -0.3f) continue;
-                var seg = Graybox.Box(ring.transform, "Seg", p, new Vector3(1.4f, 0.9f, 1.2f), new Color(0.35f, 0.33f, 0.3f), false);
+                var p = new Vector3(Mathf.Cos(a) * radius, Mathf.Sin(a) * radius + centerY, 0);
+                if (p.y < -0.8f) continue;
+                var seg = Graybox.Prim(PrimitiveType.Cylinder, ring.transform, "Seg", p, new Vector3(1.5f, radius * Mathf.PI / segments * 1.1f, 1.5f), Color.gray, false);
                 seg.transform.localRotation = Quaternion.Euler(0, 0, a * Mathf.Rad2Deg);
+                seg.GetComponent<Renderer>().sharedMaterial = i % 5 == 0 ? rust : metal;
+                // 리벳 띠
+                if (i % 2 == 0)
+                {
+                    var band = Graybox.Box(ring.transform, "Band", p, new Vector3(0.25f, 0.5f, 1.8f), Color.gray, false);
+                    band.transform.localRotation = Quaternion.Euler(0, 0, a * Mathf.Rad2Deg);
+                    band.GetComponent<Renderer>().sharedMaterial = rust;
+                }
             }
-            var membrane = Graybox.Prim(PrimitiveType.Cylinder, ring.transform, "Membrane", new Vector3(0, 2.2f, 0), new Vector3(7.8f, 0.05f, 7.8f),
-                home ? new Color(0.5f, 0.8f, 1f, 0.35f) : new Color(0.9f, 0.5f, 1f, 0.35f), false);
+            var color = home ? new Color(0.35f, 0.65f, 1f, 0.28f) : new Color(0.75f, 0.35f, 1f, 0.28f);
+            var membrane = Graybox.Prim(PrimitiveType.Cylinder, ring.transform, "Membrane", new Vector3(0, centerY, 0), new Vector3(radius * 1.8f, 0.04f, radius * 1.8f), color, false);
             membrane.transform.localRotation = Quaternion.Euler(90, 0, 0);
+            var mat = new Material(membrane.GetComponent<Renderer>().sharedMaterial);
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", new Color(color.r, color.g, color.b) * 0.45f);
+            membrane.GetComponent<Renderer>().sharedMaterial = mat;
+            var glow = new GameObject("GateGlow").AddComponent<Light>();
+            glow.transform.SetParent(ring.transform, false);
+            glow.transform.localPosition = new Vector3(0, centerY, 1.5f);
+            glow.type = LightType.Point;
+            glow.range = 18f;
+            glow.intensity = 3f;
+            glow.color = new Color(color.r, color.g, color.b);
+            var shimmer = membrane.AddComponent<GateShimmer>();
+            shimmer.mat = mat;
+            shimmer.glow = glow;
+            shimmer.baseColor = new Color(color.r, color.g, color.b);
             ring.transform.localRotation = Quaternion.Euler(0, 40, 0);
         }
 

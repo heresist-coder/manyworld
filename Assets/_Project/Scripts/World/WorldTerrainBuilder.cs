@@ -49,6 +49,57 @@ namespace Manyworld
             new Hamlet("방앗간", 700, 660, 2),
         };
 
+        /// <summary>마을 옆 밭 (고정 지리). 길 쪽을 따라 놓인 직사각형.</summary>
+        struct Field
+        {
+            public Vector2 center;
+            public float w, d, angle;
+        }
+
+        static List<Field> fields;
+
+        static List<Field> Fields()
+        {
+            if (fields != null) return fields;
+            fields = new List<Field>();
+            var rng = new System.Random(1988);
+            foreach (var hm in Hamlets)
+            {
+                int n = 2 + rng.Next(2);
+                for (int i = 0; i < n; i++)
+                {
+                    float ang = (float)rng.NextDouble() * Mathf.PI * 2f;
+                    float dist = 50f + (float)rng.NextDouble() * 18f;
+                    fields.Add(new Field
+                    {
+                        center = hm.pos + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * dist,
+                        w = 26f + (float)rng.NextDouble() * 14f,
+                        d = 16f + (float)rng.NextDouble() * 8f,
+                        angle = (float)rng.NextDouble() * 180f,
+                    });
+                }
+            }
+            return fields;
+        }
+
+        /// <summary>밭 안이면 0~1 (가장자리는 부드럽게).</summary>
+        static float FieldWeight(float x, float z)
+        {
+            float best = 0f;
+            foreach (var f in Fields())
+            {
+                var d = new Vector2(x, z) - f.center;
+                if (Mathf.Abs(d.x) > 30f || Mathf.Abs(d.y) > 30f) continue; // 멀면 건너뛴다
+                float a = -f.angle * Mathf.Deg2Rad;
+                float lx = d.x * Mathf.Cos(a) - d.y * Mathf.Sin(a);
+                float lz = d.x * Mathf.Sin(a) + d.y * Mathf.Cos(a);
+                float wx = Mathf.InverseLerp(f.w / 2f, f.w / 2f - 1.5f, Mathf.Abs(lx));
+                float wz = Mathf.InverseLerp(f.d / 2f, f.d / 2f - 1.5f, Mathf.Abs(lz));
+                best = Mathf.Max(best, Mathf.Min(wx, wz));
+            }
+            return best;
+        }
+
         public static MissionLayout Build(WorldSpec spec)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -108,6 +159,7 @@ namespace Manyworld
                 });
             }
 
+            long tHeights = watch.ElapsedMilliseconds;
             // 4) TerrainData
             var td = new TerrainData { heightmapResolution = Res, size = new Vector3(Size, MaxHeight, Size) };
             var norm = new float[Res, Res];
@@ -115,6 +167,7 @@ namespace Manyworld
             td.SetHeights(0, 0, norm);
             Paint(td, spec, roadDist, h);
 
+            long tPaint = watch.ElapsedMilliseconds;
             var terrainGo = Terrain.CreateTerrainGameObject(td);
             terrainGo.name = "Terrain";
             terrainGo.transform.SetParent(root, false);
@@ -138,14 +191,18 @@ namespace Manyworld
             float Y(Vector3 p) => terrain.SampleHeight(p);
             Vector3 OnGround(Vector3 p) => new Vector3(p.x, Y(p), p.z);
 
-            // 5) 도로 메시 (흙길)
-            foreach (var line in roadLines) BuildRoadMesh(root, line, terrain);
+            // 5) 흙길은 지형에 직접 칠했다 (1m 해상도). 길가엔 전봇대와 전깃줄
+            foreach (var line in roadLines) PlacePowerLines(root, line, terrain);
 
             // 6) 물: 강과 저지대. 침수 세계는 수위가 높다
             float water = spec.terrain == TerrainMod.Flood ? 10.5f : WaterLevel;
             var waterGo = Graybox.Box(root, "Water", new Vector3(Size / 2, water - 0.25f, Size / 2), new Vector3(Size, 0.5f, Size),
                 spec.rules.HasFlag(WorldRule.ToxicGas) ? new Color(0.35f, 0.38f, 0.2f, 0.7f) : new Color(0.2f, 0.32f, 0.38f, 0.65f), false);
             waterGo.layer = 2;
+            var waterMat = new Material(waterGo.GetComponent<Renderer>().sharedMaterial);
+            if (waterMat.HasProperty("_Smoothness")) waterMat.SetFloat("_Smoothness", 0.93f);
+            waterGo.GetComponent<Renderer>().sharedMaterial = waterMat;
+            waterGo.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             layout.waterLevel = water;
             layout.minimap = BuildMinimap(h, roadDist, water);
             layout.worldSize = Size;
@@ -178,6 +235,7 @@ namespace Manyworld
             PlantGrass(td, roadDist, h, water);
             terrain.Flush();
 
+            long tNature = watch.ElapsedMilliseconds;
             // 11) 네비메시: 산 가장자리를 뺀 안쪽만 굽는다
             var surface = root.gameObject.AddComponent<NavMeshSurface>();
             surface.collectObjects = CollectObjects.Volume;
@@ -192,7 +250,7 @@ namespace Manyworld
             surface.BuildNavMesh();
 
             CollectSpawnPoints(layout, spec);
-            Debug.Log($"[Manyworld] 월드 생성 제{spec.number}번: {watch.ElapsedMilliseconds}ms, 나무 {td.treeInstanceCount}, 스폰 {layout.spawnPoints.Count}");
+            Debug.Log($"[Manyworld] 월드 생성 제{spec.number}번: {watch.ElapsedMilliseconds}ms (높이 {tHeights}, 칠하기 {tPaint - tHeights}, 배치 {tNature - tPaint}, 네비메시 {watch.ElapsedMilliseconds - tNature}), 나무 {td.treeInstanceCount}, 스폰 {layout.spawnPoints.Count}");
             return layout;
         }
 
@@ -271,6 +329,16 @@ namespace Manyworld
             return o;
         }
 
+        static float SampleBilinear(float[,] g, float wx, float wz)
+        {
+            float fx = Mathf.Clamp(wx / Cell, 0, Res - 1.001f), fz = Mathf.Clamp(wz / Cell, 0, Res - 1.001f);
+            int x0 = (int)fx, z0 = (int)fz;
+            float tx = fx - x0, tz = fz - z0;
+            float a = Mathf.Lerp(g[z0, x0], g[z0, x0 + 1], tx);
+            float b = Mathf.Lerp(g[z0 + 1, x0], g[z0 + 1, x0 + 1], tx);
+            return Mathf.Lerp(a, b, tz);
+        }
+
         static float SampleGrid(float[,] g, float wx, float wz)
         {
             int x = Mathf.Clamp(Mathf.RoundToInt(wx / Cell), 0, Res - 1);
@@ -317,6 +385,25 @@ namespace Manyworld
             return tex;
         }
 
+        /// <summary>밭고랑: 줄무늬 흙.</summary>
+        static TerrainLayer FieldLayer(Color c)
+        {
+            var tex = new Texture2D(64, 64, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Repeat };
+            var px = new Color[64 * 64];
+            for (int i = 0; i < px.Length; i++)
+            {
+                int x = i % 64, y = i / 64;
+                float furrow = 0.5f + 0.5f * Mathf.Sin(y / 64f * Mathf.PI * 2f * 4f);
+                float n = Mathf.PerlinNoise(x * 0.2f, y * 0.2f) * 0.25f;
+                var col = Color.Lerp(c * 0.75f, c * 1.15f, furrow * 0.8f + n);
+                col.a = 0.05f;
+                px[i] = col;
+            }
+            tex.SetPixels(px);
+            tex.Apply(true);
+            return new TerrainLayer { diffuseTexture = tex, tileSize = new Vector2(6f, 6f), smoothness = 0f };
+        }
+
         static TerrainLayer Layer(Color c, float tile, int seed)
         {
             return new TerrainLayer { diffuseTexture = NoiseTex(c, 0.12f, seed), tileSize = new Vector2(tile, tile), smoothness = 0.05f, metallic = 0f };
@@ -324,6 +411,20 @@ namespace Manyworld
 
         static void Paint(TerrainData td, WorldSpec spec, float[,] roadDist, float[,] h)
         {
+            // 노이즈는 2m 격자에 한 번만 계산하고 1m 칠하기에서 보간한다 (월드 생성 시간)
+            var forestGrid = new float[Res, Res];
+            var dryGrid = new float[Res, Res];
+            var slopeGrid = new float[Res, Res];
+            for (int gz = 0; gz < Res; gz++)
+            for (int gx = 0; gx < Res; gx++)
+            {
+                float wx0 = gx * Cell, wz0 = gz * Cell;
+                forestGrid[gz, gx] = Fbm(wx0 * 0.006f + 5f, wz0 * 0.006f + 9f, 3);
+                dryGrid[gz, gx] = Fbm(wx0 * 0.012f + 31f, wz0 * 0.012f + 17f, 3);
+                int xa = Mathf.Max(0, gx - 1), xb = Mathf.Min(Res - 1, gx + 1), za = Mathf.Max(0, gz - 1), zb = Mathf.Min(Res - 1, gz + 1);
+                float dx = (h[gz, xb] - h[gz, xa]) / ((xb - xa) * Cell), dz = (h[zb, gx] - h[za, gx]) / ((zb - za) * Cell);
+                slopeGrid[gz, gx] = Mathf.Atan(Mathf.Sqrt(dx * dx + dz * dz)) * Mathf.Rad2Deg;
+            }
             // 멀티버스는 같은 구도인데 차갑고 뒤틀린 톤 (brainstorm-01 3장)
             Color tint = spec.rules.HasFlag(WorldRule.ToxicGas) ? new Color(0.72f, 0.68f, 0.38f) : spec.skyTint;
             Color Mix(Color c) => Color.Lerp(c, tint, 0.22f);
@@ -334,29 +435,41 @@ namespace Manyworld
                 Layer(Mix(new Color(0.5f, 0.41f, 0.29f)), 5f, 3),    // 2 흙길
                 Layer(Mix(new Color(0.44f, 0.43f, 0.41f)), 9f, 4),   // 3 바위
                 Layer(Mix(new Color(0.33f, 0.29f, 0.23f)), 6f, 5),   // 4 진흙 (물가)
+                Layer(Mix(new Color(0.55f, 0.52f, 0.3f)), 8f, 6),    // 5 마른 풀 (겨울 오후)
+                FieldLayer(Mix(new Color(0.42f, 0.33f, 0.24f))),      // 6 밭고랑
             };
-            int ar = 256;
+            int ar = 1024;
             td.alphamapResolution = ar;
-            var a = new float[ar, ar, 5];
+            var a = new float[ar, ar, 7];
             for (int z = 0; z < ar; z++)
             for (int x = 0; x < ar; x++)
             {
                 float wx = x / (float)(ar - 1) * Size, wz = z / (float)(ar - 1) * Size;
-                float hgt = SampleGrid(h, wx, wz);
-                float slope = td.GetSteepness(x / (float)(ar - 1), z / (float)(ar - 1));
-                float road = Mathf.InverseLerp(5.5f, 3f, SampleGrid(roadDist, wx, wz));
+                float hgt = SampleBilinear(h, wx, wz);
+                float slope = SampleBilinear(slopeGrid, wx, wz);
+                float rd = SampleBilinear(roadDist, wx, wz);
+                // 흙길: 가운데는 진하게, 어깨는 마른 풀로 번진다
+                float road = Mathf.InverseLerp(3.8f, 2.4f, rd) + (rd < 4.5f ? (Mathf.PerlinNoise(wx * 0.4f, wz * 0.4f) - 0.5f) * 0.25f : 0f);
+                road = Mathf.Clamp01(road);
+                float shoulder = Mathf.InverseLerp(6.5f, 3.8f, rd) * (1f - road);
                 float rock = Mathf.InverseLerp(24f, 38f, slope);
                 float mud = Mathf.InverseLerp(WaterLevel + 2.5f, WaterLevel + 0.3f, hgt);
-                float forest = Mathf.InverseLerp(0.52f, 0.62f, Fbm(wx * 0.006f + 5f, wz * 0.006f + 9f, 3));
-                float grass = 1f;
-                // 우선순위: 길 > 바위 > 진흙 > 숲 > 풀
-                float wRoad = road, wRock = rock * (1 - wRoad), wMud = mud * (1 - wRoad - wRock);
-                float rest = Mathf.Max(0f, 1f - wRoad - wRock - wMud);
+                float field = FieldWeight(wx, wz);
+                float forest = Mathf.InverseLerp(0.52f, 0.62f, SampleBilinear(forestGrid, wx, wz));
+                float dry = Mathf.Clamp01(Mathf.InverseLerp(0.55f, 0.7f, SampleBilinear(dryGrid, wx, wz)) + shoulder * 0.8f);
+                // 우선순위: 길 > 바위 > 진흙 > 밭 > 숲 > 마른 풀 > 풀
+                float wRoad = road;
+                float wRock = rock * (1 - wRoad);
+                float wMud = mud * (1 - wRoad - wRock);
+                float wField = field * Mathf.Max(0f, 1 - wRoad - wRock - wMud);
+                float rest = Mathf.Max(0f, 1f - wRoad - wRock - wMud - wField);
                 a[z, x, 2] = wRoad;
                 a[z, x, 3] = wRock;
                 a[z, x, 4] = Mathf.Max(0f, wMud);
+                a[z, x, 6] = wField;
                 a[z, x, 1] = rest * forest;
-                a[z, x, 0] = rest * (1f - forest) * grass;
+                a[z, x, 5] = rest * (1f - forest) * dry;
+                a[z, x, 0] = rest * (1f - forest) * (1f - dry);
             }
             td.SetAlphamaps(0, 0, a);
         }
@@ -438,6 +551,74 @@ namespace Manyworld
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
+        // ---------------- 전봇대 ----------------
+
+        /// <summary>길 따라 전봇대와 처진 전깃줄 (80년대 시골길).</summary>
+        public static void PlacePowerLines(Transform root, List<Vector3> line, Terrain terrain, float offset = 5.2f)
+        {
+            var wood = Graybox.Mat(new Color(0.26f, 0.2f, 0.15f));
+            var wireMat = Graybox.Mat(new Color(0.08f, 0.08f, 0.08f));
+            Vector3? prevA = null, prevB = null;
+            float acc = 0f;
+            for (int i = 1; i < line.Count; i++)
+            {
+                acc += Vector3.Distance(line[i], line[i - 1]);
+                if (acc < 36f) continue;
+                acc = 0f;
+                var fwd = line[i] - line[i - 1];
+                fwd.y = 0;
+                fwd = fwd.normalized;
+                var right = Vector3.Cross(Vector3.up, fwd);
+                var p = line[i] + right * offset;
+                if (terrain != null)
+                {
+                    p.y = terrain.SampleHeight(p);
+                    if (p.y < WaterLevel + 0.5f || NearAny(p.x, p.z, -20f)) { prevA = prevB = null; continue; }
+                }
+                else p.y = 0f; // 우리 동네: 평지
+
+                var pole = Graybox.Prim(PrimitiveType.Cylinder, root, "PowerPole", p + Vector3.up * 4f, new Vector3(0.24f, 4f, 0.24f), Color.gray, false);
+                pole.GetComponent<Renderer>().sharedMaterial = wood;
+                pole.transform.rotation = Quaternion.Euler(Random.Range(-2f, 2f), 0, Random.Range(-2f, 2f)); // 조금씩 기울었다
+                var bar = Graybox.Box(root, "CrossArm", p + Vector3.up * 7.4f, new Vector3(1.6f, 0.12f, 0.12f), Color.gray, false);
+                bar.GetComponent<Renderer>().sharedMaterial = wood;
+                bar.transform.rotation = Quaternion.LookRotation(right) * Quaternion.Euler(0, 90, 0);
+                var col = Graybox.Box(root, "PoleCollider", p + Vector3.up * 2f, new Vector3(0.3f, 4f, 0.3f), Color.gray);
+                col.GetComponent<Renderer>().enabled = false;
+
+                var a = p + Vector3.up * 7.5f - fwd * 0f + bar.transform.right * 0.7f;
+                var b = p + Vector3.up * 7.5f - bar.transform.right * 0.7f;
+                if (prevA.HasValue)
+                {
+                    Wire(root, prevA.Value, a, wireMat);
+                    Wire(root, prevB.Value, b, wireMat);
+                }
+                prevA = a;
+                prevB = b;
+            }
+        }
+
+        static void Wire(Transform root, Vector3 a, Vector3 b, Material mat)
+        {
+            var go = new GameObject("Wire");
+            go.transform.SetParent(root, false);
+            go.layer = 2;
+            var lr = go.AddComponent<LineRenderer>();
+            const int n = 9;
+            lr.positionCount = n;
+            float sag = Vector3.Distance(a, b) * 0.035f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)(n - 1);
+                var p = Vector3.Lerp(a, b, t);
+                p.y -= sag * 4f * t * (1f - t);
+                lr.SetPosition(i, p);
+            }
+            lr.startWidth = lr.endWidth = 0.035f;
+            lr.sharedMaterial = mat;
+            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
         // ---------------- 마을·현장 ----------------
 
         static void BuildHamlet(Transform root, Hamlet hm, int index, Terrain terrain, WorldSpec spec, System.Random ruinRng)
@@ -479,6 +660,38 @@ namespace Manyworld
                     Graybox.Box(b.transform, "Roof", new Vector3(0, 0.55f, 0), new Vector3(1.1f, 0.15f, 1.1f), new Color(0.3f, 0.3f, 0.36f), false);
                 }
             }
+            // 우물, 돌담, 울타리 (마을 둘레. 길이 들어오는 곳은 비운다)
+            if (art != null && art.hamletProps != null && art.hamletProps.Length > 0)
+            {
+                var well = ArtCatalog.Pick(art.hamletProps, 0);
+                if (well != null)
+                {
+                    var wp = new Vector3(hm.pos.x - 6f, 0, hm.pos.y + 5f);
+                    wp.y = terrain.SampleHeight(wp);
+                    ArtCatalog.PlaceNatural(well, root, wp, Quaternion.Euler(0, index * 40f, 0), out _);
+                }
+            }
+            if (art != null && art.fences != null && art.fences.Length > 0)
+            {
+                var fence = ArtCatalog.Pick(art.fences, index);
+                if (fence != null)
+                {
+                    float radius = 31f;
+                    float seg = 3.2f;
+                    int count = Mathf.FloorToInt(2f * Mathf.PI * radius / seg);
+                    for (int k = 0; k < count; k++)
+                    {
+                        float ang = k / (float)count * Mathf.PI * 2f;
+                        var fp = new Vector3(hm.pos.x + Mathf.Cos(ang) * radius, 0, hm.pos.y + Mathf.Sin(ang) * radius);
+                        if (RoadNear(fp.x, fp.z, 9f)) continue;
+                        if (rng.NextDouble() < 0.18) continue; // 군데군데 무너졌다
+                        fp.y = terrain.SampleHeight(fp);
+                        var rot = Quaternion.LookRotation(new Vector3(-Mathf.Sin(ang), 0, Mathf.Cos(ang))) * Quaternion.Euler(0, 90, 0);
+                        ArtCatalog.PlaceNatural(fence, root, fp, rot, out _);
+                    }
+                }
+            }
+
             // 마을 이름 표지
             var sp = new Vector3(hm.pos.x + 7f, 0, hm.pos.y - 9f);
             sp.y = terrain.SampleHeight(sp);
@@ -501,6 +714,20 @@ namespace Manyworld
         }
 
         // ---------------- 자연물 ----------------
+
+        static bool RoadNear(float x, float z, float within)
+        {
+            var p = new Vector2(x, z);
+            foreach (var road in Roads)
+                for (int i = 0; i < road.Length - 1; i++)
+                {
+                    var a = road[i]; var b = road[i + 1];
+                    var ab = b - a;
+                    float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+                    if (Vector2.Distance(p, a + ab * t) < within) return true;
+                }
+            return false;
+        }
 
         static bool NearAny(float x, float z, float pad)
         {
@@ -572,7 +799,7 @@ namespace Manyworld
             {
                 float px = x + (float)(rng.NextDouble() - 0.5) * step * 0.9f;
                 float pz = z + (float)(rng.NextDouble() - 0.5) * step * 0.9f;
-                if (SampleGrid(roadDist, px, pz) < 8f || NearAny(px, pz, 6f)) continue;
+                if (SampleGrid(roadDist, px, pz) < 8f || NearAny(px, pz, 6f) || FieldWeight(px, pz) > 0f) continue;
                 float hgt = SampleGrid(h, px, pz);
                 if (hgt < water + 0.6f) continue;
                 float forest = Fbm(px * 0.006f + 5f, pz * 0.006f + 9f, 3);
@@ -605,7 +832,7 @@ namespace Manyworld
             {
                 float x = 60f + (float)rng.NextDouble() * (Size - 120f);
                 float z = 60f + (float)rng.NextDouble() * (Size - 120f);
-                if (SampleGrid(roadDist, x, z) < 7f || NearAny(x, z, 2f) || SampleGrid(h, x, z) < water + 0.3f) continue;
+                if (SampleGrid(roadDist, x, z) < 7f || NearAny(x, z, 2f) || SampleGrid(h, x, z) < water + 0.3f || FieldWeight(x, z) > 0f) continue;
                 var p = new Vector3(x, 0, z);
                 p.y = terrain.SampleHeight(p) - 0.2f;
                 var rot = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);
@@ -662,7 +889,7 @@ namespace Manyworld
                 for (int x = 0; x < dr; x++)
                 {
                     float wx = x / (float)(dr - 1) * Size, wz = z / (float)(dr - 1) * Size;
-                    if (SampleGrid(roadDist, wx, wz) < 4.5f || SampleGrid(h, wx, wz) < water + 0.4f) continue;
+                    if (SampleGrid(roadDist, wx, wz) < 4.5f || SampleGrid(h, wx, wz) < water + 0.4f || FieldWeight(wx, wz) > 0.2f) continue;
                     float n = Mathf.PerlinNoise(wx * 0.03f + layer * 17f, wz * 0.03f);
                     if (n > 0.55f) map[z, x] = n > 0.7f ? 2 : 1;
                 }

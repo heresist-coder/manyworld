@@ -111,13 +111,12 @@ namespace Manyworld
         void ApplyHomeLighting()
         {
             RenderSettings.fog = false;
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.55f, 0.47f, 0.4f);
             var cam = Cam.GetComponent<Camera>();
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.85f, 0.62f, 0.45f);
             cam.fieldOfView = 55f;
+            cam.farClipPlane = 600f;
             Cam.target = null;
+            // 우리 동네: 노을 진 겨울 오후. 따뜻하고 바랜 톤
+            WorldLook.Apply(WorldLook.Home, homeSun, homeTown.transform, cam);
         }
 
         /// <summary>콜 수락 → 기사식당 앞에서 티코를 몰고 게이트까지.</summary>
