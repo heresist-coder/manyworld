@@ -29,6 +29,7 @@ namespace Manyworld
         bool focused;
         public string RadioLine { get; private set; }
         public float Fade { get; private set; }
+        int whiteFrames;
 
         // 동네 일
         public class Job
@@ -190,7 +191,8 @@ namespace Manyworld
 
                 case Phase.Entering:
                     Fade = Mathf.Clamp01(phaseTime / 1.2f);
-                    if (phaseTime > 1.3f) GameManager.Instance.StartCall(Contract, focused);
+                    // 하얀 화면에 "통과 중" 글자가 한 번 그려진 뒤 세계를 짓는다 (몇 초 걸린다)
+                    if (phaseTime > 1.3f && ++whiteFrames >= 3) GameManager.Instance.StartCall(Contract, focused);
                     break;
             }
         }
@@ -453,7 +455,13 @@ namespace Manyworld
                 UIStyle.Fill(new Rect(W / 2 - 150, H / 2 + 10, 300, 6), new Color(0, 0, 0, 0.5f));
                 UIStyle.Fill(new Rect(W / 2 - 150, H / 2 + 10, 300 * Mathf.Clamp01(phaseTime / 7f), 6), UIStyle.Amber);
             }
-            if (Fade > 0f) UIStyle.Fill(new Rect(0, 0, W, H), new Color(1f, 1f, 1f, Fade));
+            if (Fade > 0f)
+            {
+                UIStyle.Fill(new Rect(0, 0, W, H), new Color(1f, 1f, 1f, Fade));
+                if (Fade >= 1f)
+                    GUI.Label(new Rect(0, H / 2 - 20, W, 40), $"게이트 통과 중… 제{Contract.worldNumber}번 세계",
+                        UIStyle.With(UIStyle.Label, new Color(0.25f, 0.25f, 0.28f), 22, TextAnchor.MiddleCenter));
+            }
         }
 
         /// <summary>그 세계에 대해 들은 소문 한 줄.</summary>

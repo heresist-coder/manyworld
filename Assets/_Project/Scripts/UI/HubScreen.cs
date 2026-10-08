@@ -66,7 +66,7 @@ namespace Manyworld
             GUI.Label(new Rect(left.x + 20, left.y + 16, 380, 40), "기사식당", UIStyle.Title);
             var d = save.Date;
             string[] dow = { "일", "월", "화", "수", "목", "금", "토" };
-            GUI.Label(new Rect(left.x + 20, left.y + 62, 380, 26), $"{d.Year}년 {d.Month}월 {d.Day}일 ({dow[(int)d.DayOfWeek]})", UIStyle.Label);
+            GUI.Label(new Rect(left.x + 20, left.y + 62, 380, 26), $"{d.Year}년 {d.Month}월 {d.Day}일 ({dow[(int)d.DayOfWeek]}) · {GameManager.Instance.HomeWeather.Label}", UIStyle.Label);
             GUI.Label(new Rect(left.x + 20, left.y + 98, 380, 30), $"잔고  <b>{UIStyle.Won(save.money)}</b>", UIStyle.With(UIStyle.Label, UIStyle.Amber, 24));
             GUI.Label(new Rect(left.x + 20, left.y + 140, 380, 120),
                 $"무사고 경력\n· 연속 무사고 {save.cleanStreak}건\n· 기절 {save.knockouts}회 (감점)\n· 전멸 {save.wipes}회 (큰 감점)\n· 경력 점수 {save.RecordScore}",

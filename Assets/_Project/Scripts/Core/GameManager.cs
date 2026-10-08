@@ -26,6 +26,8 @@ namespace Manyworld
         DriveSession drive;
         AudioSource homeAmbience;
         Light homeSun;
+        GameObject homeFog;
+        public WeatherState HomeWeather { get; private set; }
         float orbit;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -104,7 +106,6 @@ namespace Manyworld
             homeSun.transform.rotation = Quaternion.Euler(22f, -60f, 0);
             homeSun.color = new Color(1f, 0.82f, 0.62f); // 노을빛
             homeSun.intensity = 1.3f;
-            VolumetricAtmosphere.Create(homeTown.transform, Vector3.zero, 150f, VolumetricAtmosphere.Home, homeSun);
             ApplyHomeLighting();
         }
 
@@ -115,8 +116,12 @@ namespace Manyworld
             cam.fieldOfView = 55f;
             cam.farClipPlane = 600f;
             Cam.target = null;
-            // 우리 동네: 노을 진 겨울 오후. 따뜻하고 바랜 톤
-            WorldLook.Apply(WorldLook.Home, homeSun, homeTown.transform, cam);
+            // 우리 동네: 따뜻하고 바랜 톤. 날씨와 시간대는 날짜마다 다르다
+            HomeWeather = WeatherState.ForHome(Save.day, Save.Date.Month);
+            WorldLook.Apply(HomeWeather.Modify(WorldLook.Home), homeSun, homeTown.transform, cam);
+            if (homeFog != null) Destroy(homeFog);
+            homeFog = VolumetricAtmosphere.Create(homeTown.transform, Vector3.zero, 150f, HomeWeather.Modify(VolumetricAtmosphere.Home), homeSun);
+            HomeWeather.AttachFx(homeTown.transform);
         }
 
         /// <summary>콜 수락 → 기사식당 앞에서 티코를 몰고 게이트까지.</summary>

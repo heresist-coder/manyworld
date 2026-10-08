@@ -40,7 +40,7 @@ namespace Manyworld.Tests
             {
                 "carbine_shot", "rifle_shot", "meter_tick", "reload", "pipe_hit", "crawler_screech", "brute_roar",
                 "body_hit", "radio_call", "typewriter", "stamp", "chime", "cassette_play", "car_door", "car_bump",
-                "gate_whoosh", "engine_loop", "ambience_world", "ambience_home", "tape_hiss", "heartbeat", "gas_hiss",
+                "gate_whoosh", "engine_loop", "ambience_world", "ambience_home", "tape_hiss", "heartbeat", "gas_hiss", "rain_loop",
             };
             foreach (var n in names)
             {
@@ -64,7 +64,7 @@ namespace Manyworld.Tests
             Assert.Greater(drive.DistanceToGate, 20f, "기사식당 앞에서 출발한다");
 
             drive.Enter(true);
-            yield return new WaitForSeconds(1.6f);
+            yield return new WaitForSeconds(2f);
             Assert.AreEqual(GameMode.Mission, gm.Mode);
             Assert.IsTrue(MissionController.Instance.Companion.Focused, "곡을 다 들으면 은주가 집중 상태");
         }
@@ -278,7 +278,7 @@ namespace Manyworld.Tests
             drive.AcceptCurrentOffer();
             Assert.IsFalse(drive.Daily, "콜을 받으면 게이트로 출동");
             drive.Enter(false);
-            yield return new WaitForSeconds(1.6f);
+            yield return new WaitForSeconds(2f);
             Assert.AreEqual(GameMode.Mission, gm.Mode);
         }
 

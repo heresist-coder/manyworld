@@ -13,6 +13,7 @@ namespace Manyworld
 
         public CallContract Contract { get; private set; }
         public WorldSpec Spec => Contract.spec;
+        public WeatherState Weather { get; private set; }
         public WorldState State { get; private set; }
         public CallLedger Ledger { get; } = new CallLedger();
         public Evolution Evolution { get; } = new Evolution();
@@ -223,11 +224,24 @@ namespace Manyworld
             }
             if (Spec.rules.HasFlag(WorldRule.SoundReactive)) Noise.WorldMultiplier = 2.5f;
 
+            // 날씨·시간대: 세계 번호와 날짜로 정해진다. 빗소리는 소음을 묻는다
+            Weather = WeatherState.ForWorld(Spec, GameManager.Instance != null ? GameManager.Instance.Save.day : 0);
+            Noise.WorldMultiplier *= Weather.NoiseMultiplier;
+            var palette = Weather.Modify(WorldLook.ForWorld(Spec), Spec.rules.HasFlag(WorldRule.EternalNight));
+            if (!RenderSettings.fog && Weather.kind != WeatherKind.Clear && Weather.kind != WeatherKind.Overcast)
+            {
+                RenderSettings.fog = true;
+                RenderSettings.fogMode = FogMode.ExponentialSquared;
+                RenderSettings.fogColor = palette.horizon;
+                RenderSettings.fogDensity = Weather.kind == WeatherKind.MorningFog ? 0.016f : 0.007f;
+            }
+
             // 하늘·해·환경광·후처리 (같은 구도인데 차갑고 뒤틀린 톤)
-            WorldLook.Apply(WorldLook.ForWorld(Spec), sun, transform, cam);
+            WorldLook.Apply(palette, sun, transform, cam);
+            Weather.AttachFx(transform);
 
             // 볼류메트릭 안개(있으면). 거리 안개는 겹치지 않게 절반으로
-            if (VolumetricAtmosphere.Create(transform, new Vector3(WorldTerrainBuilder.Size / 2, 0, WorldTerrainBuilder.Size / 2), WorldTerrainBuilder.Size + 80f, VolumetricAtmosphere.ForWorld(Spec), sun) != null)
+            if (VolumetricAtmosphere.Create(transform, new Vector3(WorldTerrainBuilder.Size / 2, 0, WorldTerrainBuilder.Size / 2), WorldTerrainBuilder.Size + 80f, Weather.Modify(VolumetricAtmosphere.ForWorld(Spec)), sun) != null)
                 RenderSettings.fogDensity *= 0.5f;
             // 침수는 지형의 수위로 표현한다 (물에 들어가면 느려진다)
         }

@@ -184,7 +184,8 @@ namespace Manyworld
             terrain.basemapDistance = 300f;
             terrain.treeDistance = 600f;
             terrain.treeBillboardDistance = 180f;
-            terrain.detailObjectDistance = 90f;
+            terrain.detailObjectDistance = 120f;
+            terrain.detailObjectDensity = 1f;
             terrain.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             layout.terrain = terrain;
 
@@ -224,6 +225,9 @@ namespace Manyworld
                 BuildHamlet(root, hm, i, terrain, spec, ruinRng);
             }
 
+            // 길가 디테일: 장승, 서낭당, 버스 정류장, 이정표, 짚더미
+            PlaceRoadside(root, terrain, spec);
+
             // 9) 목표: 공사 현장
             layout.objectivePos = OnGround(ObjectivePos);
             BuildSite(root, layout.objectivePos);
@@ -240,11 +244,11 @@ namespace Manyworld
             var surface = root.gameObject.AddComponent<NavMeshSurface>();
             surface.collectObjects = CollectObjects.Volume;
             surface.center = new Vector3(Size / 2, 50, Size / 2);
-            surface.size = new Vector3(820, 160, 820);
+            surface.size = new Vector3(790, 160, 790);
             surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
             surface.layerMask = ~(1 << 2);
             surface.overrideVoxelSize = true;
-            surface.voxelSize = 0.4f;
+            surface.voxelSize = 0.45f;
             surface.overrideTileSize = true;
             surface.tileSize = 256;
             surface.BuildNavMesh();
@@ -438,7 +442,7 @@ namespace Manyworld
                 Layer(Mix(new Color(0.55f, 0.52f, 0.3f)), 8f, 6),    // 5 마른 풀 (겨울 오후)
                 FieldLayer(Mix(new Color(0.42f, 0.33f, 0.24f))),      // 6 밭고랑
             };
-            int ar = 1024;
+            int ar = 768; // 1.33m. 1024는 생성이 2초 넘게 걸렸다
             td.alphamapResolution = ar;
             var a = new float[ar, ar, 7];
             for (int z = 0; z < ar; z++)
@@ -551,6 +555,103 @@ namespace Manyworld
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
+        // ---------------- 길가 디테일 ----------------
+
+        /// <summary>마을 어귀 장승과 서낭당, 버스 정류장, 갈림길 이정표, 밭의 짚더미.</summary>
+        static void PlaceRoadside(Transform root, Terrain terrain, WorldSpec spec)
+        {
+            var rng = new System.Random(2024);
+            Vector3 G(float x, float z) { var p = new Vector3(x, 0, z); p.y = terrain.SampleHeight(p); return p; }
+            var wood = new Color(0.4f, 0.3f, 0.2f);
+            var faded = spec.rules != WorldRule.None; // 멀티버스: 빛바래고 쓰러진 것도 있다
+
+            // 장승: 각 마을로 들어오는 길에 한 쌍
+            for (int i = 0; i < Hamlets.Length; i++)
+            {
+                var hm = Hamlets[i];
+                Vector2 dir = Vector2.zero;
+                foreach (var road in Roads)
+                    for (int k = 0; k < road.Length; k++)
+                        if (Vector2.Distance(road[k], hm.pos) < 1f)
+                        {
+                            var other = k > 0 ? road[k - 1] : road[k + 1];
+                            dir = (other - hm.pos).normalized;
+                        }
+                if (dir == Vector2.zero) continue;
+                var c = hm.pos + dir * 40f;
+                var side = new Vector2(-dir.y, dir.x);
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    var pp = c + side * (4.6f * s);
+                    var p = G(pp.x, pp.y);
+                    var post = Graybox.Prim(PrimitiveType.Cylinder, root, "장승", p + Vector3.up * 1.4f, new Vector3(0.45f, 1.4f, 0.45f), wood, false);
+                    Graybox.Box(post.transform, "얼굴", new Vector3(0, 0.62f, 0.38f), new Vector3(0.9f, 0.3f, 0.3f), new Color(0.6f, 0.2f, 0.15f), false);
+                    Graybox.Box(post.transform, "모자", new Vector3(0, 0.98f, 0), new Vector3(1.1f, 0.08f, 1.1f), new Color(0.15f, 0.12f, 0.1f), false);
+                    post.transform.rotation = Quaternion.LookRotation(new Vector3(dir.x, 0, dir.y)) * Quaternion.Euler(faded && rng.NextDouble() < 0.3 ? 14f : 0f, 0, 0);
+                    var label = Graybox.Label(root, s < 0 ? "天\n下\n大\n將\n軍" : "地\n下\n女\n將\n軍", p + Vector3.up * 1.45f + new Vector3(dir.x, 0, dir.y) * 0.26f, 0.022f, new Color(0.12f, 0.08f, 0.06f));
+                    label.transform.rotation = Quaternion.LookRotation(-new Vector3(dir.x, 0, dir.y));
+                    var col = Graybox.Box(root, "장승콜라이더", p + Vector3.up * 1.2f, new Vector3(0.5f, 2.4f, 0.5f), Color.gray);
+                    col.GetComponent<Renderer>().enabled = false;
+                }
+                // 서낭당 돌무더기 (장승 옆)
+                if (i % 2 == 0)
+                {
+                    var cp = c + side * 8f;
+                    var cairn = G(cp.x, cp.y);
+                    for (int r = 0; r < 9; r++)
+                    {
+                        float lvl = r < 5 ? 0 : r < 8 ? 1 : 2;
+                        float rad = (2 - lvl) * 0.45f;
+                        float a = r * 1.3f;
+                        Graybox.Prim(PrimitiveType.Sphere, root, "돌", cairn + new Vector3(Mathf.Cos(a) * rad, 0.25f + lvl * 0.4f, Mathf.Sin(a) * rad), Vector3.one * (0.6f - lvl * 0.1f), new Color(0.5f, 0.49f, 0.46f), false);
+                    }
+                }
+                // 버스 정류장: 마을 앞 길가
+                var bp = hm.pos + dir * 24f - side * 6.5f;
+                var bus = G(bp.x, bp.y);
+                Graybox.Box(root, "정류장기둥", bus + Vector3.up * 1.3f, new Vector3(0.1f, 2.6f, 0.1f), new Color(0.5f, 0.5f, 0.52f));
+                var signGo = Graybox.Prim(PrimitiveType.Cylinder, root, "정류장표지", bus + Vector3.up * 2.6f, new Vector3(0.7f, 0.03f, 0.7f), new Color(0.2f, 0.4f, 0.75f), false);
+                signGo.transform.rotation = Quaternion.LookRotation(Vector3.up, new Vector3(dir.x, 0, dir.y));
+                var busLabel = Graybox.Label(root, $"{hm.name}\n버스 정류장", bus + Vector3.up * 3.15f, 0.025f, Color.white);
+                busLabel.gameObject.AddComponent<Billboard>();
+                Graybox.Box(root, "정류장의자", bus + new Vector3(0, 0.45f, 0) + new Vector3(side.x, 0, side.y) * -1.2f, new Vector3(1.8f, 0.1f, 0.5f), wood);
+            }
+
+            // 갈림길 이정표 (장터거리, 새터 갈림길)
+            void SignPost(Vector2 at, params (string text, Vector2 toward)[] arms)
+            {
+                var p = G(at.x + 6f, at.y + 6f);
+                Graybox.Box(root, "이정표기둥", p + Vector3.up * 1.4f, new Vector3(0.15f, 2.8f, 0.15f), wood);
+                for (int k = 0; k < arms.Length; k++)
+                {
+                    var d = (arms[k].toward - at).normalized;
+                    var dir3 = new Vector3(d.x, 0, d.y);
+                    var arm = Graybox.Box(root, "이정표판", p + Vector3.up * (2.4f - k * 0.35f) + dir3 * 0.6f, new Vector3(0.08f, 0.28f, 1.3f), new Color(0.85f, 0.82f, 0.72f));
+                    arm.transform.rotation = Quaternion.LookRotation(dir3);
+                    var lbl = Graybox.Label(root, arms[k].text, arm.transform.position, 0.022f, new Color(0.2f, 0.15f, 0.1f));
+                    lbl.gameObject.AddComponent<Billboard>();
+                }
+            }
+            SignPost(new Vector2(512, 500), ("배나무골 →", new Vector2(300, 820)), ("숯골 →", new Vector2(860, 260)), ("게이트 →", new Vector2(150, 150)));
+            SignPost(new Vector2(330, 300), ("새터 →", new Vector2(250, 520)), ("장터거리 →", new Vector2(512, 500)));
+
+            // 짚더미: 밭마다 몇 개
+            foreach (var f in Fields())
+            {
+                int n = 2 + rng.Next(4);
+                for (int k = 0; k < n; k++)
+                {
+                    var off = new Vector2((float)(rng.NextDouble() - 0.5) * f.w * 0.7f, (float)(rng.NextDouble() - 0.5) * f.d * 0.7f);
+                    float a = f.angle * Mathf.Deg2Rad;
+                    var pp = f.center + new Vector2(off.x * Mathf.Cos(a) - off.y * Mathf.Sin(a), off.x * Mathf.Sin(a) + off.y * Mathf.Cos(a));
+                    var p = G(pp.x, pp.y);
+                    var straw = faded ? new Color(0.5f, 0.45f, 0.32f) : new Color(0.72f, 0.62f, 0.38f);
+                    Graybox.Prim(PrimitiveType.Cylinder, root, "짚더미", p + Vector3.up * 0.6f, new Vector3(1.6f, 0.6f, 1.6f), straw, false);
+                    Graybox.Prim(PrimitiveType.Sphere, root, "짚더미머리", p + Vector3.up * 1.25f, new Vector3(1.7f, 1.2f, 1.7f), straw * 0.92f + new Color(0, 0, 0, 0.08f), false);
+                }
+            }
+        }
+
         // ---------------- 전봇대 ----------------
 
         /// <summary>길 따라 전봇대와 처진 전깃줄 (80년대 시골길).</summary>
@@ -645,20 +746,17 @@ namespace Manyworld
                     }
                     continue;
                 }
-                var prefab = art != null ? ArtCatalog.Pick(art.farmBuildings, pick) : null;
-                if (prefab != null)
+                // 80년대 시골: 슬레이트·양철 지붕 집, 헛간. 장터거리는 간판 단 상가주택이 섞인다
+                float yaw = face.eulerAngles.y;
+                if (index == 0 && k % 2 == 0)
                 {
-                    var inst = ArtCatalog.PlaceNatural(prefab, root, p, face, out var b);
-                    inst.name = "Art_" + prefab.name;
-                    var col = Graybox.Box(root, "HouseCollider", b.center, b.size, Color.gray);
-                    col.GetComponent<Renderer>().enabled = false;
+                    string[] shops = { "장터 국밥", "철물점", "정미소", "다방", "구판장" };
+                    KoreanBuildings.ShopHouse(root, p, yaw, 9f, 7.5f, 2, shops[(k / 2) % shops.Length], rng);
                 }
+                else if (pick % 4 == 3)
+                    KoreanBuildings.Shed(root, p, yaw, rng);
                 else
-                {
-                    var b = Graybox.Box(root, "House", p + new Vector3(0, 3f, 0), new Vector3(9f, 6f, 8f), new Color(0.6f, 0.55f, 0.48f));
-                    b.transform.rotation = face;
-                    Graybox.Box(b.transform, "Roof", new Vector3(0, 0.55f, 0), new Vector3(1.1f, 0.15f, 1.1f), new Color(0.3f, 0.3f, 0.36f), false);
-                }
+                    KoreanBuildings.House(root, p, yaw, 8f, 5.5f, rng, new Vector2(13f, 11f), true);
             }
             // 우물, 돌담, 울타리 (마을 둘레. 길이 들어오는 곳은 비운다)
             if (art != null && art.hamletProps != null && art.hamletProps.Length > 0)
@@ -821,6 +919,36 @@ namespace Manyworld
                     lightmapColor = Color.white,
                 });
             }
+            // 덤불: 숲 가장자리와 길가에 (콜라이더 없음)
+            var bushes = hasArt && art.bushes != null && art.bushes.Length > 0 ? art.bushes : null;
+            if (bushes != null)
+            {
+                int bushStart = protos.Count;
+                foreach (var b in bushes) if (b != null) protos.Add(new TreePrototype { prefab = b });
+                td.treePrototypes = protos.ToArray();
+                for (int i = 0; i < 2600; i++)
+                {
+                    float px = 40f + (float)rng.NextDouble() * (Size - 80f);
+                    float pz = 40f + (float)rng.NextDouble() * (Size - 80f);
+                    float rd = SampleGrid(roadDist, px, pz);
+                    if (rd < 5f || NearAny(px, pz, 0f) || FieldWeight(px, pz) > 0f) continue;
+                    float hgt = SampleGrid(h, px, pz);
+                    if (hgt < water + 0.3f) continue;
+                    float forest = Fbm(px * 0.006f + 5f, pz * 0.006f + 9f, 3);
+                    bool edge = forest > 0.47f && forest < 0.56f;  // 숲 가장자리
+                    bool roadside = rd < 11f;
+                    if (!edge && !roadside && rng.NextDouble() > 0.15) continue;
+                    float sc = 0.7f + (float)rng.NextDouble() * 0.6f;
+                    list.Add(new TreeInstance
+                    {
+                        position = new Vector3(px / Size, hgt / MaxHeight, pz / Size),
+                        prototypeIndex = bushStart + rng.Next(protos.Count - bushStart),
+                        widthScale = sc, heightScale = sc,
+                        rotation = (float)rng.NextDouble() * Mathf.PI * 2f,
+                        color = Color.white, lightmapColor = Color.white,
+                    });
+                }
+            }
             td.SetTreeInstances(list.ToArray(), true);
         }
 
@@ -891,7 +1019,7 @@ namespace Manyworld
                     float wx = x / (float)(dr - 1) * Size, wz = z / (float)(dr - 1) * Size;
                     if (SampleGrid(roadDist, wx, wz) < 4.5f || SampleGrid(h, wx, wz) < water + 0.4f || FieldWeight(wx, wz) > 0.2f) continue;
                     float n = Mathf.PerlinNoise(wx * 0.03f + layer * 17f, wz * 0.03f);
-                    if (n > 0.55f) map[z, x] = n > 0.7f ? 2 : 1;
+                    if (n > 0.46f) map[z, x] = n > 0.72f ? 4 : n > 0.6f ? 3 : 2;
                 }
                 td.SetDetailLayer(0, 0, layer, map);
             }

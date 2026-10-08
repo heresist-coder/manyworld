@@ -75,7 +75,30 @@ namespace Manyworld.EditorTools
             // 지형: 머티리얼을 비워 두면 안 그려지는 경우가 있어 URP Terrain/Lit을 명시한다 (빌드에서도 빠지지 않게 에셋으로)
             var terrainShader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
             if (terrainShader != null) Save(new Material(terrainShader), dir + "/Terrain.mat");
+            CreateParticleMaterial();
             Debug.Log("[Manyworld] Base materials created");
+        }
+
+        /// <summary>비·눈 입자: URP Particles/Unlit 반투명. 텍스처는 런타임에 만든다.</summary>
+        [MenuItem("Manyworld/Create Particle Material")]
+        public static void CreateParticleMaterial()
+        {
+            const string path = "Assets/_Project/Resources/Materials/Particle.mat";
+            var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (sh == null) return;
+            var m = new Material(sh) { color = Color.white };
+            m.SetFloat("_Surface", 1f);
+            m.SetFloat("_Blend", 0f);
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetInt("_ZWrite", 0);
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (existing != null) { existing.CopyPropertiesFromMaterial(m); existing.shader = sh; EditorUtility.SetDirty(existing); }
+            else AssetDatabase.CreateAsset(m, path);
+            AssetDatabase.SaveAssets();
         }
 
         /// <summary>

@@ -23,6 +23,25 @@ namespace Manyworld.Tests
             yield return new WaitForSeconds(0.5f);
             Capture(Path.Combine(dir, "hub.png"));
 
+            // 날씨·시간대: 종류마다 그날을 찾아 우리 동네를 찍는다
+            MissionHUD.ShowArrival = false;
+            foreach (var kind in new[] { WeatherKind.Overcast, WeatherKind.Rain, WeatherKind.MorningFog, WeatherKind.Snow })
+            {
+                for (int d = 1; d < 400; d++)
+                {
+                    var date = new System.DateTime(1987, 4, 1).AddDays(d);
+                    if (WeatherState.ForHome(d, date.Month).kind != kind) continue;
+                    gm.Save.day = d;
+                    gm.EnterHub();
+                    yield return new WaitForSeconds(1f);
+                    Capture(Path.Combine(dir, $"home_{kind}_{gm.HomeWeather.time}.png"));
+                    break;
+                }
+            }
+            gm.Save.day = 0;
+            gm.EnterHub();
+            yield return null;
+
             gm.BeginDrive(CallContract.Create(47, new System.Random(1)));
             yield return new WaitForSeconds(1.5f);
             Capture(Path.Combine(dir, "drive_start.png"));

@@ -99,6 +99,7 @@ namespace Manyworld
 
             // 기본 배치는 고정 시드. 변조는 세계 번호 시드.
             var baseRng = new System.Random(1987);
+            var korRng = new System.Random(1987 * 7 + 1); // 한국식 건물 세부 (배치 난수와 따로)
             var modRng = new System.Random((spec?.number ?? 0) * 31 + 5);
             int landmarkIndex = 0;
 
@@ -142,6 +143,29 @@ namespace Manyworld
 
                     bool isLandmark = landmarkIndex < Landmarks.Length && baseRng.NextDouble() < 0.6;
                     bool facesNorth = lz == 1; // 가까운 도로 쪽을 본다
+
+                    // 우리 동네: 80년대 한국 건물 (KoreanBuildings)
+                    if (isHome)
+                    {
+                        float yaw = facesNorth ? 0f : 180f;
+                        string name = null;
+                        if (isLandmark)
+                        {
+                            name = Landmarks[landmarkIndex++];
+                            layout.landmarks[name] = lotCenter;
+                        }
+                        if (name != null || korRng.NextDouble() < 0.22)
+                        {
+                            int floors = name == null ? 2 + korRng.Next(2) : 2 + korRng.Next(2);
+                            KoreanBuildings.ShopHouse(root, lotCenter, yaw, Mathf.Min(w, 10f), Mathf.Min(d, 9f) * 0.9f, floors, name, korRng);
+                        }
+                        else
+                        {
+                            var lot = new Vector2(BlockSize / 2f - 0.8f, BlockSize / 2f - 0.8f);
+                            KoreanBuildings.House(root, lotCenter, yaw, Mathf.Min(w, 9f) * 0.85f, Mathf.Min(d, 8f) * 0.7f, korRng, lot, false);
+                        }
+                        continue;
+                    }
 
                     var b = Graybox.Box(root, "Building", lotCenter + new Vector3(0, h / 2f, 0), new Vector3(w, h, d), tint ? wallA : wallB);
                     // 슬레이트 지붕 느낌

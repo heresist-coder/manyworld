@@ -19,6 +19,8 @@ namespace Manyworld
         MissionController mc;
         float shownSpent;
         float flash;
+        float shownAt = -1f;
+        public static bool ShowArrival = true; // 캡처 테스트는 끈다
 
         void Start()
         {
@@ -82,6 +84,23 @@ namespace Manyworld
                     UIStyle.With(UIStyle.Label, new Color(1, 1, 1, mc.WipeFade), 22, TextAnchor.MiddleCenter));
             }
             if (mc.Paused) DrawPause(W, H);
+            DrawArrival(W, H);
+        }
+
+        /// <summary>게이트를 막 지나온 하얀 화면이 걷히며 세계 이름이 뜬다.</summary>
+        void DrawArrival(float W, float H)
+        {
+            if (Event.current.type == EventType.Repaint && shownAt < 0f) shownAt = Time.realtimeSinceStartup; // unscaledTime은 프레임 시작값이라 세계 생성 시간이 섞인다
+            float t = shownAt < 0f ? 0f : Time.realtimeSinceStartup - shownAt;
+            if (t > 4.5f || !ShowArrival) return;
+            float white = 1f - Mathf.Clamp01((t - 0.3f) / 1.4f);
+            if (white > 0f) UIStyle.Fill(new Rect(0, 0, W, H), new Color(1f, 1f, 1f, white));
+            float a = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 3.3f) / 1.2f));
+            var ink = Color.Lerp(Color.white, new Color(0.2f, 0.2f, 0.22f), white);
+            ink.a = a;
+            GUI.Label(new Rect(0, H * 0.3f, W, 60), $"제{mc.Spec.number}번 세계", UIStyle.With(UIStyle.Title, ink, 46, TextAnchor.MiddleCenter));
+            var sub = ink; sub.a = a * 0.85f;
+            GUI.Label(new Rect(0, H * 0.3f + 62, W, 34), $"{mc.Spec.nickname} · {mc.Weather.Label}", UIStyle.With(UIStyle.Label, sub, 22, TextAnchor.MiddleCenter));
         }
 
         void DrawMeter(Rect r)
