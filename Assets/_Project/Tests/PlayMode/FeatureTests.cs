@@ -176,6 +176,66 @@ namespace Manyworld.Tests
         }
 
         [UnityTest]
+        public IEnumerator BrokenTicoForcesExitAndCostsRepair()
+        {
+            gm.StartCall(CallContract.Create(47, new System.Random(10)));
+            yield return null;
+            var mc = MissionController.Instance;
+            yield return new WaitForSeconds(0.5f);
+            var cc = mc.Player.GetComponent<CharacterController>();
+            cc.enabled = false;
+            mc.Player.transform.position = mc.Car.transform.position + mc.Car.transform.right * 2f;
+            cc.enabled = true;
+            mc.EnterCar();
+            Assert.IsTrue(mc.PlayerInCar);
+            mc.Car.health.TakeDamage(new DamageInfo { amount = 9999, source = DamageSource.Monster });
+            yield return null;
+            Assert.IsTrue(mc.Car.IsBroken);
+            Assert.IsFalse(mc.PlayerInCar, "퍼지면 내려야 한다");
+            mc.Finish(CallOutcome.Withdrawn);
+            yield return null;
+            var lines = string.Join(" / ", gm.LastSettlement.lines);
+            StringAssert.Contains("견인비", lines);
+            StringAssert.Contains("티코 수리비", lines);
+        }
+
+        [UnityTest]
+        public IEnumerator CrawlerDragsBodyAndGearStaysInWorld()
+        {
+            gm.StartCall(CallContract.Create(47, new System.Random(11)));
+            yield return null;
+            var mc = MissionController.Instance;
+            var crawler = mc.Monsters.Find(m => m.species == Species.Crawler);
+            crawler.genome.aggression = 0.95f;
+            var near = mc.Player.transform.position + mc.Player.transform.forward * 5f;
+            UnityEngine.AI.NavMesh.SamplePosition(near, out var hit, 5f, UnityEngine.AI.NavMesh.AllAreas);
+            crawler.GetComponent<UnityEngine.AI.NavMeshAgent>().Warp(hit.position);
+
+            mc.Player.health.TakeDamage(new DamageInfo { amount = 9999, source = DamageSource.Monster, attacker = crawler });
+            yield return null;
+            crawler.health.Init(5000f); // 끌기 행동만 본다
+            // 은주는 멀리서 혼자 목표로 떠난다 (사거리 밖)
+            var far = mc.Player.transform.position + new Vector3(60f, 0, 60f);
+            UnityEngine.AI.NavMesh.SamplePosition(far, out var farHit, 20f, UnityEngine.AI.NavMesh.AllAreas);
+            mc.Companion.GetComponent<UnityEngine.AI.NavMeshAgent>().Warp(farHit.position);
+            mc.Companion.SetOrder(CompanionOrder.GoAhead);
+            yield return new WaitForSeconds(15f);
+            Debug.Log($"[Test] 끌려간 거리 {mc.BodyDraggedMeters:0.0}m");
+            Assert.Greater(mc.BodyDraggedMeters, 2f, "공격적인 기는 놈은 쓰러진 기사를 끌고 간다");
+
+            mc.Companion.health.TakeDamage(new DamageInfo { amount = 9999, source = DamageSource.Monster });
+            yield return new WaitForSeconds(3.2f);
+            Assert.AreEqual(GameMode.Bureau, gm.Mode);
+            Assert.AreEqual(1, gm.Save.GetWorld(47).leftItems.Count, "장비는 현장에 남는다");
+            gm.FinishBureau(30000, new[] { "뷰로 회수비 (2인)|-30,000" });
+            gm.EnterHub();
+
+            gm.StartCall(CallContract.Create(47, new System.Random(12)));
+            yield return null;
+            Assert.AreEqual(1, MissionController.Instance.Pickups.Count, "다시 가면 놓고 온 장비가 있다");
+        }
+
+        [UnityTest]
         public IEnumerator GasPocketHurtsThroughFilter()
         {
             var contract = CallContract.Create(200, new System.Random(7));

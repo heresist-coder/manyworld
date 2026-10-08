@@ -167,6 +167,9 @@ namespace Manyworld
             Bar(new Rect(r.x + 14, r.y + 14, 300, 18), "기사", p.health.current / p.health.max, p.IsDown ? "기절" : null);
             var comp = mc.Companion;
             Bar(new Rect(r.x + 14, r.y + 44, 300, 18), Companion.Name, comp.health.current / comp.health.max, comp.health.IsDown ? "기절" : null);
+            var car = mc.Car;
+            if (car != null && (mc.PlayerInCar || car.health.current < car.health.max))
+                Bar(new Rect(r.x + 330, r.y + 14, 180, 18), "티코", car.health.current / car.health.max, car.IsBroken ? "퍼짐" : null);
 
             string order = comp.order switch
             {

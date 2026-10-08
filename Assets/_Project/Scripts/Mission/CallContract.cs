@@ -82,6 +82,14 @@ namespace Manyworld
 
         public event Action<int> Charged;
 
+        /// <summary>콜 중 생긴 수입 (잔류 물품 회수 등).</summary>
+        public readonly List<(string label, int amount)> income = new List<(string, int)>();
+        public int BonusIncome
+        {
+            get { int s = 0; foreach (var i in income) s += i.amount; return s; }
+        }
+        public void AddIncome(string label, int amount) => income.Add((label, amount));
+
         public void Charge(string label, int amount)
         {
             expenses.Add((label, amount));
@@ -106,6 +114,7 @@ namespace Manyworld
         public int companionKnockouts;
         public float elapsed;
         public int newCases;    // 이번 콜에서 생긴 기절 사건
+        public float bodyDragged; // 기사의 몸이 끌려간 거리 (m)
         public string notice;   // 생태 현황 고시
         public List<string> lines = new List<string>();
     }

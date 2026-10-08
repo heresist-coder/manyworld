@@ -21,6 +21,11 @@ namespace Manyworld
         public Companion Companion { get; private set; }
         public TicoCar Car { get; private set; }
         public bool PlayerInCar => Player != null && Player.InVehicle;
+        public Monster Dragger;
+        public float PlayerDownSince { get; private set; }
+        public float BodyDraggedMeters { get; private set; }
+        public readonly List<(GameObject go, LeftItem item)> Pickups = new List<(GameObject, LeftItem)>();
+        float nextCarHitToast;
         float engineNoiseTimer;
         public readonly List<Monster> Monsters = new List<Monster>();
         public readonly List<Health> Targets = new List<Health>();
@@ -107,6 +112,15 @@ namespace Manyworld
             toMid.y = 0;
             Car = TicoCar.Create(transform, Layout.ticoPos, Quaternion.LookRotation(toMid), false);
             Car.controllable = false;
+            Car.health.Damaged += _ =>
+            {
+                if (PlayerInCar && Time.time > nextCarHitToast)
+                {
+                    nextCarHitToast = Time.time + 2f;
+                    Toast($"쾅! 차체가 찌그러진다 (티코 {Mathf.RoundToInt(Car.health.current / Car.health.max * 100)}%)");
+                }
+            };
+            Car.health.Downed += _ => OnCarBroken();
 
             Companion = Companion.Spawn(Layout.companionSpawn);
             Companion.transform.SetParent(transform, true);
@@ -117,6 +131,21 @@ namespace Manyworld
             };
             Targets.Add(Player.health);
             Targets.Add(Companion.health);
+            Targets.Add(Car.health); // 몬스터는 차도 때린다
+
+            // 지난번에 놓고 온 장비 (뷰로는 안 챙겨 준다)
+            foreach (var item in State.leftItems)
+            {
+                var p = item.Position;
+                var crate = Graybox.Box(transform, "LeftItem", p + new Vector3(0, 0.25f, 0), new Vector3(0.6f, 0.5f, 0.45f), new Color(0.35f, 0.3f, 0.2f), false);
+                Graybox.Box(crate.transform, "Tag", new Vector3(0, 0.55f, 0), new Vector3(0.6f, 0.1f, 0.6f), UIStyle.Amber, false)
+                    .GetComponent<Renderer>().sharedMaterial = Graybox.Mat(UIStyle.Amber, true);
+                var label = Graybox.Label(transform, $"잔류 물품: {item.label}", p + new Vector3(0, 1.4f, 0), 0.035f, UIStyle.Amber);
+                label.transform.SetParent(crate.transform, true);
+                label.gameObject.AddComponent<Billboard>();
+                Pickups.Add((crate, item));
+            }
+            if (Pickups.Count > 0) Toast($"지난번 쓰러진 자리에 놓고 온 장비가 있다 ({Pickups.Count}개)");
 
             ApplyRules();
             SpawnMonsters();
@@ -252,9 +281,35 @@ namespace Manyworld
             }
         }
 
+        void OnCarBroken()
+        {
+            Car.Break();
+            if (PlayerInCar) ExitCar();
+            Toast("티코가 퍼졌다! 이제 걸어서 가야 한다 (수리·견인은 귀환 후)");
+            LogAudible("(쾅─ 보닛에서 김 빠지는 소리)");
+        }
+
+        /// <summary>기는 놈이 쓰러진 기사를 끌고 갈 수 있나: 오래 쓰러져 있고, 은주가 곁에 없을 때.</summary>
+        public bool CanDragPlayer(Monster m)
+        {
+            if (!Player.IsDown || PlayerInCar || Dragger != null) return false;
+            if (Time.time - PlayerDownSince < 6f) return false;
+            if (Vector3.Distance(m.transform.position, Player.transform.position) > 14f) return false;
+            bool companionNear = !Companion.health.IsDown && !Companion.InVehicle && Vector3.Distance(Companion.transform.position, Player.transform.position) < 7f;
+            return !companionNear;
+        }
+
+        public void DragBody(Vector3 p)
+        {
+            if (Layout.terrain != null) p.y = Layout.terrain.SampleHeight(p) + 0.05f;
+            BodyDraggedMeters += Vector3.Distance(Player.transform.position, p);
+            Player.transform.position = p;
+        }
+
         void OnPlayerDowned(DamageInfo info)
         {
             PlayerKnockouts++;
+            PlayerDownSince = Time.time;
             Toast("기사가 쓰러졌다… (기억이 흐려진다)");
             SetDownedAudio(true);
             if (NewCases.Count >= 2) return;
@@ -464,7 +519,23 @@ namespace Manyworld
             {
                 var pp = Player.transform.position;
                 bool nearCar = Vector3.Distance(pp, Car.transform.position) < 3.8f;
-                if (nearCar && Car.IsFlipped)
+                (GameObject go, LeftItem item) pick = (null, null);
+                foreach (var pu in Pickups) if (pu.go != null && Vector3.Distance(pp, pu.go.transform.position) < 2.5f) pick = pu;
+                if (pick.go != null)
+                {
+                    var pu = pick;
+                    key = "pickup"; need = 1.2f; Prompt = $"E 길게: {pu.item.label} 회수 (+{UIStyle.Won(pu.item.value)})";
+                    onDone = () =>
+                    {
+                        Ledger.AddIncome($"잔류 물품 회수: {pu.item.label}", pu.item.value);
+                        State.leftItems.Remove(pu.item);
+                        Pickups.Remove(pu);
+                        Destroy(pu.go);
+                        Toast($"지난번 장비를 찾았다 (+{UIStyle.Won(pu.item.value)})");
+                        Sfx.Play("reload", 0.6f);
+                    };
+                }
+                else if (nearCar && Car.IsFlipped && !Car.IsBroken)
                 {
                     key = "unflip"; need = 2.5f; Prompt = "E 길게: 티코 밀어 세우기 (가벼워서 둘이면 된다)";
                     onDone = () => { Car.Unflip(); Toast("영차─ 티코를 세웠다"); };
@@ -491,6 +562,10 @@ namespace Manyworld
                 {
                     key = "return"; need = 1f; Prompt = "E: 게이트로 귀환";
                     onDone = () => Finish(CallOutcome.Success);
+                }
+                else if (nearCar && Car.IsBroken)
+                {
+                    Prompt = "티코가 퍼졌다 (수리는 귀환 후)";
                 }
                 else if (nearCar)
                 {
@@ -611,6 +686,21 @@ namespace Manyworld
                 companionKnockouts = CompanionKnockouts,
             };
 
+            // 차 수리·견인 (brainstorm-01 4장 지출 항목)
+            int carDamage = Mathf.RoundToInt(Car.health.max - Car.health.current);
+            if (carDamage > 0) Ledger.Charge("티코 수리비", Mathf.RoundToInt(carDamage * 150f / 100f) * 100);
+            if (Car.IsBroken) Ledger.Charge("견인비", 20000);
+
+            // 끌려간 흔적은 사건 파일에, 놓고 온 장비는 세계에 남는다
+            s.bodyDragged = BodyDraggedMeters;
+            if (BodyDraggedMeters > 5f && NewCases.Count > 0)
+                NewCases[NewCases.Count - 1].traces.Add($"다리에 끌린 자국. 쓰러진 곳에서 {BodyDraggedMeters:0}m 떨어진 수풀에서 발견됐다.");
+            if (outcome == CallOutcome.Wiped)
+            {
+                var pp = Player.transform.position;
+                State.leftItems.Add(new LeftItem { x = pp.x, y = pp.y, z = pp.z, label = "기사 장비 (탄창·무전기)", value = 12000 });
+            }
+
             int income = Contract.deposit;
             s.lines.Add($"계약금|+{Contract.deposit:N0}");
             if (MidReached)
@@ -626,6 +716,11 @@ namespace Manyworld
             }
             else s.lines.Add("잔금 (미지급)|0");
 
+            foreach (var (label, amount) in Ledger.income)
+            {
+                income += amount;
+                s.lines.Add($"{label}|+{amount:N0}");
+            }
             s.income = income;
             s.shotCost = Ledger.ShotSpend;
             s.filterCost = Ledger.filtersUsed * CallLedger.FilterCost;
@@ -635,7 +730,14 @@ namespace Manyworld
             s.lines.Add($"카빈 일반탄 {Ledger.playerShots}발 × {CallLedger.PlayerShotCost}|-{Ledger.playerShots * CallLedger.PlayerShotCost:N0}");
             s.lines.Add($"은주 경기탄 {Ledger.companionShots}발 × {CallLedger.CompanionShotCost}|-{Ledger.companionShots * CallLedger.CompanionShotCost:N0}");
             if (s.filterCost > 0) s.lines.Add($"방독면 필터 {Ledger.filtersUsed}개|-{s.filterCost:N0}");
-            if (other > 0) s.lines.Add($"각성제|-{other:N0}");
+            // 그 밖의 지출은 항목별로
+            var otherByLabel = new Dictionary<string, int>();
+            foreach (var (label, amount) in Ledger.expenses)
+            {
+                if (label == "카빈 일반탄" || label == "은주 경기탄" || label == "방독면 필터") continue;
+                otherByLabel[label] = otherByLabel.TryGetValue(label, out var v) ? v + amount : amount;
+            }
+            foreach (var kv in otherByLabel) s.lines.Add($"{kv.Key}|-{kv.Value:N0}");
             s.lines.Add($"{Companion.Name} 지분 (25%)|-{s.companionShare:N0}");
 
             s.net = income - Ledger.Spent - s.companionShare;

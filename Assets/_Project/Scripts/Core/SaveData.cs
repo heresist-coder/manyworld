@@ -92,6 +92,15 @@ namespace Manyworld
         }
     }
 
+    [Serializable]
+    public class LeftItem
+    {
+        public float x, y, z;
+        public string label;
+        public int value;
+        public Vector3 Position => new Vector3(x, y, z);
+    }
+
     /// <summary>한 번이라도 간 세계만 저장한다 (brainstorm-02 4장).</summary>
     [Serializable]
     public class WorldState
@@ -103,6 +112,7 @@ namespace Manyworld
         public List<Genome> brutes = new List<Genome>();
         public string lastNotice;        // 마지막 생태 현황 고시문
         public int knownRules;           // 직접 확인한 규칙 (WorldRule 플래그). 세계 수첩
+        public List<LeftItem> leftItems = new List<LeftItem>(); // 현장 잔류 물품 — 뷰로는 안 챙겨 준다 (brainstorm-03 4장)
         public int visits;
     }
 }

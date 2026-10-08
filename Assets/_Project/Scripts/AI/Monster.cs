@@ -10,7 +10,7 @@ namespace Manyworld
     [RequireComponent(typeof(NavMeshAgent))]
     public class Monster : MonoBehaviour
     {
-        enum State { Wander, Investigate, Chase, Attack, Flee, Dead }
+        enum State { Wander, Investigate, Chase, Attack, Flee, Drag, Dead }
 
         public Species species;
         public Genome genome;
@@ -29,6 +29,11 @@ namespace Manyworld
         float sightRange, hearingFactor, damage, attackRange, attackCooldown, moveSpeed;
         float eyeHeight, windupTime, nextCry;
         Renderer headRenderer;
+        Vector3 nest;
+        bool carrying;
+
+        /// <summary>차는 덩치가 커서 조금 멀리서도 닿는다.</summary>
+        float Reach(Health h) => attackRange + (h != null && h.GetComponent<TicoCar>() != null ? 1.8f : 0f);
         Material headMat;
 
         const int EnvMask = ~(1 << 2);
@@ -158,6 +163,7 @@ namespace Manyworld
             MarkEncountered();
             var mc = MissionController.Instance;
             if (mc == null || state == State.Dead) return;
+            if (state == State.Drag) StopDrag(mc); // 맞으면 놓는다
 
             // 겁 많은 개체는 크게 다치면 도망친다 → 살아남아 번식한다
             if (health.current < health.max * 0.35f && genome.aggression < 0.45f && state != State.Flee)
@@ -177,6 +183,8 @@ namespace Manyworld
         void OnDowned(DamageInfo info)
         {
             SetHeadGlow(false);
+            var mcd = MissionController.Instance;
+            if (mcd != null && mcd.Dragger == this) mcd.Dragger = null;
             state = State.Dead;
             agent.enabled = false;
             foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = false;
@@ -234,6 +242,18 @@ namespace Manyworld
                 return;
             }
 
+            if (state == State.Drag)
+            {
+                ThinkDrag(mc);
+                return;
+            }
+            // 쓰러진 사람을 끌고 가는 행동 (brainstorm-02 2장). 공격성 높은 기는 놈만
+            if (species == Species.Crawler && genome.aggression > 0.5f && mc.CanDragPlayer(this))
+            {
+                StartDrag(mc);
+                return;
+            }
+
             var seen = FindVisibleTarget(mc);
             if (seen != null && state != State.Chase && state != State.Attack) StartChase(seen);
 
@@ -280,7 +300,7 @@ namespace Manyworld
                         break;
                     }
                     agent.SetDestination(visible ? target.transform.position : lastSeenPos);
-                    if (visible && Vector3.Distance(transform.position, target.transform.position) <= attackRange)
+                    if (visible && Vector3.Distance(transform.position, target.transform.position) <= Reach(target))
                     {
                         state = State.Attack;
                         attackTimer = windupTime;
@@ -290,6 +310,64 @@ namespace Manyworld
                     }
                     break;
             }
+        }
+
+        void StartDrag(MissionController mc)
+        {
+            mc.Dragger = this;
+            state = State.Drag;
+            carrying = false;
+            target = null;
+            agent.isStopped = false;
+            agent.speed = moveSpeed * 0.8f;
+            // 은주 반대쪽, 숲으로
+            var body = mc.Player.transform.position;
+            var away = mc.Companion != null && !mc.Companion.health.IsDown ? (body - mc.Companion.transform.position) : transform.forward;
+            away.y = 0;
+            if (away.sqrMagnitude < 0.01f) away = transform.forward;
+            var goal = body + away.normalized * 35f;
+            nest = NavMesh.SamplePosition(goal, out var hit, 10f, NavMesh.AllAreas) ? hit.position : body;
+            agent.SetDestination(body);
+            mc.Toast("…무언가가 기사를 끌고 간다");
+            mc.LogAudible("(질질 끌리는 소리)");
+        }
+
+        void StopDrag(MissionController mc)
+        {
+            if (mc != null && mc.Dragger == this) mc.Dragger = null;
+            carrying = false;
+            agent.isStopped = false;
+            state = State.Wander;
+        }
+
+        void ThinkDrag(MissionController mc)
+        {
+            if (!mc.Player.IsDown || mc.PlayerInCar)
+            {
+                StopDrag(mc);
+                return;
+            }
+            var body = mc.Player.transform.position;
+            if (!carrying)
+            {
+                agent.SetDestination(body);
+                if (Vector3.Distance(transform.position, body) < 1.8f)
+                {
+                    carrying = true;
+                    agent.speed = moveSpeed * 0.4f;
+                    agent.SetDestination(nest);
+                }
+            }
+            else if (!agent.pathPending && agent.remainingDistance < 1.2f)
+                agent.isStopped = true; // 둥지에 쌓아 둔다
+        }
+
+        void LateUpdate()
+        {
+            if (state != State.Drag || !carrying) return;
+            var mc = MissionController.Instance;
+            if (mc == null || !mc.SimRunning) return;
+            mc.DragBody(transform.position - transform.forward * 1.3f);
         }
 
         void SetHeadGlow(bool on)
@@ -318,10 +396,11 @@ namespace Manyworld
             if (attackWindup)
             {
                 SetHeadGlow(false);
-                if (to.magnitude <= attackRange * 1.2f)
+                if (to.magnitude <= Reach(target) * 1.2f)
                 {
                     target.TakeDamage(new DamageInfo { amount = damage, source = DamageSource.Monster, point = transform.position, attacker = this });
-                    Sfx.PlayAt(species == Species.Brute ? "pipe_hit" : "body_hit", target.transform.position + Vector3.up, species == Species.Brute ? 1f : 0.8f, 30f, 0.1f);
+                    bool car = target.GetComponent<TicoCar>() != null;
+                    Sfx.PlayAt(car ? "car_bump" : species == Species.Brute ? "pipe_hit" : "body_hit", target.transform.position + Vector3.up, species == Species.Brute ? 1f : 0.8f, 30f, 0.1f);
                 }
                 attackWindup = false;
                 attackTimer = attackCooldown;
@@ -341,13 +420,14 @@ namespace Manyworld
                 if (h == null || h.IsDown || h.untargetable) continue;
                 float range = EffectiveSight(mc, h);
                 float d = Vector3.Distance(transform.position, h.transform.position);
-                if (d > range || d > bestDist) continue;
+                float pref = h.GetComponent<TicoCar>() != null ? 6f : 0f; // 사람이 먼저다
+                if (d > range || d + pref > bestDist) continue;
                 // 시야각 140도. 아주 가까우면 등 뒤도 느낀다
                 var dir = (h.transform.position - transform.position).normalized;
                 if (d > 3f && Vector3.Angle(transform.forward, dir) > 70f) continue;
                 if (!CanSee(h, range)) continue;
                 best = h;
-                bestDist = d;
+                bestDist = d + pref;
             }
             return best;
         }
@@ -361,6 +441,7 @@ namespace Manyworld
                 range *= Mathf.Lerp(0.3f, 1f, genome.nocturnal);
                 // 빛 = 어그로
                 if (mc.Player != null && h == mc.Player.health && mc.Player.FlashlightOn) range = Mathf.Max(range, 38f);
+                if (mc.Car != null && h == mc.Car.health && mc.Car.HeadlightsOn) range = Mathf.Max(range, 45f);
             }
             if (rules.HasFlag(WorldRule.SoundReactive)) range *= 0.4f; // 귀로 사냥하는 놈들
             if (mc.Spec.terrain == TerrainMod.Fog || rules.HasFlag(WorldRule.ToxicGas)) range *= 0.75f;

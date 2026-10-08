@@ -30,10 +30,13 @@ namespace Manyworld
             int perHead = 15000 + n * 30;
             int stamps = 1500 * 3;
             bool overtime = s.elapsed > s.contract.timeLimit;
-            fee = perHead * 2 + stamps + (overtime ? 10000 : 0);
-            feeLines = overtime
-                ? new[] { $"뷰로 회수비 (2인)|-{perHead * 2:N0}", $"인지대 3장|-{stamps:N0}", "체류 초과 과태료|-10,000" }
-                : new[] { $"뷰로 회수비 (2인)|-{perHead * 2:N0}", $"인지대 3장|-{stamps:N0}" };
+            // 몸이 깊이 끌려갔을수록 비싸다 (brainstorm-03 4장)
+            int search = s.bodyDragged > 5f ? Mathf.RoundToInt(s.bodyDragged * 120f / 100f) * 100 : 0;
+            fee = perHead * 2 + stamps + (overtime ? 10000 : 0) + search;
+            var lines = new System.Collections.Generic.List<string> { $"뷰로 회수비 (2인)|-{perHead * 2:N0}", $"인지대 3장|-{stamps:N0}" };
+            if (overtime) lines.Add("체류 초과 과태료|-10,000");
+            if (search > 0) lines.Add($"끌려간 몸 수색비 ({s.bodyDragged:0}m)|-{search:N0}");
+            feeLines = lines.ToArray();
         }
 
         void Update() => t += Time.deltaTime;
@@ -127,7 +130,7 @@ namespace Manyworld
             Field("세계 번호", $"제{n}번");
             Field("발견 위치", "", true, 300);
             Field("발견 상태", "", true, 260);
-            Field("현장 잔류 물품", s.contract.task.Contains("회수") ? "카빈 탄피 다수, 측량 장비 일부" : "카빈 탄피 다수");
+            Field("현장 잔류 물품", "기사 장비 (탄창·무전기) — 직접 회수 요망");
             var knownCase = LatestCase(gm);
             if (knownCase != null && gm.Save.HasCodex(knownCase.causeId)) Field("사인", DeathCauses.Get(knownCase.causeId).title + "  (도감 기록과 일치)");
             else Field("사인", "", true, 340);

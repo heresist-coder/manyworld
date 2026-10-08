@@ -41,6 +41,8 @@ namespace Manyworld
         public float SpeedKmh => Mathf.Abs(ForwardSpeed) * 3.6f;
         public float ForwardSpeed => rb == null ? 0f : Vector3.Dot(rb.linearVelocity, transform.forward);
         public bool IsFlipped { get; private set; }
+        public Health health;
+        public bool IsBroken { get; private set; }
         public bool HeadlightsOn { get; private set; }
         readonly Light[] headlights = new Light[2];
         public bool AnyWheelGrounded => grounded[0] || grounded[1] || grounded[2] || grounded[3];
@@ -63,12 +65,14 @@ namespace Manyworld
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             rb.centerOfMass = new Vector3(0, 0.3f, 0.1f);
+            car.AddComponent<Health>().Init(260f); // 깡통차. 몬스터가 때리면 찌그러진다
             return car.AddComponent<TicoCar>();
         }
 
         void Awake()
         {
             rb = GetComponent<Rigidbody>();
+            health = GetComponent<Health>();
             engine = Sfx.Loop("engine_loop", transform, 0.55f, false);
             BuildWheels();
             for (int i = 0; i < 2; i++)
@@ -85,6 +89,55 @@ namespace Manyworld
                 l.color = new Color(1f, 0.92f, 0.75f);
                 l.enabled = false;
                 headlights[i] = l;
+            }
+        }
+
+        /// <summary>퍼졌다. 더는 못 몬다 (brainstorm-01 10장: 망가지면 걸어서 탈출).</summary>
+        public void Break()
+        {
+            if (IsBroken) return;
+            IsBroken = true;
+            controllable = false;
+            externalInput = null;
+            SetHeadlights(false);
+            if (engine != null) engine.Stop();
+            Sfx.PlayAt("car_bump", transform.position, 1f, 50f, 0.05f);
+
+            // 보닛에서 연기
+            var smoke = new GameObject("Smoke");
+            smoke.transform.SetParent(transform, false);
+            smoke.transform.localPosition = new Vector3(0, 1f, 1.3f);
+            var ps = smoke.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.startLifetime = 2.5f;
+            main.startSpeed = 1.2f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.6f, 1.4f);
+            main.startColor = new Color(0.25f, 0.25f, 0.25f, 0.55f);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            var em = ps.emission;
+            em.rateOverTime = 10f;
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 12f;
+            shape.rotation = new Vector3(-90, 0, 0);
+            var col = ps.colorOverLifetime;
+            col.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                      new[] { new GradientAlphaKey(0.8f, 0f), new GradientAlphaKey(0f, 1f) });
+            col.color = g;
+            var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (sh != null)
+            {
+                var mat = new Material(sh);
+                mat.SetFloat("_Surface", 1f);
+                mat.SetOverrideTag("RenderType", "Transparent");
+                mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetFloat("_ZWrite", 0f);
+                mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mat.renderQueue = 3000;
+                smoke.GetComponent<ParticleSystemRenderer>().sharedMaterial = mat;
             }
         }
 
@@ -264,6 +317,8 @@ namespace Manyworld
 
             // 몬스터를 친다
             var zone = c.collider.GetComponent<HitZone>();
+            // 세게 박으면 차도 상한다
+            if (zone == null && impact > 9f && health != null) health.TakeDamage(new DamageInfo { amount = impact * 1.2f, source = DamageSource.Environment, point = c.GetContact(0).point });
             if (zone != null && zone.owner != null && impact > 5f && zone.owner.GetComponent<Monster>() != null)
                 zone.owner.TakeDamage(new DamageInfo { amount = (impact - 4f) * 9f, source = DamageSource.Vehicle, point = c.GetContact(0).point });
         }
