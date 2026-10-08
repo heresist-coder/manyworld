@@ -1,0 +1,50 @@
+# Unity
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+crashlytics-build.properties
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 외부·유료 에셋: 라이선스상 공개 레포에 올리지 않는다 (docs/prototype-v0.md "아트" 참고)
+/Assets/Synty/
+/Assets/Synty.meta
+/Assets/118 sprite effects bundle/
+/Assets/118 sprite effects bundle.meta
+/Assets/ThirdParty/
+/Assets/ThirdParty.meta
+/Assets/VolumetricFog2/
+/Assets/VolumetricFog2.meta
+/Assets/ithappy/
+/Assets/ithappy.meta

@@ -1,0 +1,14 @@
+{
+    "name": "Manyworld.Editor",
+    "rootNamespace": "Manyworld.EditorTools",
+    "references": [
+        "Manyworld",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "autoReferenced": false
+}

@@ -1,0 +1,19 @@
+{
+    "name": "Manyworld.Tests.PlayMode",
+    "rootNamespace": "Manyworld.Tests",
+    "references": [
+        "Manyworld",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ]
+}
