@@ -355,7 +355,7 @@ namespace Manyworld
                 if (m.species == Species.Crawler && to.magnitude < 14f) packCount++;
             }
             if (KnowsCause("pack") && packCount >= 3) CodexWarning = $"[사인 #02] 포위 주의 — 기는 놈 {packCount}마리";
-            if (KnowsCause("light") && Spec.rules.HasFlag(WorldRule.EternalNight) && Player.FlashlightOn && anyHunting)
+            if (KnowsCause("light") && Spec.rules.HasFlag(WorldRule.EternalNight) && (Player.FlashlightOn || Car.HeadlightsOn) && anyHunting)
                 CodexWarning = "[사인 #05] 불빛을 보고 온다 — F로 끄기";
             if (KnowsCause("gaspocket"))
                 foreach (var g in GasPockets)
@@ -401,6 +401,9 @@ namespace Manyworld
                 {
                     engineNoiseTimer = 0.5f;
                     Noise.Emit(Car.transform.position, 10f + Car.SpeedKmh * 0.4f);
+                    // 영원한 밤: 전조등 불빛 = 어그로. 멀리서 보고 몰려온다
+                    if (Car.HeadlightsOn && Spec.rules.HasFlag(WorldRule.EternalNight))
+                        Noise.Emit(Car.transform.position + Car.transform.forward * 15f, 45f / Noise.WorldMultiplier);
                 }
             }
             UpdateRules();
@@ -549,6 +552,7 @@ namespace Manyworld
                 Toast($"{Companion.Name}: \"이 곡 끝나기 전에 도착하죠.\"");
             }
             else Toast($"{Companion.Name}이(가) 아직 안 탔다 (가까이 와야 같이 탄다)");
+            if (Spec.rules.HasFlag(WorldRule.EternalNight)) Toast("L: 전조등 (빛 = 어그로)");
         }
 
         public void ExitCar()

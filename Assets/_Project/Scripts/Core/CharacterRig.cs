@@ -9,7 +9,8 @@ namespace Manyworld
     public class CharacterRig : MonoBehaviour
     {
         public Animator animator;
-        public Transform rightHand;
+        public Transform rightHand, leftHand, rifle;
+        Quaternion rifleBase = Quaternion.identity;
         Vector3 lastPos;
         Vector2 smoothed;
 
@@ -22,7 +23,7 @@ namespace Manyworld
         public bool Down { get; set; }
 
         /// <summary>visual 아래에 모델을 붙인다. 성공하면 기존 도형 렌더러를 숨긴다.</summary>
-        public static CharacterRig Attach(Transform visual, GameObject modelPrefab, float height, Color? tint = null)
+        public static CharacterRig Attach(Transform visual, GameObject modelPrefab, float height, GameObject riflePrefab = null)
         {
             var art = ArtCatalog.Instance;
             if (modelPrefab == null || art == null || art.humanoidController == null) return null;
@@ -40,10 +41,6 @@ namespace Manyworld
             b = ArtCatalog.RendererBounds(model);
             model.transform.position += Vector3.up * (visual.position.y - b.min.y);
             foreach (var c in model.GetComponentsInChildren<Collider>()) c.enabled = false;
-            if (tint.HasValue)
-                foreach (var r in model.GetComponentsInChildren<Renderer>())
-                    foreach (var m in r.materials) m.color *= tint.Value;
-
             var anim = model.GetComponent<Animator>();
             if (anim == null) anim = model.AddComponent<Animator>();
             anim.runtimeAnimatorController = art.humanoidController;
@@ -55,19 +52,40 @@ namespace Manyworld
             rig.lastPos = visual.root.position;
             rig.rightHand = anim.isHuman ? anim.GetBoneTransform(HumanBodyBones.RightHand) : null;
 
-            // 소총을 오른손에
-            if (art.rifle != null && rig.rightHand != null)
+            // 소총: 오른손에 쥐고 총구는 왼손 쪽을 향하게 매 프레임 맞춘다 (LateUpdate)
+            rig.leftHand = anim.isHuman ? anim.GetBoneTransform(HumanBodyBones.LeftHand) : null;
+            if (riflePrefab != null && rig.rightHand != null)
             {
-                var gun = Instantiate(art.rifle, rig.rightHand);
+                var gun = Instantiate(riflePrefab, visual); // visual 아래: 차에 타면 같이 숨는다
                 gun.name = "Rifle";
-                var gb = ArtCatalog.RendererBounds(gun);
-                float gs = 0.95f / Mathf.Max(0.05f, Mathf.Max(gb.size.x, gb.size.y, gb.size.z));
-                gun.transform.localScale = Vector3.one * gs / Mathf.Max(0.0001f, rig.rightHand.lossyScale.x);
-                gun.transform.localPosition = new Vector3(0, 0.05f, 0.05f) / Mathf.Max(0.0001f, rig.rightHand.lossyScale.x);
-                gun.transform.localRotation = Quaternion.Euler(0, 90, 90);
                 foreach (var c in gun.GetComponentsInChildren<Collider>()) c.enabled = false;
+                gun.transform.rotation = Quaternion.identity;
+                gun.transform.localScale = Vector3.one;
+                var gb = ArtCatalog.RendererBounds(gun);
+                float len = Mathf.Max(gb.size.x, gb.size.y, gb.size.z);
+                gun.transform.localScale = Vector3.one * (1.05f / Mathf.Max(0.05f, len));
+                rig.rifle = gun.transform;
+                // 메시의 가장 긴 축을 총열 방향(+Z)으로
+                rig.rifleBase = gb.size.x >= gb.size.z && gb.size.x >= gb.size.y ? Quaternion.Euler(0, -90, 0) : Quaternion.identity;
             }
             return rig;
+        }
+
+        void LateUpdate()
+        {
+            if (rifle == null || rightHand == null) return;
+            if (Down)
+            {
+                rifle.gameObject.SetActive(false);
+                return;
+            }
+            rifle.gameObject.SetActive(true);
+            var aimDir = leftHand != null ? (leftHand.position - rightHand.position) : transform.forward;
+            if (aimDir.sqrMagnitude < 0.01f) aimDir = transform.forward;
+            // 손 사이가 짧으면 몸 앞쪽으로 보정
+            aimDir = Vector3.Lerp(aimDir.normalized, transform.forward, 0.35f).normalized;
+            rifle.rotation = Quaternion.LookRotation(aimDir, transform.up) * rifleBase;
+            rifle.position = rightHand.position + aimDir * 0.18f;
         }
 
         void Update()

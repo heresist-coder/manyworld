@@ -243,7 +243,8 @@ namespace Manyworld.EditorTools
             cat.driverModel = AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/01-dohyun-rigged.fbx");
             cat.companionModel = AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/02-luna-rigged.fbx");
             cat.humanoidController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(GeneratedDir + "/Humanoid.controller");
-            cat.rifle = Prefab("SM_Gen_Wep_Rifle_01") ?? Prefab("SM_Wep_Rifle_01");
+            cat.rifle = Prefab("SM_Wep_American_Rifle_01");
+            cat.companionRifle = Prefab("SM_Wep_HuntingRifle_Clean_01");
 
             // 티코 = ithappy Car_06 (차체 + 바퀴 4개)
             cat.ticoBody = Prefab("Car_06");
@@ -271,7 +272,7 @@ namespace Manyworld.EditorTools
             EditorUtility.SetDirty(cat);
             Debug.Log($"[Manyworld] ArtCatalog: houses {cat.houses.Length}, shops {cat.shops.Length}, cars {cat.parkedCars.Length}, props {cat.streetProps.Length}, " +
                       $"tico {(cat.tico ? "o" : "x")}/{(cat.ticoBody ? "ithappy" : "-")} wheels {cat.ticoWheels.Length}, trees {cat.trees.Length}+{cat.deadTrees.Length}, rocks {cat.rocks.Length}, grass {cat.grass.Length}, farm {cat.farmBuildings.Length}, driver {(cat.driverModel ? "o" : "x")}, companion {(cat.companionModel ? "o" : "x")}, " +
-                      $"anim {(cat.humanoidController ? "o" : "x")}, rifle {(cat.rifle ? cat.rifle.name : "x")}, fx {(cat.muzzleFlash ? "o" : "x")}{(cat.bloodSplash ? "o" : "x")}{(cat.smoke ? "o" : "x")}");
+                      $"anim {(cat.humanoidController ? "o" : "x")}, rifle {(cat.rifle ? cat.rifle.name : "x")}/{(cat.companionRifle ? cat.companionRifle.name : "x")}, fx {(cat.muzzleFlash ? "o" : "x")}{(cat.bloodSplash ? "o" : "x")}{(cat.smoke ? "o" : "x")}");
         }
 
         /// <summary>

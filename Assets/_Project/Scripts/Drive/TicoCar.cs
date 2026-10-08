@@ -41,13 +41,16 @@ namespace Manyworld
         public float SpeedKmh => Mathf.Abs(ForwardSpeed) * 3.6f;
         public float ForwardSpeed => rb == null ? 0f : Vector3.Dot(rb.linearVelocity, transform.forward);
         public bool IsFlipped { get; private set; }
+        public bool HeadlightsOn { get; private set; }
+        readonly Light[] headlights = new Light[2];
         public bool AnyWheelGrounded => grounded[0] || grounded[1] || grounded[2] || grounded[3];
 
         public static TicoCar Create(Transform parent, Vector3 pos, Quaternion rot, bool withCompanion)
         {
             var car = TownBuilder.BuildTico(parent, pos + Vector3.up * 0.3f, rot);
             Graybox.SetLayerRecursive(car, 2);
-            if (withCompanion)
+            var art = ArtCatalog.Instance;
+            if (withCompanion && (art == null || art.ticoBody == null)) // ithappy 차체가 있으면 지붕을 뚫고 나와서 뺀다
             {
                 // 조수석의 흰 크롭티
                 Graybox.Prim(PrimitiveType.Capsule, car.transform, "Eunju", new Vector3(0.35f, 1.15f, -0.1f), new Vector3(0.35f, 0.3f, 0.35f), new Color(0.97f, 0.97f, 0.95f), false);
@@ -68,6 +71,37 @@ namespace Manyworld
             rb = GetComponent<Rigidbody>();
             engine = Sfx.Loop("engine_loop", transform, 0.55f, false);
             BuildWheels();
+            for (int i = 0; i < 2; i++)
+            {
+                var go = new GameObject("Headlight_" + i);
+                go.transform.SetParent(transform, false);
+                go.transform.localPosition = new Vector3(i == 0 ? -0.55f : 0.55f, 0.75f, 1.75f);
+                go.transform.localRotation = Quaternion.Euler(6f, 0, 0);
+                var l = go.AddComponent<Light>();
+                l.type = LightType.Spot;
+                l.range = 40f;
+                l.spotAngle = 68f;
+                l.intensity = 28f;
+                l.color = new Color(1f, 0.92f, 0.75f);
+                l.enabled = false;
+                headlights[i] = l;
+            }
+        }
+
+        public void SetHeadlights(bool on)
+        {
+            HeadlightsOn = on;
+            foreach (var l in headlights) if (l != null) l.enabled = on;
+        }
+
+        void Update()
+        {
+            var kb = Keyboard.current;
+            if (controllable && !externalInput.HasValue && kb != null && kb.lKey.wasPressedThisFrame)
+            {
+                SetHeadlights(!HeadlightsOn);
+                Sfx.Play("meter_tick", 0.5f, 0f);
+            }
         }
 
         void BuildWheels()

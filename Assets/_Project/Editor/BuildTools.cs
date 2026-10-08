@@ -9,6 +9,7 @@ namespace Manyworld.EditorTools
         [MenuItem("Manyworld/Build Windows")]
         public static void BuildWindows()
         {
+            ProjectSetup.IncludeTerrainEngineShaders();
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
                 scenes = new[] { "Assets/_Project/Scenes/Main.unity" },

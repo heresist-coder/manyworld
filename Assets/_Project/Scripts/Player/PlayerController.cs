@@ -91,7 +91,8 @@ namespace Manyworld
             Graybox.Prim(PrimitiveType.Sphere, vis, "Head", new Vector3(0, 1.62f, 0), Vector3.one * 0.38f, new Color(0.85f, 0.7f, 0.55f), false);
             Graybox.Box(vis, "Gun", new Vector3(0.28f, 1.25f, 0.45f), new Vector3(0.08f, 0.1f, 0.8f), new Color(0.2f, 0.15f, 0.1f), false);
             Graybox.SetLayerRecursive(go, 2);
-            p.rig = CharacterRig.Attach(vis, ArtCatalog.Instance != null ? ArtCatalog.Instance.driverModel : null, 1.78f);
+            var art = ArtCatalog.Instance;
+            p.rig = CharacterRig.Attach(vis, art != null ? art.driverModel : null, 1.78f, art != null ? art.rifle : null);
             if (p.rig != null) Graybox.SetLayerRecursive(go, 2);
 
             p.weapon = go.AddComponent<PlayerWeapon>();

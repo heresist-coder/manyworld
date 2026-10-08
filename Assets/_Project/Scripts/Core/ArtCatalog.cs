@@ -33,7 +33,8 @@ namespace Manyworld
         public GameObject driverModel;
         public GameObject companionModel;
         public RuntimeAnimatorController humanoidController;
-        public GameObject rifle;
+        public GameObject rifle;            // 기사: M1 계열 (War Pack)
+        public GameObject companionRifle;   // 은주: 조준경 단 볼트액션 (Apocalypse)
 
         [Header("이펙트")]
         public GameObject muzzleFlash;

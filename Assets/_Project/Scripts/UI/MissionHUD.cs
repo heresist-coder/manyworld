@@ -72,6 +72,7 @@ namespace Manyworld
                 }
             }
 
+            DrawMinimap(new Rect(W - 262, H - 262, 238, 238));
             DrawCodexWarnings(W, H);
             if (mc.Player.IsDown) DrawDowned(W, H);
             if (mc.WipeFade > 0f)
@@ -207,6 +208,36 @@ namespace Manyworld
                 y -= 30;
                 GUI.Label(new Rect(r.x, y, r.width, 28), text, UIStyle.With(UIStyle.Label, new Color(1, 1, 1, a), 19, TextAnchor.MiddleCenter));
             }
+        }
+
+        void DrawMinimap(Rect r)
+        {
+            var lay = mc.Layout;
+            if (lay.minimap == null || lay.worldSize <= 0f) return;
+            UIStyle.Fill(new Rect(r.x - 4, r.y - 4, r.width + 8, r.height + 8), new Color(0, 0, 0, 0.6f));
+            GUI.DrawTexture(r, lay.minimap);
+            Vector2 ToMap(Vector3 w) => new Vector2(r.x + w.x / lay.worldSize * r.width, r.yMax - w.z / lay.worldSize * r.height);
+            void Mark(Vector3 w, string label, Color c, int size = 13)
+            {
+                var p = ToMap(w);
+                UIStyle.Fill(new Rect(p.x - 3, p.y - 3, 6, 6), c);
+                GUI.Label(new Rect(p.x + 4, p.y - 10, 80, 20), label, UIStyle.With(UIStyle.Small, c, size));
+            }
+            foreach (var kv in lay.landmarks) Mark(kv.Value, kv.Key, new Color(0.15f, 0.12f, 0.1f, 0.8f), 11);
+            Mark(lay.gatePos, "게이트", new Color(0.6f, 0.3f, 0.9f));
+            Mark(lay.midpointPos, "중도금", mc.MidReached ? UIStyle.Green : UIStyle.Amber);
+            Mark(lay.objectivePos, "목표", mc.ObjectiveDone ? UIStyle.Green : UIStyle.Red);
+            if (!mc.PlayerInCar) Mark(mc.Car.transform.position, "티코", new Color(0.2f, 0.5f, 1f));
+            if (!mc.Companion.InVehicle) Mark(mc.Companion.transform.position, "", Color.white, 1);
+
+            // 기사: 카메라 방향 화살표
+            var pp = ToMap(mc.PlayerInCar ? mc.Car.transform.position : mc.Player.transform.position);
+            var old = GUI.matrix;
+            float scale = Screen.height / 1080f;
+            GUIUtility.RotateAroundPivot(mc.Player.cam.yaw, pp * scale);
+            GUI.Label(new Rect(pp.x - 10, pp.y - 12, 20, 24), "▲", UIStyle.With(UIStyle.Label, Color.white, 18, TextAnchor.MiddleCenter));
+            GUI.matrix = old;
+            GUI.Label(new Rect(r.x, r.y + 2, r.width, 18), "N", UIStyle.With(UIStyle.Small, Color.white, 13, TextAnchor.UpperCenter));
         }
 
         void DrawCodexWarnings(float W, float H)

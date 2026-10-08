@@ -113,7 +113,8 @@ MonoBehaviour:
   driverModel: {fileID: 919132149155446097, guid: 5fd2bddfa5a8213478f4c1a433da55f8, type: 3}
   companionModel: {fileID: 919132149155446097, guid: 601f3bee0760c1e41a9fb6e29cc4e918, type: 3}
   humanoidController: {fileID: 9100000, guid: 14d8bd2cc3b89314bb631b2210616fe7, type: 2}
-  rifle: {fileID: 0}
+  rifle: {fileID: 1103511012436976, guid: cc13ea7aca755ee4bb10925b6bf586c8, type: 3}
+  companionRifle: {fileID: 1311854592980844, guid: 339cc5e61566f63428dc7728c5c3c5a0, type: 3}
   muzzleFlash: {fileID: 3224858538561609850, guid: bcf307a51c8ab0b42a3abd0135cb1ee5, type: 3}
   bloodSplash: {fileID: 7065502504516309355, guid: 54e07507985b2bc4497e16f2be395f98, type: 3}
   smoke: {fileID: 0}

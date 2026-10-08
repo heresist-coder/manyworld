@@ -20,6 +20,8 @@ namespace Manyworld.EditorTools
             cam.transform.position = new Vector3(0, 38, -70);
 
             new GameObject("GameManager").AddComponent<GameManager>();
+            CreateBaseMaterials();
+            CreateTerrainShaderStub();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -27,7 +29,6 @@ namespace Manyworld.EditorTools
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>("Assets/Scenes/SampleScene.unity") != null)
                 AssetDatabase.DeleteAsset("Assets/Scenes");
 
-            CreateBaseMaterials();
             AssetDatabase.SaveAssets();
             Debug.Log("[Manyworld] Main scene created");
         }
@@ -71,6 +72,93 @@ namespace Manyworld.EditorTools
             var terrainShader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
             if (terrainShader != null) Save(new Material(terrainShader), dir + "/Terrain.mat");
             Debug.Log("[Manyworld] Base materials created");
+        }
+
+        /// <summary>
+        /// 큰 월드 지형은 런타임에만 만들어서, 씬에 지형이 없으면 빌드가 지형 엔진·URP Terrain 셰이더를 빼 버린다
+        /// ("Unable to find shaders used for the terrain engine"). 보이지 않는 작은 지형을 씬에 둬서 포함시킨다.
+        /// 런타임 지형과 같은 구성: Terrain.mat, 레이어 5개(애드 패스), 나무 원형, 인스턴싱.
+        /// </summary>
+        public static void CreateTerrainShaderStub()
+        {
+            const string dir = "Assets/_Project/Scenes/TerrainStub";
+            if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder("Assets/_Project/Scenes", "TerrainStub");
+
+            var layers = new TerrainLayer[5];
+            for (int i = 0; i < 5; i++)
+            {
+                var tex = new Texture2D(4, 4, TextureFormat.RGBA32, true);
+                var px = new Color[16];
+                for (int k = 0; k < 16; k++) px[k] = new Color(0.4f, 0.5f, 0.3f, 0.06f);
+                tex.SetPixels(px);
+                tex.Apply();
+                string texPath = $"{dir}/StubLayer{i}.asset";
+                AssetDatabase.DeleteAsset(texPath);
+                AssetDatabase.CreateAsset(tex, texPath);
+                var layer = new TerrainLayer { diffuseTexture = tex, tileSize = new Vector2(6, 6) };
+                string layerPath = $"{dir}/StubLayer{i}.terrainlayer";
+                AssetDatabase.DeleteAsset(layerPath);
+                AssetDatabase.CreateAsset(layer, layerPath);
+                layers[i] = layer;
+            }
+
+            // 나무 원형: 루트에 메시 하나 (터레인 나무 규칙)
+            var treeGo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            Object.DestroyImmediate(treeGo.GetComponent<Collider>());
+            treeGo.GetComponent<MeshRenderer>().sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Resources/Materials/GrayboxOpaque.mat");
+            string treePath = $"{dir}/StubTree.prefab";
+            var treePrefab = PrefabUtility.SaveAsPrefabAsset(treeGo, treePath);
+            Object.DestroyImmediate(treeGo);
+
+            var td = new TerrainData { heightmapResolution = 33, size = new Vector3(8, 2, 8) };
+            td.terrainLayers = layers;
+            td.alphamapResolution = 16;
+            td.treePrototypes = new[] { new TreePrototype { prefab = treePrefab } };
+            td.SetTreeInstances(new[] { new TreeInstance { position = new Vector3(0.5f, 0, 0.5f), prototypeIndex = 0, widthScale = 1, heightScale = 1, color = Color.white, lightmapColor = Color.white } }, false);
+            string tdPath = $"{dir}/StubTerrain.asset";
+            AssetDatabase.DeleteAsset(tdPath);
+            AssetDatabase.CreateAsset(td, tdPath);
+
+            var go = Terrain.CreateTerrainGameObject(td);
+            go.name = "TerrainShaderStub (빌드용, 화면 밖)";
+            go.transform.position = new Vector3(0, -800, 0);
+            var t = go.GetComponent<Terrain>();
+            t.materialTemplate = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Resources/Materials/Terrain.mat");
+            t.drawInstanced = true;
+            AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// 지형 엔진이 쓰는 숨김 셰이더(나무 빌보드, 디테일, 스플랫맵 보조 패스)를 "항상 포함"에 넣는다.
+        /// 런타임에만 지형을 만들면 빌드가 이걸 빼서 지형이 안 그려진다.
+        /// URP Terrain/Lit 본체는 Resources/Materials/Terrain.mat이 끌고 들어간다.
+        /// </summary>
+        [MenuItem("Manyworld/Include Terrain Engine Shaders")]
+        public static void IncludeTerrainEngineShaders()
+        {
+            var gs = AssetDatabase.LoadAssetAtPath<Object>("ProjectSettings/GraphicsSettings.asset");
+            var so = new SerializedObject(gs);
+            var arr = so.FindProperty("m_AlwaysIncludedShaders");
+            var have = new System.Collections.Generic.HashSet<Object>();
+            for (int i = 0; i < arr.arraySize; i++) have.Add(arr.GetArrayElementAtIndex(i).objectReferenceValue);
+            int added = 0;
+            foreach (var info in ShaderUtil.GetAllShaderInfo())
+            {
+                string n = info.name;
+                bool want = n.Contains("TerrainEngine") || n.StartsWith("Nature/Terrain") ||
+                            (n.StartsWith("Hidden/Universal Render Pipeline/Terrain") && !n.Contains("Brush"));
+                if (!want) continue;
+                var sh = Shader.Find(n);
+                if (sh == null || have.Contains(sh)) continue;
+                arr.InsertArrayElementAtIndex(arr.arraySize);
+                arr.GetArrayElementAtIndex(arr.arraySize - 1).objectReferenceValue = sh;
+                have.Add(sh);
+                added++;
+                Debug.Log($"[Manyworld] 항상 포함 셰이더 추가: {n}");
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[Manyworld] 지형 엔진 셰이더 {added}개 추가");
         }
 
         static void Save(Material m, string path)

@@ -148,6 +148,34 @@ namespace Manyworld.Tests
         }
 
         [UnityTest]
+        public IEnumerator CompanionShootsFromPassengerSeat()
+        {
+            gm.StartCall(CallContract.Create(47, new System.Random(9)));
+            yield return null;
+            var mc = MissionController.Instance;
+            yield return new WaitForSeconds(0.8f);
+            var cc = mc.Player.GetComponent<CharacterController>();
+            cc.enabled = false;
+            mc.Player.transform.position = mc.Car.transform.position + mc.Car.transform.right * 2f;
+            cc.enabled = true;
+            mc.Companion.GetComponent<UnityEngine.AI.NavMeshAgent>().Warp(mc.Car.transform.position + mc.Car.transform.right * 3f);
+            mc.EnterCar();
+            Assert.IsTrue(mc.Companion.InVehicle);
+
+            mc.Car.SetHeadlights(true);
+            Assert.IsTrue(mc.Car.HeadlightsOn);
+
+            // 차 앞에 몬스터를 세운다
+            var m = mc.Monsters[0];
+            var p = mc.Car.transform.position + mc.Car.transform.forward * 12f;
+            UnityEngine.AI.NavMesh.SamplePosition(p, out var hit, 6f, UnityEngine.AI.NavMesh.AllAreas);
+            m.GetComponent<UnityEngine.AI.NavMeshAgent>().Warp(hit.position);
+            yield return new WaitForSeconds(5f);
+            Debug.Log($"[Test] 조수석 사격 {mc.Ledger.companionShots}발");
+            Assert.Greater(mc.Ledger.companionShots, 0, "은주는 조수석 창밖으로 쏜다");
+        }
+
+        [UnityTest]
         public IEnumerator GasPocketHurtsThroughFilter()
         {
             var contract = CallContract.Create(200, new System.Random(7));

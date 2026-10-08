@@ -87,7 +87,7 @@ namespace Manyworld
             var player = mc.Player;
             var m = info.attacker;
             if (m != null && m.species == Species.Brute) return "brute";
-            if (mc.Spec.rules.HasFlag(WorldRule.EternalNight) && player.FlashlightOn) return "light";
+            if (mc.Spec.rules.HasFlag(WorldRule.EternalNight) && (player.FlashlightOn || (mc.Car != null && mc.Car.HeadlightsOn))) return "light";
             if (mc.Spec.rules.HasFlag(WorldRule.SoundReactive) && Time.time - mc.LastPlayerShotTime < 15f) return "gunfire";
 
             int near = 0;

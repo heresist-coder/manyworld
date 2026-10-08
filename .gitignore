@@ -48,3 +48,6 @@ Thumbs.db
 /Assets/VolumetricFog2.meta
 /Assets/ithappy/
 /Assets/ithappy.meta
+
+# 테스트 러너가 만드는 파일
+/Assets/Resources/PerformanceTestRun*

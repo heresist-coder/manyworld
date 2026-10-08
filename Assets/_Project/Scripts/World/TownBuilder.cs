@@ -16,6 +16,8 @@ namespace Manyworld
         public Vector3 objectivePos;
         public Vector3 gatePos;
         public Terrain terrain;          // 큰 월드일 때
+        public Texture2D minimap;        // 큰 월드 지도 (북쪽이 위)
+        public float worldSize;
         public float waterLevel = -10f;
         public readonly Dictionary<string, Vector3> landmarks = new Dictionary<string, Vector3>();
         public readonly List<Vector3> spawnPoints = new List<Vector3>();

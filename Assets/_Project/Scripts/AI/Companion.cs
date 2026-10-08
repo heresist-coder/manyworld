@@ -89,7 +89,8 @@ namespace Manyworld
             var tag = Graybox.Label(go.transform, Name, new Vector3(0, 2.15f, 0), 0.035f, Color.white);
             tag.gameObject.AddComponent<Billboard>();
             Graybox.SetLayerRecursive(go, 2);
-            c.rig = CharacterRig.Attach(c.visual, ArtCatalog.Instance != null ? ArtCatalog.Instance.companionModel : null, 1.68f);
+            var art = ArtCatalog.Instance;
+            c.rig = CharacterRig.Attach(c.visual, art != null ? art.companionModel : null, 1.68f, art != null ? art.companionRifle : null);
             if (c.rig != null) Graybox.SetLayerRecursive(go, 2);
 
             c.agent = go.GetComponent<NavMeshAgent>();
@@ -147,7 +148,12 @@ namespace Manyworld
         void Update()
         {
             var mc = MissionController.Instance;
-            if (mc == null || !mc.SimRunning || health.IsDown || InVehicle) return;
+            if (mc == null || !mc.SimRunning || health.IsDown) return;
+            if (InVehicle)
+            {
+                UpdateCarShooting(mc);
+                return;
+            }
             if (!agent.isOnNavMesh) return;
 
             // 기사가 쓰러지면 기본은 깨우러 간다. 각성제를 아끼지 않는다
@@ -265,6 +271,31 @@ namespace Manyworld
             aimTimer = AimTime;
         }
 
+        /// <summary>
+        /// 조수석 창밖 사격 (cha-eunju.md "차량 전투"). 확실할 때만 한 발. 달리는 중엔 흔들린다.
+        /// </summary>
+        void UpdateCarShooting(MissionController mc)
+        {
+            if (order == CompanionOrder.HoldFire || mc.Car == null)
+            {
+                aimTarget = null;
+                return;
+            }
+            const float range = 30f;
+            if (aimTarget == null || aimTarget.health.IsDown || !CanSee(aimTarget, range))
+            {
+                aimTarget = PickTarget(mc, range);
+                aimTimer = AimTime * 1.2f;
+                if (aimTarget == null) return;
+            }
+            aimTimer -= Time.deltaTime;
+            if (aimTimer > 0f || Time.time < fireReady) return;
+            float speedPenalty = Mathf.Clamp01(mc.Car.SpeedKmh / 60f) * 0.45f;
+            Fire(mc, aimTarget, (Focused ? 0.92f : 0.8f) - speedPenalty);
+            fireReady = Time.time + 1.7f;
+            aimTimer = AimTime * 1.2f;
+        }
+
         /// <summary>짠돌이: 이미 덤벼드는 놈이나 가까운 놈만 쏜다. 엄호 명령이면 보이는 대로.</summary>
         Monster PickTarget(MissionController mc, float range)
         {
@@ -284,7 +315,7 @@ namespace Manyworld
             return best;
         }
 
-        void Fire(MissionController mc, Monster m)
+        void Fire(MissionController mc, Monster m, float accuracyOverride = -1f)
         {
             mc.Ledger.companionShots++;
             mc.Ledger.Charge("은주 경기탄", CallLedger.CompanionShotCost);
@@ -294,7 +325,7 @@ namespace Manyworld
             bool aimHead = head != null;
             // 정밀 사수. 그래도 겁먹으면(가까우면) 흔들린다
             float dist = Vector3.Distance(transform.position, m.transform.position);
-            float accuracy = dist < 4f ? 0.55f : Focused ? 0.97f : 0.88f;
+            float accuracy = accuracyOverride >= 0f ? accuracyOverride : dist < 4f ? 0.55f : Focused ? 0.97f : 0.88f;
             Vector3 aimPoint = aimHead ? head.position : m.transform.position + Vector3.up * 0.8f;
             if (Random.value > accuracy) aimPoint += Random.insideUnitSphere * 1.2f;
 

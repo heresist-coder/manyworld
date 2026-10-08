@@ -147,6 +147,8 @@ namespace Manyworld
                 spec.rules.HasFlag(WorldRule.ToxicGas) ? new Color(0.35f, 0.38f, 0.2f, 0.7f) : new Color(0.2f, 0.32f, 0.38f, 0.65f), false);
             waterGo.layer = 2;
             layout.waterLevel = water;
+            layout.minimap = BuildMinimap(h, roadDist, water);
+            layout.worldSize = Size;
 
             // 7) 게이트·티코·뷰로 표지판
             layout.gatePos = OnGround(GatePos);
@@ -357,6 +359,39 @@ namespace Manyworld
                 a[z, x, 0] = rest * (1f - forest) * grass;
             }
             td.SetAlphamaps(0, 0, a);
+        }
+
+        // ---------------- 지도 ----------------
+
+        /// <summary>미니맵: 높이 음영 + 물 + 흙길 + 숲. 공사 측량도 같은 바랜 색.</summary>
+        static Texture2D BuildMinimap(float[,] h, float[,] roadDist, float water)
+        {
+            const int n = 256;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            var px = new Color[n * n];
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float wx = (x + 0.5f) / n * Size, wz = (y + 0.5f) / n * Size;
+                float hgt = SampleGrid(h, wx, wz);
+                float east = SampleGrid(h, wx + 6f, wz), north = SampleGrid(h, wx, wz + 6f);
+                float shade = Mathf.Clamp((hgt - east) * 0.08f + (hgt - north) * 0.08f, -0.25f, 0.25f);
+                Color c;
+                if (hgt < water) c = new Color(0.3f, 0.42f, 0.5f);
+                else
+                {
+                    float forest = Mathf.InverseLerp(0.5f, 0.62f, Fbm(wx * 0.006f + 5f, wz * 0.006f + 9f, 3));
+                    c = Color.Lerp(new Color(0.55f, 0.6f, 0.42f), new Color(0.32f, 0.42f, 0.28f), forest);
+                    c = Color.Lerp(c, new Color(0.62f, 0.6f, 0.56f), Mathf.InverseLerp(40f, 70f, hgt)); // 산
+                    c *= 1f + shade;
+                    if (SampleGrid(roadDist, wx, wz) < 4f) c = new Color(0.72f, 0.6f, 0.42f);
+                }
+                c.a = 1f;
+                px[y * n + x] = c;
+            }
+            tex.SetPixels(px);
+            tex.Apply();
+            return tex;
         }
 
         // ---------------- 도로 ----------------

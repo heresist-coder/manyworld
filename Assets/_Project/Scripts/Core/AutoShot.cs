@@ -64,6 +64,29 @@ namespace Manyworld
             yield return new WaitForSeconds(2.5f);
             yield return Shot("5_drive");
 
+            gm.StartCall(CallContract.Create(47, new System.Random(3)));
+            yield return new WaitForSeconds(3f);
+            yield return Shot("6a_mission_day");
+            var m47 = MissionController.Instance;
+            m47.Player.cam.aiming = true;
+            yield return new WaitForSeconds(0.5f);
+            m47.Player.cam.yaw += 140f;
+            yield return Shot("6b_mission_companion");
+            m47.Player.cam.aiming = false;
+            var pcc = m47.Player.GetComponent<CharacterController>();
+            pcc.enabled = false;
+            m47.Player.transform.position = m47.Car.transform.position + m47.Car.transform.right * 2f;
+            pcc.enabled = true;
+            m47.EnterCar();
+            m47.Car.externalInput = new Vector2(0.15f, 1f);
+            yield return new WaitForSeconds(3f);
+            yield return Shot("6c_driving");
+            m47.Car.externalInput = Vector2.zero;
+            Object.Destroy(m47.gameObject);
+            yield return null;
+            gm.EnterHub();
+            yield return null;
+
             gm.StartCall(CallContract.Create(200, new System.Random(2)));
             yield return new WaitForSeconds(2.5f);
             yield return Shot("6_mission_gas_night");
