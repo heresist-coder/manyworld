@@ -16,7 +16,10 @@ namespace Manyworld
         public float fireInterval = 0.14f;
         public float reloadTime = 1.6f;
 
-        float nextFire, reloadEnd, meleeReady, lastFire = -10f;
+        float nextFire, reloadEnd, meleeReady, lastFire = -10f, focusUntil;
+
+        /// <summary>은주가 이어폰 한쪽을 건네면 기사도 집중한다 (파트너 단계).</summary>
+        public void GiveFocus(float seconds) => focusUntil = Time.time + seconds;
         public bool Reloading => Time.time < reloadEnd;
         public bool RecentlyFired => Time.time - lastFire < 0.6f;
 
@@ -61,6 +64,9 @@ namespace Manyworld
 
             var ray = owner.cam.CenterRay;
             float spread = owner.cam.aiming ? 0.4f : 2.2f;
+            var gmw = GameManager.Instance;
+            if (gmw != null && Bond.Stage(gmw.Save) >= 3) spread *= 0.65f;   // "숨 참지 마시고, 내쉬면서 당기세요."
+            if (Time.time < focusUntil) spread *= 0.6f;
             ray.direction = Quaternion.Euler(Random.Range(-spread, spread), Random.Range(-spread, spread), 0) * ray.direction;
 
             var muzzle = owner.transform.position + owner.transform.rotation * new Vector3(0.28f, 1.3f, 0.9f);

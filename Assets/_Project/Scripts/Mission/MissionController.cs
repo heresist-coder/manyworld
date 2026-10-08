@@ -22,6 +22,7 @@ namespace Manyworld
         public TicoCar Car { get; private set; }
         public bool PlayerInCar => Player != null && Player.InVehicle;
         public Monster Dragger;
+        public int CompanionRevivedPlayer, PlayerRevivedCompanion;
         public float PlayerDownSince { get; private set; }
         public float BodyDraggedMeters { get; private set; }
         public readonly List<(GameObject go, LeftItem item)> Pickups = new List<(GameObject, LeftItem)>();
@@ -76,6 +77,16 @@ namespace Manyworld
             Instance = mc;
             mc.Setup(contract, state, cam);
             if (companionFocused) mc.Companion.GiveFocus(120f);
+            var bondSave = GameManager.Instance.Save;
+            if (Bond.Stage(bondSave) >= 3)
+            {
+                mc.Toast(Bond.Speak("은주: \"숨 참지 마시고, 내쉬면서 당기세요.\" (조준 보정)"));
+                if (companionFocused)
+                {
+                    mc.Player.weapon.GiveFocus(120f);
+                    mc.Toast("이어폰 한쪽을 같이 들었다 — 기사도 2분간 집중");
+                }
+            }
             go.AddComponent<MissionHUD>();
             return mc;
         }
@@ -163,7 +174,7 @@ namespace Manyworld
             Toast($"{Spec.Title} 진입. 공사 추정 위험도 {Spec.estimatedDanger}");
             Toast("티코 옆에서 E: 타기 · 중도금 지점은 길 따라 북동쪽 장터거리");
             cam.GetComponent<Camera>().farClipPlane = 1000f;
-            Toast($"{Companion.Name}: \"{EntryLine()}\"");
+            Toast(Bond.Speak($"{Companion.Name}: \"{EntryLine()}\""));
         }
 
         string EntryLine()
@@ -547,6 +558,7 @@ namespace Manyworld
                     {
                         Companion.health.Revive(0.4f);
                         Ledger.Charge("각성제", 3000);
+                        PlayerRevivedCompanion++;
                     };
                 }
                 else if (!ObjectiveDone && Vector3.Distance(pp, Layout.objectivePos) < 2.8f)
@@ -693,6 +705,8 @@ namespace Manyworld
 
             // 끌려간 흔적은 사건 파일에, 놓고 온 장비는 세계에 남는다
             s.bodyDragged = BodyDraggedMeters;
+            s.companionRevives = CompanionRevivedPlayer;
+            s.playerRevives = PlayerRevivedCompanion;
             if (BodyDraggedMeters > 5f && NewCases.Count > 0)
                 NewCases[NewCases.Count - 1].traces.Add($"다리에 끌린 자국. 쓰러진 곳에서 {BodyDraggedMeters:0}m 떨어진 수풀에서 발견됐다.");
             if (outcome == CallOutcome.Wiped)
@@ -761,6 +775,8 @@ namespace Manyworld
             State.visits++;
             GameManager.Instance.Save.day++;
             s.notice = Evolution.Advance(State, Spec, GameManager.Instance.Save);
+            // 들은 소문을 직접 확인했다
+            s.rumorNotes = InfoExchange.VerifyAfterVisit(GameManager.Instance.Save, Spec.number);
 
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;

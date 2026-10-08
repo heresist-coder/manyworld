@@ -129,6 +129,15 @@ namespace Manyworld
             drive = DriveSession.Begin(contract, homeLayout, Cam.transform);
         }
 
+        /// <summary>동네 일 나가기: 배달하다 무전 콜을 받는다.</summary>
+        public void BeginDaily()
+        {
+            BuildHomeTown();
+            Mode = GameMode.Drive;
+            SetScreens();
+            drive = DriveSession.BeginDaily(homeLayout, Cam.transform);
+        }
+
         public void CancelDrive()
         {
             if (drive != null) Destroy(drive.gameObject);
@@ -190,6 +199,16 @@ namespace Manyworld
         void ApplySettlement(Settlement s)
         {
             Save.money += s.net;
+            // 은주와의 관계: 같이 살아 돌아오면 가까워지고, 전멸하면 멀어진다. 서로 깨워 주면 더
+            int delta = s.outcome switch
+            {
+                CallOutcome.Success => 5,
+                CallOutcome.CompanionSolo => 4,
+                CallOutcome.Withdrawn => 1,
+                _ => -3,
+            } + s.playerRevives * 3 + s.companionRevives * 2;
+            s.bondDelta = delta;
+            s.bondNote = Bond.Add(Save, delta);
             int accidents = s.playerKnockouts + s.companionKnockouts;
             Save.knockouts += accidents; // D9: 기절도 감점
             if (s.outcome == CallOutcome.Wiped)

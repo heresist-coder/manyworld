@@ -235,6 +235,75 @@ namespace Manyworld.Tests
             Assert.AreEqual(1, MissionController.Instance.Pickups.Count, "다시 가면 놓고 온 장비가 있다");
         }
 
+        [Test]
+        public void BondStagesChangeAddress()
+        {
+            var save = gm.Save;
+            save.bond = 0;
+            Assert.AreEqual(1, Bond.Stage(save));
+            Assert.AreEqual("기사님", Bond.Address(save));
+            Assert.AreEqual("가요, 기사님.", Bond.Speak("가요, 기사님."));
+            save.bond = 12;
+            Assert.AreEqual(2, Bond.Stage(save));
+            save.bond = 30;
+            Assert.AreEqual(3, Bond.Stage(save));
+            Assert.AreEqual("가요, 도현 씨.", Bond.Speak("가요, 기사님."));
+            var note = Bond.Add(save, 20);
+            Assert.AreEqual(4, Bond.Stage(save));
+            Assert.IsNotNull(note, "단계가 오르면 알려 준다");
+        }
+
+        [UnityTest]
+        public IEnumerator DailyJobPaysAndRadioCallLeadsToMission()
+        {
+            int before = gm.Save.money;
+            gm.BeginDaily();
+            yield return null;
+            var drive = Object.FindFirstObjectByType<DriveSession>();
+            Assert.IsTrue(drive.Daily);
+            yield return new WaitForSeconds(2f);
+            var job = drive.CurrentJob;
+            Assert.IsNotNull(job, "일감이 들어온다");
+
+            drive.Car.Teleport(job.from + Vector3.up * 0.5f);
+            yield return new WaitForSeconds(1f);
+            Assert.IsTrue(job.picked, "싣는 곳에 서면 싣는다");
+            drive.Car.Teleport(job.to + Vector3.up * 0.5f);
+            yield return new WaitForSeconds(1f);
+            Assert.AreEqual(1, gm.Save.dailyJobs);
+            Assert.AreEqual(before + job.pay, gm.Save.money, "배달하면 바로 돈이 들어온다");
+
+            drive.ForceOffer();
+            Assert.IsNotNull(drive.Offer, "띠리릭─ 다세계 콜");
+            drive.AcceptCurrentOffer();
+            Assert.IsFalse(drive.Daily, "콜을 받으면 게이트로 출동");
+            drive.Enter(false);
+            yield return new WaitForSeconds(1.6f);
+            Assert.AreEqual(GameMode.Mission, gm.Mode);
+        }
+
+        [UnityTest]
+        public IEnumerator BoughtRumorIsVerifiedByVisiting()
+        {
+            var save = gm.Save;
+            save.money = 100000;
+            var offers = InfoExchange.TodayOffers(save, new[] { 47, 12, 333 });
+            Assert.Greater(offers.Count, 0, "오늘 나와 있는 기사들이 소문을 판다");
+            var rumor = offers[0];
+            rumor.owned = true;
+            save.rumors.Add(rumor);
+
+            gm.StartCall(CallContract.Create(rumor.world, new System.Random(13)));
+            yield return null;
+            MissionController.Instance.Finish(CallOutcome.Withdrawn);
+            yield return null;
+            Assert.AreNotEqual(0, rumor.verified, "가 보면 맞는지 틀린지 안다");
+            var d = save.drivers.Find(x => x.name == rumor.source);
+            Debug.Log($"[Test] 소문 \"{rumor.text}\" → {(rumor.verified == 1 ? "맞음" : "틀림")}, {InfoExchange.TrustText(d)}");
+            Assert.AreEqual(1, d.confirmed + d.refuted, "그 기사의 신뢰가 드러난다");
+            Assert.Greater(gm.LastSettlement.rumorNotes.Count, 0);
+        }
+
         [UnityTest]
         public IEnumerator GasPocketHurtsThroughFilter()
         {

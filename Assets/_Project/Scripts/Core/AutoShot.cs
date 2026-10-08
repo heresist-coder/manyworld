@@ -58,7 +58,19 @@ namespace Manyworld
             hub.StopTape();
             hub.Tab = 2;
             yield return Shot("4_codex");
+            hub.Tab = 3;
+            yield return Shot("4b_info");
             hub.Tab = 0;
+
+            gm.BeginDaily();
+            yield return new WaitForSeconds(3f);
+            yield return Shot("5a_daily_job");
+            var daily = Object.FindFirstObjectByType<DriveSession>();
+            daily.ForceOffer();
+            yield return new WaitForSeconds(1f);
+            yield return Shot("5b_radio_call");
+            gm.CancelDrive();
+            yield return null;
 
             gm.BeginDrive(CallContract.Create(47, new System.Random(1)));
             yield return new WaitForSeconds(2.5f);

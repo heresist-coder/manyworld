@@ -115,6 +115,10 @@ namespace Manyworld
         public float elapsed;
         public int newCases;    // 이번 콜에서 생긴 기절 사건
         public float bodyDragged; // 기사의 몸이 끌려간 거리 (m)
+        public int companionRevives, playerRevives; // 은주가 깨워 준 / 내가 깨워 준 횟수
+        public int bondDelta;
+        public string bondNote;
+        public List<string> rumorNotes = new List<string>();
         public string notice;   // 생태 현황 고시
         public List<string> lines = new List<string>();
     }

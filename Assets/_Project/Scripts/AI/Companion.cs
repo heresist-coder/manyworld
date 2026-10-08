@@ -139,6 +139,7 @@ namespace Manyworld
 
         void Bark(string line, bool force = true)
         {
+            line = Bond.Speak(line);
             if (!force && Time.time < barkReady) return;
             barkReady = Time.time + 6f;
             MissionController.Instance?.Toast($"{Name}: \"{line}\"");
@@ -237,6 +238,7 @@ namespace Manyworld
                 ReviveProgress = 0f;
                 mc.Player.health.Revive(0.4f);
                 mc.Ledger.Charge("각성제", 3000);
+                mc.CompanionRevivedPlayer++;
                 order = CompanionOrder.Follow;
                 Bark("일어나셨어요? …운전은 기사님이 하셔야죠.");
             }

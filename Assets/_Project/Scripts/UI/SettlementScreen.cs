@@ -53,6 +53,20 @@ namespace Manyworld
             GUI.Label(new Rect(paper.x + 40, y, 560, 26), record, ink);
             GUI.Label(new Rect(paper.x + 40, y + 28, 560, 26), $"잔고 {UIStyle.Won(gm.Save.money)}", ink);
             y += 66;
+            int stage = Bond.Stage(gm.Save);
+            GUI.Label(new Rect(paper.x + 40, y, 560, 26), $"은주와의 관계 {(s.bondDelta >= 0 ? "+" : "")}{s.bondDelta} · {Bond.StageName(stage)}" + (s.bondNote != null ? "  ▲" : ""),
+                UIStyle.With(UIStyle.Small, new Color(0.15f, 0.25f, 0.45f), 16));
+            y += 26;
+            if (s.bondNote != null)
+            {
+                GUI.Label(new Rect(paper.x + 40, y, 560, 44), s.bondNote, UIStyle.With(UIStyle.Small, new Color(0.15f, 0.25f, 0.45f), 15));
+                y += 44;
+            }
+            for (int i = 0; i < s.rumorNotes.Count && i < 3; i++)
+            {
+                GUI.Label(new Rect(paper.x + 40, y, 560, 40), s.rumorNotes[i], UIStyle.With(UIStyle.Small, UIStyle.Ink, 14));
+                y += 36;
+            }
 
             if (s.playerKnockouts > 0)
             {

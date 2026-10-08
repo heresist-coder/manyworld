@@ -153,6 +153,14 @@ namespace Manyworld
             }
         }
 
+        /// <summary>은주의 라벨 없는 테이프 (관계 4단계).</summary>
+        public void StartUnlabeledTape(Transform audioParent)
+        {
+            var c = new KnockoutCase { id = 0, worldNumber = 0, hasTape = true };
+            c.tape.AddRange(Bond.UnlabeledTape);
+            StartTape(c, audioParent);
+        }
+
         public void StartTape(KnockoutCase c, Transform audioParent)
         {
             StopTape();
@@ -169,7 +177,9 @@ namespace Manyworld
             if (playing != null)
             {
                 playing.tapeHeard = true;
-                GameManager.Instance?.Save.Save();
+                var gmt = GameManager.Instance;
+                if (playing.id == 0 && gmt != null) gmt.Save.unlabeledTapeHeard = true;
+                gmt?.Save.Save();
             }
             playing = null;
         }
@@ -183,13 +193,13 @@ namespace Manyworld
 
             var deck = new Rect(W / 2 - 460, 120, 920, 760);
             UIStyle.Fill(deck, new Color(0.16f, 0.15f, 0.14f));
-            GUI.Label(new Rect(deck.x + 24, deck.y + 16, 600, 34), "마이마이 · 라벨: \"출동 녹음\" (은주 글씨)", UIStyle.With(UIStyle.Label, new Color(0.9f, 0.85f, 0.7f), 19));
+            GUI.Label(new Rect(deck.x + 24, deck.y + 16, 700, 34), playing.id == 0 ? "마이마이 · 라벨 없음 (선발전 날 워크맨에 들어 있던 테이프)" : "마이마이 · 라벨: \"출동 녹음\" (은주 글씨)", UIStyle.With(UIStyle.Label, new Color(0.9f, 0.85f, 0.7f), 19));
 
             // 카세트와 돌아가는 릴
             var tape = new Rect(deck.x + 260, deck.y + 64, 400, 150);
             UIStyle.Fill(tape, new Color(0.08f, 0.08f, 0.08f));
             UIStyle.Fill(new Rect(tape.x + 20, tape.y + 14, tape.width - 40, 40), new Color(0.92f, 0.88f, 0.75f));
-            GUI.Label(new Rect(tape.x + 30, tape.y + 18, tape.width - 60, 34), $"제{playing.worldNumber}번 · 사건 #{playing.id}", UIStyle.With(UIStyle.Label, UIStyle.Ink, 18, TextAnchor.MiddleCenter));
+            GUI.Label(new Rect(tape.x + 30, tape.y + 18, tape.width - 60, 34), playing.id == 0 ? "(라벨 없음)" : $"제{playing.worldNumber}번 · 사건 #{playing.id}", UIStyle.With(UIStyle.Label, UIStyle.Ink, 18, TextAnchor.MiddleCenter));
             Reel(new Vector2(tape.x + 110, tape.y + 105));
             Reel(new Vector2(tape.xMax - 110, tape.y + 105));
 
@@ -204,6 +214,8 @@ namespace Manyworld
             }
 
             bool done = playTime > playing.tape.Count * LineInterval + 0.8f;
+            if (done && playing.id == 0)
+                GUI.Label(new Rect(deck.x + 40, deck.yMax - 120, deck.width - 80, 40), "은주: \"…동일인 확인서. 저도 몇 장 갖고 있어요.\"  (스토리 콜: 준비 중)", UIStyle.With(UIStyle.Label, UIStyle.Amber, 18));
             if (done && hiss != null) { Object.Destroy(hiss.gameObject); hiss = null; Sfx.Play("cassette_play", 0.6f, 0f); }
             if (GUI.Button(new Rect(deck.x + deck.width / 2 - 120, deck.yMax - 70, 240, 46), done ? "■ 테이프 꺼내기" : "■ 정지", UIStyle.Button))
                 StopTape();

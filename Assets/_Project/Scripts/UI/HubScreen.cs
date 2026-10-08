@@ -11,7 +11,8 @@ namespace Manyworld
         string customNumber = "47";
         Vector2 notebookScroll;
         string flavor;
-        int tab;                         // 0 무전 콜, 1 사인 분석, 2 사인 도감
+        int tab;                         // 0 무전 콜, 1 사인 분석, 2 사인 도감, 3 정보 교환
+        readonly InfoBoard infoBoard = new InfoBoard();
         readonly CaseBoard caseBoard = new CaseBoard();
 
         public int Tab { get => tab; set => tab = value; }
@@ -60,7 +61,7 @@ namespace Manyworld
             float W = UIStyle.ScaledWidth;
 
             // 장부
-            var left = new Rect(30, 30, 420, 420);
+            var left = new Rect(30, 30, 420, 520);
             UIStyle.Fill(left, new Color(0.1f, 0.08f, 0.06f, 0.88f));
             GUI.Label(new Rect(left.x + 20, left.y + 16, 380, 40), "기사식당", UIStyle.Title);
             var d = save.Date;
@@ -70,8 +71,18 @@ namespace Manyworld
             GUI.Label(new Rect(left.x + 20, left.y + 140, 380, 120),
                 $"무사고 경력\n· 연속 무사고 {save.cleanStreak}건\n· 기절 {save.knockouts}회 (감점)\n· 전멸 {save.wipes}회 (큰 감점)\n· 경력 점수 {save.RecordScore}",
                 UIStyle.Label);
-            GUI.Label(new Rect(left.x + 20, left.y + 280, 380, 26), "동료: 차은주 (지분 25%)", UIStyle.Label);
-            GUI.Label(new Rect(left.x + 20, left.y + 310, 380, 60), $"<i>{flavor}</i>", UIStyle.With(UIStyle.Small, new Color(1, 1, 1, 0.7f), 15));
+            int stage = Bond.Stage(save);
+            int toNext = Bond.ToNext(save);
+            GUI.Label(new Rect(left.x + 20, left.y + 270, 390, 26), $"동료: 차은주 (지분 25%) · <b>{Bond.StageName(stage)}</b>", UIStyle.Label);
+            GUI.Label(new Rect(left.x + 20, left.y + 296, 390, 22), toNext > 0 ? $"관계 {save.bond} — 다음 단계까지 {toNext} · 부르는 말 \"{Bond.Address(save)}\"" : $"관계 {save.bond} — 부르는 말 \"{Bond.Address(save)}\"",
+                UIStyle.With(UIStyle.Small, new Color(0.7f, 0.85f, 1f), 14));
+            GUI.Label(new Rect(left.x + 20, left.y + 322, 380, 46), $"<i>{flavor}</i>", UIStyle.With(UIStyle.Small, new Color(1, 1, 1, 0.7f), 15));
+            bool fresh = save.dailyDay != save.day;
+            int jobs = fresh ? 0 : save.dailyJobs;
+            if (GUI.Button(new Rect(left.x + 20, left.y + 420, 380, 40), jobs >= DriveSession.JobsPerDay ? "동네 일 (오늘은 끝 · 콜만 기다리기)" : $"동네 일 나가기 (배달 {jobs}/{DriveSession.JobsPerDay}, 무전 콜 대기)", UIStyle.Button))
+                gm.BeginDaily();
+            if (stage >= 4 && GUI.Button(new Rect(left.x + 20, left.y + 468, 380, 40), save.unlabeledTapeHeard ? "라벨 없는 테이프 다시 듣기" : "▶ 은주와 라벨 없는 테이프 듣기", UIStyle.Button))
+                caseBoard.StartUnlabeledTape(transform);
             if (GUI.Button(new Rect(left.x + 20, left.y + 370, 180, 36), "다음 날로", UIStyle.Button))
             {
                 save.day++;
@@ -79,11 +90,11 @@ namespace Manyworld
             }
             if (GUI.Button(new Rect(left.x + 220, left.y + 370, 180, 36), "세이브 초기화", UIStyle.Button)) gm.ResetSave();
 
-            VolumeUI.Draw(new Rect(left.x, left.y + 440, 420, 30));
+            VolumeUI.Draw(new Rect(left.x, left.y + 540, 420, 30));
 
             float cx = 480, cw = Mathf.Min(760, W - cx - 470);
             int unsolved = save.UnsolvedCases;
-            string[] tabs = { "무전 콜", unsolved > 0 ? $"사인 분석 ({unsolved})" : "사인 분석", $"사인 도감 {save.codex.Count}/{DeathCauses.All.Length}" };
+            string[] tabs = { "무전 콜", unsolved > 0 ? $"사인 분석 ({unsolved})" : "사인 분석", $"사인 도감 {save.codex.Count}/{DeathCauses.All.Length}", "정보 교환" };
             float tw = cw / tabs.Length;
             for (int i = 0; i < tabs.Length; i++)
             {
@@ -96,6 +107,15 @@ namespace Manyworld
             if (tab == 1)
             {
                 caseBoard.DrawCases(new Rect(cx, 80, cw, 900), save, transform);
+                DrawNotebook(new Rect(W - 440, 30, 410, 1020), save);
+                caseBoard.DrawTape(W);
+                return;
+            }
+            if (tab == 3)
+            {
+                var worlds = new List<int>();
+                foreach (var c in calls) worlds.Add(c.worldNumber);
+                infoBoard.Draw(new Rect(cx, 80, cw, 900), save, worlds);
                 DrawNotebook(new Rect(W - 440, 30, 410, 1020), save);
                 caseBoard.DrawTape(W);
                 return;
@@ -126,6 +146,7 @@ namespace Manyworld
             }
 
             DrawNotebook(new Rect(W - 440, 30, 410, 1020), save);
+            caseBoard.DrawTape(W);
         }
 
         void DrawCall(Rect r, CallContract c, SaveData save, GameManager gm)
@@ -141,6 +162,8 @@ namespace Manyworld
             var ws = save.GetWorld(c.worldNumber);
             string notebook = ws == null ? "세계 수첩: 처음 가는 번호" :
                 $"세계 수첩: 제{ws.generation}세대 · 방문 {ws.visits}회 · 확인된 규칙: {new WorldSpec { rules = (WorldRule)ws.knownRules }.RuleText(false)}";
+            foreach (var rm in save.rumors)
+                if (rm.world == c.worldNumber && rm.owned) { notebook = DriveSession.RumorHint(save, c.worldNumber); break; }
             GUI.Label(new Rect(r.x + 16, r.y + 72, r.width - 32, 24), notebook, UIStyle.With(UIStyle.Small, new Color(0.7f, 0.9f, 1f)));
 
             GUI.Label(new Rect(r.x + 16, r.y + 102, r.width - 32, 26),

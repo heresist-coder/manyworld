@@ -20,6 +20,13 @@ namespace Manyworld
         public List<CodexEntry> codex = new List<CodexEntry>();       // 사인 도감
         public int nextCaseId = 1;
 
+        public string playerName = "도현";   // 은주가 파트너가 되면 부르는 이름
+        public int bond;                      // 은주와의 관계 (Bond)
+        public bool unlabeledTapeHeard;
+        public List<Rumor> rumors = new List<Rumor>();          // 산 소문
+        public List<NpcDriver> drivers = new List<NpcDriver>(); // 기사식당 기사들
+        public int dailyDay = -1, dailyEarned, dailyJobs;       // 오늘 동네 일
+
         /// <summary>무사고 경력 점수. 기절 -1, 전멸 -3 (D9).</summary>
         public int RecordScore => cleanStreak - knockouts - wipes * 3;
 

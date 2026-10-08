@@ -323,6 +323,14 @@ namespace Manyworld
                 zone.owner.TakeDamage(new DamageInfo { amount = (impact - 4f) * 9f, source = DamageSource.Vehicle, point = c.GetContact(0).point });
         }
 
+        /// <summary>리지드바디까지 같이 옮긴다 (transform만 옮기면 보간이 되돌린다).</summary>
+        public void Teleport(Vector3 pos)
+        {
+            rb.position = pos;
+            transform.position = pos;
+            Stop();
+        }
+
         public void Stop()
         {
             rb.linearVelocity = Vector3.zero;
