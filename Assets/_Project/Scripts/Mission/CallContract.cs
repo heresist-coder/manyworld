@@ -54,6 +54,25 @@ namespace Manyworld
             return c;
         }
 
+        /// <summary>숲 현장 (자연 월드 첫 현장). 돈·세계 번호는 아직 쓰지 않는다.</summary>
+        public static CallContract Field()
+        {
+            var spec = new WorldSpec
+            {
+                number = 0,
+                nickname = "숲속의 빈 방",
+                divergence = "",
+                rules = WorldRule.None,
+                terrain = TerrainMod.None,
+                trueDanger = 2,
+                estimatedDanger = 2,
+                crawlerRatio = 0.72f,
+                monsterCount = 7,
+                skyTint = new Color(0.45f, 0.6f, 0.85f),
+            };
+            return new CallContract { worldNumber = 0, spec = spec, task = "의자 위 곰인형 회수", timeLimit = 9999f };
+        }
+
         static int Round(float v) => Mathf.RoundToInt(v / 500f) * 500;
     }
 

@@ -31,6 +31,13 @@ namespace Manyworld
         public GameObject[] hamletProps;   // 우물 등
         public GameObject[] skyline;       // 우리 동네 담 너머 원경 건물
 
+        [Header("숲 현장 (자연 월드)")]
+        public GameObject[] pines;         // 줄기 콜라이더 달린 소나무
+        public GameObject[] meadowTrees;   // 초원의 둥근 나무
+        public GameObject[] plushies;      // 곰인형·봉제 인형. 0번은 의자 위 곰인형
+        public GameObject siteChair;       // 빈 방의 나무 의자
+        public GameObject[] mountains;     // 먼 산 원경
+
         [Header("인물 (Tripo, Mixamo 뼈대)")]
         public GameObject driverModel;
         public GameObject companionModel;

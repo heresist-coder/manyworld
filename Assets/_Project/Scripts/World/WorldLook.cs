@@ -31,6 +31,17 @@ namespace Manyworld
             filter = new Color(1f, 0.97f, 0.93f), shadowsTint = new Color(0.45f, 0.45f, 0.58f), highlightsTint = new Color(1f, 0.9f, 0.75f),
         };
 
+        /// <summary>숲 현장: 늦은 오후. 따뜻한 해와 차가운 숲 그늘, 푸르게 물러나는 먼 산 (목표 샷 01~03).</summary>
+        public static Palette Field => new Palette
+        {
+            skyTint = new Color(0.42f, 0.58f, 0.86f), ground = new Color(0.36f, 0.34f, 0.28f), horizon = new Color(0.7f, 0.78f, 0.86f),
+            sunColor = new Color(1f, 0.88f, 0.7f), sunIntensity = 1.5f, sunPitch = 30f, sunYaw = 70f, // 차→숲 방향(북동)으로 갈 때 해가 등 뒤 왼쪽
+            ambientSky = new Color(0.5f, 0.56f, 0.64f), ambientEquator = new Color(0.47f, 0.48f, 0.42f), ambientGround = new Color(0.22f, 0.2f, 0.15f),
+            atmosphere = 0.85f, skyExposure = 1.2f,
+            postExposure = 0.35f, contrast = 12f, saturation = -6f, grain = 0.06f, vignette = 0.18f, bloom = 0.22f,
+            filter = new Color(1f, 0.98f, 0.95f), shadowsTint = new Color(0.4f, 0.48f, 0.62f), highlightsTint = new Color(1f, 0.92f, 0.8f),
+        };
+
         /// <summary>멀티버스: 규칙에 따라. 같은 구도인데 차갑다.</summary>
         public static Palette ForWorld(WorldSpec spec)
         {

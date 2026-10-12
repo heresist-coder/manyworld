@@ -81,6 +81,8 @@ namespace Manyworld
             int jobs = fresh ? 0 : save.dailyJobs;
             if (GUI.Button(new Rect(left.x + 20, left.y + 420, 380, 40), jobs >= DriveSession.JobsPerDay ? "동네 일 (오늘은 끝 · 콜만 기다리기)" : $"동네 일 나가기 (배달 {jobs}/{DriveSession.JobsPerDay}, 무전 콜 대기)", UIStyle.Button))
                 gm.BeginDaily();
+            if (GUI.Button(new Rect(left.x + 20, left.y + 468, 380, 40), "새 월드: 숲 현장으로 (F12)", UIStyle.Button))
+                gm.StartField();
             if (stage >= 4 && GUI.Button(new Rect(left.x + 20, left.y + 468, 380, 40), save.unlabeledTapeHeard ? "라벨 없는 테이프 다시 듣기" : "▶ 은주와 라벨 없는 테이프 듣기", UIStyle.Button))
                 caseBoard.StartUnlabeledTape(transform);
             if (GUI.Button(new Rect(left.x + 20, left.y + 370, 180, 36), "다음 날로", UIStyle.Button))

@@ -204,6 +204,28 @@ namespace Manyworld.EditorTools
                 string path = $"{dir}/{t.name}_Col.prefab";
                 var inst = (GameObject)PrefabUtility.InstantiatePrefab(t);
                 foreach (var c in inst.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+                // 신티 LOD 셰이더(SyntyStudios_LOD)가 이 URP에서 하얗게 나온다. LOD0만 남긴다
+                var lodGroup = inst.GetComponent<LODGroup>();
+                if (lodGroup != null)
+                {
+                    var lods = lodGroup.GetLODs();
+                    if (lods.Length > 1)
+                    {
+                        var keep = new HashSet<Renderer>(lods[0].renderers.Where(r => r != null));
+                        for (int i = 1; i < lods.Length; i++)
+                            foreach (var r in lods[i].renderers)
+                                if (r != null && !keep.Contains(r)) Object.DestroyImmediate(r.gameObject);
+                        lodGroup.SetLODs(new[] { new LOD(0.004f, keep.ToArray()) });
+                        lodGroup.RecalculateBounds();
+                    }
+                }
+                // 신티 나무 셰이더는 광택이 고정이라 먼 잎이 하늘을 반사해 하얗게 뜬다. 광택 없는 URP Lit로 바꾼다
+                foreach (var r in inst.GetComponentsInChildren<Renderer>())
+                {
+                    var mats = r.sharedMaterials;
+                    for (int i = 0; i < mats.Length; i++) mats[i] = MatteFoliage(mats[i]);
+                    r.sharedMaterials = mats;
+                }
                 var cap = inst.AddComponent<CapsuleCollider>();
                 cap.radius = 0.35f;
                 cap.height = 6f;
@@ -215,6 +237,50 @@ namespace Manyworld.EditorTools
             return result.ToArray();
         }
 
+        /// <summary>신티 나무 머티리얼 → 광택·반사 없는 URP Lit (잎은 알파 클립 + 양면). 같은 원본은 한 번만 만든다.</summary>
+        static Material MatteFoliage(Material src)
+        {
+            if (src == null) return null;
+            // 신티 기본 나무 셰이더(_Main_Texture)만 바꾼다. 잎·줄기 텍스처가 따로인 바이옴 셰이더는 그대로
+            if (!src.HasProperty("_Main_Texture") || src.HasProperty("_Leaf_Texture")) return src;
+            const string dir = GeneratedDir + "/Trees/Materials";
+            if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder(GeneratedDir + "/Trees", "Materials");
+            string path = $"{dir}/{src.name}_Matte.mat";
+            var lit = Shader.Find("Universal Render Pipeline/Lit");
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            bool created = m == null;
+            if (created) m = new Material(lit);
+            m.shader = lit;
+            Texture tex = src.HasProperty("_Main_Texture") ? src.GetTexture("_Main_Texture") : null;
+            if (tex == null && src.HasProperty("_BaseMap")) tex = src.GetTexture("_BaseMap");
+            if (tex == null && src.HasProperty("_MainTex")) tex = src.GetTexture("_MainTex");
+            var tint = src.HasProperty("_Color_Tint") ? src.GetColor("_Color_Tint") : Color.white;
+            // 줄기 텍스처가 밝아서 그림자 거리 밖에선 줄기만 하얗게 줄지어 보인다. 어둡게
+            if (src.name.Contains("Trunk")) tint *= new Color(0.5f, 0.44f, 0.4f);
+            else tint *= new Color(0.82f, 0.86f, 0.8f); // 잎도 조금 어둡게: 숲이 덩어리로 읽히게
+            tint.a = 1f;
+            m.SetTexture("_BaseMap", tex);
+            m.SetColor("_BaseColor", tint);
+            m.SetFloat("_Smoothness", 0f);
+            m.SetFloat("_Metallic", 0f);
+            m.SetFloat("_SpecularHighlights", 0f);
+            m.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            m.SetFloat("_EnvironmentReflections", 0f);
+            m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+            bool clip = (src.HasProperty("_AlphaClip") && src.GetFloat("_AlphaClip") > 0.5f) || src.name.Contains("Leaves") || src.name.Contains("Leaf");
+            if (clip)
+            {
+                m.SetFloat("_AlphaClip", 1f);
+                m.EnableKeyword("_ALPHATEST_ON");
+                m.SetFloat("_Cutoff", src.HasProperty("_Mask_Clip_Value") ? src.GetFloat("_Mask_Clip_Value") : 0.5f);
+                m.SetFloat("_Cull", 0f); // 잎은 양면
+                m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+            }
+            if (created) AssetDatabase.CreateAsset(m, path);
+            else EditorUtility.SetDirty(m);
+            return m;
+        }
+
         static GameObject FirstPrefabIn(string dir)
         {
             if (!AssetDatabase.IsValidFolder(dir)) return null;
@@ -222,9 +288,35 @@ namespace Manyworld.EditorTools
             return guid == null ? null : AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
         }
 
+        /// <summary>
+        /// 잎 텍스처: 알파 테스트 잎은 먼 밉맵에서 알파가 평균돼 사라지고 줄기만 하얗게 남는다.
+        /// 밉맵 커버리지를 보존해 멀리서도 잎이 보이게 한다.
+        /// </summary>
+        [MenuItem("Manyworld/Art/Fix Foliage Mipmaps")]
+        public static void FixFoliageMips()
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/Synty")) return;
+            int n = 0;
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets/Synty" }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var file = Path.GetFileNameWithoutExtension(path);
+                if (file.EndsWith("_Mask") || file.EndsWith("_Emissive")) continue;
+                if (!(file.Contains("Leaves") || file.Contains("Leaf") || file.Contains("Grass") || file.Contains("Plant") || file.Contains("Bush") || file.Contains("Foliage"))) continue;
+                if (!(AssetImporter.GetAtPath(path) is TextureImporter ti) || (ti.mipMapsPreserveCoverage && ti.alphaIsTransparency)) continue;
+                ti.mipMapsPreserveCoverage = true;
+                ti.alphaIsTransparency = true; // 투명 부분의 흰색이 먼 밉맵에 번지지 않게
+                ti.alphaTestReferenceValue = 0.5f;
+                ti.SaveAndReimport();
+                n++;
+            }
+            Debug.Log($"[Manyworld] 잎 텍스처 밉맵 커버리지 보존 {n}개");
+        }
+
         [MenuItem("Manyworld/Art/3 Build Catalog")]
         public static void BuildCatalog()
         {
+            FixFoliageMips();
             var cat = AssetDatabase.LoadAssetAtPath<ArtCatalog>(CatalogPath);
             if (cat == null)
             {
@@ -240,8 +332,9 @@ namespace Manyworld.EditorTools
                 "SM_Prop_ParkBench_01", "SM_Prop_PowerBox_01", "SM_Prop_RubbishBin_01", "SM_Prop_Mailbox_01");
             cat.tico = Prefab("SM_Veh_Car_Small_01");
 
-            cat.driverModel = AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/01-dohyun-rigged.fbx");
-            cat.companionModel = AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/02-luna-rigged.fbx");
+            // 인물: 신티 휴머노이드 (City 재킷 남자, Town 딸). 없으면 Tripo 모델
+            cat.driverModel = Prefab("Character_Male_Jacket") ?? AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/01-dohyun-rigged.fbx");
+            cat.companionModel = Prefab("SM_Chr_Daughter_01") ?? AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/02-luna-rigged.fbx");
             cat.humanoidController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(GeneratedDir + "/Humanoid.controller");
             cat.rifle = Prefab("SM_Wep_American_Rifle_01");
             cat.companionRifle = Prefab("SM_Wep_HuntingRifle_Clean_01");
@@ -266,6 +359,13 @@ namespace Manyworld.EditorTools
             cat.hamletProps = Prefabs("SM_Prop_Well_01", "SM_Prop_StoneWall_01");
             cat.skyline = Prefabs(Enumerable.Range(1, 11).Select(i => $"SM_Gen_Bld_Background_{i:00}").ToArray());
 
+            // 숲 현장
+            cat.pines = WithTrunkColliders(Prefabs("SM_Tree_Pine_01", "SM_Tree_Pine_02", "SM_Tree_Pine_Large_01"));
+            cat.meadowTrees = WithTrunkColliders(Prefabs("SM_Tree_Round_01", "SM_Tree_Round_02", "SM_Env_Tree_Meadow_01", "SM_Env_Tree_Meadow_02"));
+            cat.plushies = Prefabs("SM_Prop_Toy_Bear_01", "SM_Prop_Plushie_04", "SM_Prop_Plushie_03", "SM_Prop_Plushie_07");
+            cat.siteChair = Prefab("SM_Prop_DiningChair_01");
+            cat.mountains = Prefabs("SM_Gen_Env_Background_Mountain_01", "SM_Gen_Env_Background_Mountain_02", "SM_Gen_Env_Background_Mountain_03");
+
             const string fx = "Assets/118 sprite effects bundle";
             cat.muzzleFlash = FirstPrefabIn(fx + "/MuzzleFlashes/_prefabs");
             cat.bloodSplash = FirstPrefabIn(fx + "/10 Blood splash sprite effects/_prefabs");
@@ -274,7 +374,8 @@ namespace Manyworld.EditorTools
             EditorUtility.SetDirty(cat);
             Debug.Log($"[Manyworld] ArtCatalog: houses {cat.houses.Length}, shops {cat.shops.Length}, cars {cat.parkedCars.Length}, props {cat.streetProps.Length}, " +
                       $"tico {(cat.tico ? "o" : "x")}/{(cat.ticoBody ? "ithappy" : "-")} wheels {cat.ticoWheels.Length}, trees {cat.trees.Length}+{cat.deadTrees.Length}, rocks {cat.rocks.Length}, grass {cat.grass.Length}, farm {cat.farmBuildings.Length}, driver {(cat.driverModel ? "o" : "x")}, companion {(cat.companionModel ? "o" : "x")}, " +
-                      $"anim {(cat.humanoidController ? "o" : "x")}, rifle {(cat.rifle ? cat.rifle.name : "x")}/{(cat.companionRifle ? cat.companionRifle.name : "x")}, fx {(cat.muzzleFlash ? "o" : "x")}{(cat.bloodSplash ? "o" : "x")}{(cat.smoke ? "o" : "x")}");
+                      $"anim {(cat.humanoidController ? "o" : "x")}, rifle {(cat.rifle ? cat.rifle.name : "x")}/{(cat.companionRifle ? cat.companionRifle.name : "x")}, fx {(cat.muzzleFlash ? "o" : "x")}{(cat.bloodSplash ? "o" : "x")}{(cat.smoke ? "o" : "x")}, " +
+                      $"site: pines {cat.pines.Length}, meadow {cat.meadowTrees.Length}, plush {cat.plushies.Length}, chair {(cat.siteChair ? "o" : "x")}, mountains {cat.mountains.Length}, driver {(cat.driverModel ? cat.driverModel.name : "x")}, companion {(cat.companionModel ? cat.companionModel.name : "x")}");
         }
 
         /// <summary>

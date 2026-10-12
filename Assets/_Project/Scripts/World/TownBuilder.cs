@@ -12,6 +12,7 @@ namespace Manyworld
         public Vector3 playerSpawn;
         public Vector3 companionSpawn;
         public Vector3 ticoPos;
+        public Quaternion? ticoRotation;  // 없으면 중도금 지점 쪽을 본다
         public Vector3 midpointPos;
         public Vector3 objectivePos;
         public Vector3 gatePos;

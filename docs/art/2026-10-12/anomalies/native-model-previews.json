@@ -1,0 +1,158 @@
+[
+  {
+    "slug": "sky-station-01",
+    "pack": "PolygonSciFiSpace",
+    "model": "SM_Ship_Station_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiSpace\\Models\\SM_Ship_Station_01.fbx",
+    "exists": false
+  },
+  {
+    "slug": "sky-station-02",
+    "pack": "PolygonSciFiSpace",
+    "model": "SM_Ship_Station_02",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiSpace\\Models\\SM_Ship_Station_02.fbx",
+    "exists": false
+  },
+  {
+    "slug": "sky-floating-rocks",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Env_Floating_Rocks_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Env_Floating_Rocks_01.fbx",
+    "exists": true,
+    "mesh_count": 1,
+    "native_bounds_meters": [
+      8.815263748168945,
+      12.239614486694336,
+      22.835346221923828
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\anomalies\\sky-floating-rocks.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "sky-satellite",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Prop_Satellite_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Prop_Satellite_01.fbx",
+    "exists": true,
+    "mesh_count": 3,
+    "native_bounds_meters": [
+      12.062049865722656,
+      7.491113662719727,
+      6.958137512207031
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\anomalies\\sky-satellite.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "forest-head-01",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Env_Artifact_Head_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Env_Artifact_Head_01.fbx",
+    "exists": true,
+    "mesh_count": 1,
+    "native_bounds_meters": [
+      13.622542381286621,
+      9.967978477478027,
+      29.67697525024414
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\anomalies\\forest-head-01.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "forest-head-02",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Env_Artifact_Head_02",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Env_Artifact_Head_02.fbx",
+    "exists": true,
+    "mesh_count": 1,
+    "native_bounds_meters": [
+      28.629718780517578,
+      11.257776260375977,
+      17.00994110107422
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\anomalies\\forest-head-02.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "forest-ruin-01",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Env_Artifact_AlienRuin_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Env_Artifact_AlienRuin_01.fbx",
+    "exists": true,
+    "mesh_count": 1,
+    "native_bounds_meters": [
+      12.038618087768555,
+      3.5110766887664795,
+      23.059194564819336
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\anomalies\\forest-ruin-01.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "forest-ruin-04",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Env_Artifact_AlienRuin_04",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Env_Artifact_AlienRuin_04.fbx",
+    "exists": true,
+    "mesh_count": 1,
+    "native_bounds_meters": [
+      16.276151657104492,
+      4.56357479095459,
+      25.60508918762207
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\anomalies\\forest-ruin-04.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "water-portal",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Bld_Portal_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Bld_Portal_01.fbx",
+    "exists": true,
+    "mesh_count": 2,
+    "native_bounds_meters": [
+      8.644510269165039,
+      3.0168001651763916,
+      7.039194583892822
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\anomalies\\water-portal.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "water-research-pod",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Bld_Pod_Research_05",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Bld_Pod_Research_05.fbx",
+    "exists": true,
+    "mesh_count": 16,
+    "native_bounds_meters": [
+      38.65039825439453,
+      38.65039825439453,
+      22.952857971191406
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\anomalies\\water-research-pod.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "water-escape-pod",
+    "pack": "PolygonSciFiSpace",
+    "model": "SM_Veh_EscapePod_Large_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiSpace\\Models\\SM_Veh_EscapePod_Large_01.fbx",
+    "exists": false
+  },
+  {
+    "slug": "water-radar",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Bld_Corp_Radar_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Bld_Corp_Radar_01.fbx",
+    "exists": true,
+    "mesh_count": 4,
+    "native_bounds_meters": [
+      26.667034149169922,
+      23.28077507019043,
+      16.36705780029297
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\anomalies\\water-radar.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  }
+]

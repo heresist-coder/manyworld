@@ -1,0 +1,79 @@
+{
+  "source": "Assets/_Project/Resources/ArtCatalog.asset",
+  "verified_local_only": true,
+  "references": {
+    "tico": [
+      "Assets\\Synty\\PolygonCity\\Prefabs\\Vehicles\\SM_Veh_Car_Small_01.prefab"
+    ],
+    "ticoBody": [
+      "Assets\\ithappy\\City_Characters\\Prefabs\\Props\\Car_06.prefab"
+    ],
+    "trees": [
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_01_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_02_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_03_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_04_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Round_01_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Round_02_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Round_03_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Pine_01_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Pine_02_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Pine_Large_01_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Birch_01_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Birch_02_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Willow_Medium_01_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Env_Tree_Meadow_01_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Env_Tree_Meadow_02_Col.prefab"
+    ],
+    "deadTrees": [
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Dead_01_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Dead_02_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Pine_Dead_01_Col.prefab",
+      "Assets\\ThirdParty\\Generated\\Trees\\SM_Tree_Birch_Dead_01_Col.prefab"
+    ],
+    "bushes": [
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Plants\\SM_Plant_Bush_01.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Plants\\SM_Plant_Bush_02.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Plants\\SM_Plant_Bush_03.prefab"
+    ],
+    "rocks": [
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Rocks\\SM_Rock_01.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Rocks\\SM_Rock_02.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Rocks\\SM_Rock_03.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Rocks\\SM_Rock_04.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Rocks\\SM_Rock_Boulder_01.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Rocks\\SM_Rock_Cluster_Large_01.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Rocks\\SM_Rock_Cluster_Large_02.prefab",
+      "Assets\\Synty\\PolygonNatureBiomes\\PNB_Meadow_Forest\\Prefabs\\SM_Env_Rock_Pile_01.prefab",
+      "Assets\\Synty\\PolygonNatureBiomes\\PNB_Meadow_Forest\\Prefabs\\SM_Env_Rock_Pile_02.prefab"
+    ],
+    "grass": [
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Plants\\SM_Plant_Grass_01.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Plants\\SM_Plant_Grass_02.prefab",
+      "Assets\\Synty\\PolygonNatureBiomes\\PNB_Meadow_Forest\\Prefabs\\SM_Env_Grass_Tall_Clump_01.prefab",
+      "Assets\\Synty\\PolygonNatureBiomes\\PNB_Meadow_Forest\\Prefabs\\SM_Env_Wildflowers_Patch_01.prefab"
+    ],
+    "farmBuildings": [
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Buildings\\SM_Bld_Farmhouse_01.prefab",
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Buildings\\SM_Bld_Farmhouse_02.prefab",
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Buildings\\SM_Bld_Barn_01.prefab",
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Buildings\\SM_Bld_Barn_02.prefab",
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Buildings\\SM_Bld_Silo_01.prefab",
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Buildings\\SM_Bld_Shelter_01.prefab",
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Buildings\\SM_Bld_Outhouse_01.prefab",
+      "Assets\\Synty\\PolygonNatureBiomes\\PNB_Meadow_Forest\\Prefabs\\Props\\SM_Bld_Stone_Cabin_01.prefab",
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Buildings\\SM_Bld_WaterTower_01.prefab"
+    ],
+    "fences": [
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Props\\SM_Prop_Fence_Wood_01.prefab",
+      "Assets\\Synty\\PolygonFarm\\Prefabs\\Props\\SM_Prop_Fence_Wire_01.prefab",
+      "Assets\\Synty\\PolygonNature\\Prefabs\\Props\\SM_Prop_StoneWall_01.prefab"
+    ],
+    "driverModel": [
+      "Assets\\ThirdParty\\Characters\\01-dohyun-rigged.fbx"
+    ],
+    "companionModel": [
+      "Assets\\ThirdParty\\Characters\\02-luna-rigged.fbx"
+    ]
+  }
+}

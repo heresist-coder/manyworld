@@ -15,6 +15,13 @@ namespace Manyworld
         public WorldSpec Spec => Contract.spec;
         public WeatherState Weather { get; private set; }
         public WorldState State { get; private set; }
+
+        // 자연 월드 (숲 현장): 게이트·정산 없이 같은 월드에서 현장 → 차 → 콜 대기 (D18)
+        public bool Field { get; private set; }
+        public TeddyRoom Room { get; private set; }
+        public bool FieldWaiting { get; private set; }
+        public float WaitingSince { get; private set; }
+        public bool CallOffered { get; private set; }
         public CallLedger Ledger { get; } = new CallLedger();
         public Evolution Evolution { get; } = new Evolution();
         public MissionLayout Layout { get; private set; }
@@ -92,6 +99,18 @@ namespace Manyworld
             return mc;
         }
 
+        public static MissionController BeginField(PlayerCamera cam)
+        {
+            var contract = CallContract.Field();
+            var go = new GameObject("Mission");
+            var mc = go.AddComponent<MissionController>();
+            Instance = mc;
+            mc.Field = true;
+            mc.Setup(contract, WorldGenerator.CreateInitialState(contract.spec), cam);
+            go.AddComponent<MissionHUD>();
+            return mc;
+        }
+
         void Setup(CallContract contract, WorldState state, PlayerCamera cam)
         {
             Contract = contract;
@@ -99,10 +118,22 @@ namespace Manyworld
             Noise.Reset();
             Ledger.depositPaid = true;
 
-            Layout = WorldTerrainBuilder.Build(Spec);
+            if (Field)
+            {
+                Layout = ForestSiteBuilder.Build(1, out var room);
+                Room = room;
+            }
+            else Layout = WorldTerrainBuilder.Build(Spec);
             worldRoot = Layout.root.gameObject;
             Layout.root.SetParent(transform, true);
 
+            if (!Field) BuildCallMarkers();
+            SetupActors(cam);
+        }
+
+        /// <summary>콜 표지: 중도금 깃대와 목표 말뚝 (멀티버스 콜).</summary>
+        void BuildCallMarkers()
+        {
             // 중도금 지점: 교차로의 깃대
             var flag = Graybox.Box(Layout.root, "MidpointPole", Layout.midpointPos + new Vector3(0, 2.5f, 0), new Vector3(0.15f, 5f, 0.15f), new Color(0.9f, 0.9f, 0.9f), false);
             Graybox.Box(flag.transform, "Flag", new Vector3(2.5f, 0.4f, 0), new Vector3(8f, 0.12f, 0.1f), new Color(0.9f, 0.3f, 0.2f), false);
@@ -114,7 +145,10 @@ namespace Manyworld
             stake.GetComponent<Renderer>().sharedMaterial = Graybox.Mat(new Color(1f, 0.8f, 0.2f), true);
             var objLabel = Graybox.Label(Layout.root, Contract.task, Layout.objectivePos + new Vector3(0, 2.2f, 0), 0.045f, UIStyle.Amber);
             objLabel.gameObject.AddComponent<Billboard>();
+        }
 
+        void SetupActors(PlayerCamera cam)
+        {
             Player = PlayerController.Create(Layout.playerSpawn, cam);
             Player.transform.SetParent(transform, true);
             Player.health.Downed += OnPlayerDowned;
@@ -122,7 +156,7 @@ namespace Manyworld
             // 티코: 세계 안에서도 몬다 (brainstorm-01 10장). 중도금 지점 쪽 길을 본다
             var toMid = Layout.midpointPos - Layout.ticoPos;
             toMid.y = 0;
-            Car = TicoCar.Create(transform, Layout.ticoPos, Quaternion.LookRotation(toMid), false);
+            Car = TicoCar.Create(transform, Layout.ticoPos, Layout.ticoRotation ?? Quaternion.LookRotation(toMid), false);
             Car.controllable = false;
             Car.health.Damaged += _ =>
             {
@@ -163,14 +197,22 @@ namespace Manyworld
             SpawnMonsters();
             SpawnGasPockets();
 
-            Sfx.Loop("ambience_world", transform, 0.55f, false).pitch = 0.85f + (Spec.number % 7) * 0.04f;
             lowPass = cam.GetComponent<AudioLowPassFilter>();
             if (lowPass == null) lowPass = cam.gameObject.AddComponent<AudioLowPassFilter>();
             lowPass.cutoffFrequency = 22000f;
-            Sfx.Play("gate_whoosh", 0.8f);
-
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+
+            if (Field)
+            {
+                Sfx.Loop("ambience_forest", transform, 0.6f, false);
+                Toast("무전: \"숲속 공터 의자에 곰인형이 하나 있을 겁니다. 그것만 가져오세요.\"");
+                Toast("E: 티코 타기 · 흙길 끝 주차 공터에서 숲길로 걸어 들어간다");
+                Toast($"{Companion.Name}: \"곰인형 하나 가지러 총을 들고 가네요.\"");
+                return;
+            }
+            Sfx.Loop("ambience_world", transform, 0.55f, false).pitch = 0.85f + (Spec.number % 7) * 0.04f;
+            Sfx.Play("gate_whoosh", 0.8f);
 
             Toast($"{Spec.Title} 진입. 공사 추정 위험도 {Spec.estimatedDanger}");
             Toast("티코 옆에서 E: 타기 · 중도금 지점은 길 따라 북동쪽 장터거리");
@@ -196,6 +238,11 @@ namespace Manyworld
             sun.shadows = LightShadows.Soft;
             RenderSettings.fog = false;
             var cam = Camera.main;
+            if (Field)
+            {
+                ApplyFieldLook(cam);
+                return;
+            }
 
             if (Spec.terrain == TerrainMod.Fog)
             {
@@ -244,6 +291,22 @@ namespace Manyworld
             if (VolumetricAtmosphere.Create(transform, new Vector3(WorldTerrainBuilder.Size / 2, 0, WorldTerrainBuilder.Size / 2), WorldTerrainBuilder.Size + 80f, Weather.Modify(VolumetricAtmosphere.ForWorld(Spec)), sun) != null)
                 RenderSettings.fogDensity *= 0.5f;
             // 침수는 지형의 수위로 표현한다 (물에 들어가면 느려진다)
+        }
+
+        void ApplyFieldLook(Camera cam)
+        {
+            Weather = new WeatherState { kind = WeatherKind.Clear, time = TimeOfDay.Afternoon };
+            WorldLook.Apply(WorldLook.Field, sun, transform, cam);
+            // 공기 원근: 먼 숲과 산이 푸르게 물러난다
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = new Color(0.62f, 0.7f, 0.8f);
+            RenderSettings.fogStartDistance = 110f;
+            RenderSettings.fogEndDistance = 1700f;
+            cam.farClipPlane = 3000f;
+            float s = Layout.worldSize;
+            VolumetricAtmosphere.Create(transform, new Vector3(s / 2, 0, s / 2), s + 80f,
+                new VolumetricAtmosphere.Look { density = 0.012f, height = 2.5f, brightness = 0.95f, turbulence = 0.5f, wind = 0.015f, distant = 0f, ambient = 0.4f, albedo = new Color(0.9f, 0.92f, 0.95f) }, sun);
         }
 
         void SpawnMonsters()
@@ -326,7 +389,7 @@ namespace Manyworld
             PlayerDownSince = Time.time;
             Toast("기사가 쓰러졌다… (기억이 흐려진다)");
             SetDownedAudio(true);
-            if (NewCases.Count >= 2) return;
+            if (Field || NewCases.Count >= 2) return;
 
             var causeId = DeathCauses.Diagnose(this, info);
             var cause = DeathCauses.Get(causeId);
@@ -478,6 +541,7 @@ namespace Manyworld
             UpdateRules();
             UpdateWarnings();
             UpdateInteractions(kb);
+            if (Field) UpdateFieldCall(kb);
             CheckEnd();
         }
 
@@ -509,7 +573,7 @@ namespace Manyworld
             if (Spec.rules.HasFlag(WorldRule.SoundReactive) && Ledger.playerShots + Ledger.companionShots > 0)
                 Discover(WorldRule.SoundReactive, "소리 반응 (총소리가 멀리 퍼진다)");
 
-            if (!MidReached && !Player.IsDown && Vector3.Distance(Player.transform.position, Layout.midpointPos) < 5f)
+            if (!Field && !MidReached && !Player.IsDown && Vector3.Distance(Player.transform.position, Layout.midpointPos) < 5f)
             {
                 Ledger.midReached = true;
                 Toast($"중도금 지점 도착 — 중도금 {UIStyle.Won(Contract.midPayment)} 확정");
@@ -525,7 +589,7 @@ namespace Manyworld
 
             if (PlayerInCar)
             {
-                bool atGate = Vector3.Distance(Car.transform.position, Layout.gatePos) < 16f;
+                bool atGate = !Field && Vector3.Distance(Car.transform.position, Layout.gatePos) < 16f;
                 if (atGate && ObjectiveDone) { key = "return"; need = 1f; Prompt = "E: 게이트로 귀환"; onDone = () => Finish(CallOutcome.Success); }
                 else if (Car.SpeedKmh < 8f) { key = "exit"; need = 0.05f; Prompt = "E: 내리기"; onDone = ExitCar; }
             }
@@ -570,10 +634,15 @@ namespace Manyworld
                     onDone = () =>
                     {
                         Ledger.objectiveDone = true;
-                        Toast("목표 확보! 티코로 돌아가자 — 잔금은 귀환해야 받는다");
+                        if (Field)
+                        {
+                            Room.TakePrize();
+                            Toast("곰인형을 집었다. …뒤에서 뭔가 움직였다. 차로 돌아가자");
+                        }
+                        else Toast("목표 확보! 티코로 돌아가자 — 잔금은 귀환해야 받는다");
                     };
                 }
-                else if (Vector3.Distance(pp, Layout.gatePos) < 14f && ObjectiveDone)
+                else if (!Field && Vector3.Distance(pp, Layout.gatePos) < 14f && ObjectiveDone)
                 {
                     key = "return"; need = 1f; Prompt = "E: 게이트로 귀환";
                     onDone = () => Finish(CallOutcome.Success);
@@ -587,7 +656,7 @@ namespace Manyworld
                     key = "enter"; need = 0.05f; Prompt = "E: 티코 타기";
                     onDone = EnterCar;
                 }
-                else if (Vector3.Distance(pp, Layout.gatePos) < 14f)
+                else if (!Field && Vector3.Distance(pp, Layout.gatePos) < 14f)
                 {
                     key = "withdraw"; need = 2f;
                     Prompt = MidReached ? "E 길게: 철수 (계약금 + 중도금만)" : "E 길게: 철수 (계약금만)";
@@ -617,7 +686,7 @@ namespace Manyworld
             }
 
             // 동료 단독 진행: 은주가 목표를 줍고 티코로 돌아오면 콜 성공
-            if (Player.IsDown && Companion.order == CompanionOrder.GoAhead && !Companion.health.IsDown)
+            if (!Field && Player.IsDown && Companion.order == CompanionOrder.GoAhead && !Companion.health.IsDown)
             {
                 if (!ObjectiveDone && Vector3.Distance(Companion.transform.position, Layout.objectivePos) < 2.5f)
                 {
@@ -643,6 +712,71 @@ namespace Manyworld
             }
             else Toast($"{Companion.Name}이(가) 아직 안 탔다 (가까이 와야 같이 탄다)");
             if (Spec.rules.HasFlag(WorldRule.EternalNight)) Toast("L: 전조등 (빛 = 어그로)");
+            if (Field && ObjectiveDone && !FieldWaiting) StartWaiting();
+        }
+
+        // ---------------- 콜 대기 (숲 현장) ----------------
+
+        void StartWaiting()
+        {
+            FieldWaiting = true;
+            WaitingSince = Time.time;
+            CallOffered = false;
+            Toast("현장 완료. 무전기를 켜 두고 다음 콜을 기다린다");
+            Toast($"{Companion.Name}: \"(곰인형을 무릎에 올려놓고) …이건 어디에 갖다줘요?\"");
+        }
+
+        void UpdateFieldCall(Keyboard kb)
+        {
+            if (!FieldWaiting) return;
+            if (!CallOffered && Time.time - WaitingSince > 8f)
+            {
+                CallOffered = true;
+                Sfx.Play("radio_call", 0.7f);
+            }
+            if (CallOffered && kb != null)
+            {
+                if (kb.yKey.wasPressedThisFrame) AcceptNextCall();
+                else if (kb.nKey.wasPressedThisFrame)
+                {
+                    CallOffered = false;
+                    WaitingSince = Time.time;
+                    Toast("무전: \"네, 다른 기사님께 넘깁니다.\"");
+                }
+            }
+        }
+
+        /// <summary>테스트·캡처: 의자 위 곰인형을 집은 것으로 한다.</summary>
+        public void CompleteFieldObjective()
+        {
+            if (ObjectiveDone) return;
+            Ledger.objectiveDone = true;
+            if (Room != null) Room.TakePrize();
+        }
+
+        /// <summary>테스트·캡처: 기사(와 은주)를 옮긴다.</summary>
+        public void WarpParty(Vector3 player, float yaw, Vector3? companion = null)
+        {
+            if (PlayerInCar) ExitCar();
+            var cc = Player.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false;
+            Player.transform.position = player;
+            if (cc != null) cc.enabled = true;
+            Player.cam.yaw = yaw;
+            if (companion.HasValue)
+            {
+                var agent = Companion.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                if (agent != null && agent.isOnNavMesh) agent.Warp(companion.Value);
+                else Companion.transform.position = companion.Value;
+                Companion.transform.rotation = Quaternion.Euler(0, yaw, 0);
+            }
+        }
+
+        /// <summary>다음 콜. 현장이 아직 하나뿐이라 같은 숲을 새로 짓는다.</summary>
+        public void AcceptNextCall()
+        {
+            Ended = true;
+            GameManager.Instance.StartField("무전: \"같은 숲, 다른 공터입니다. 또 의자 위에 하나 있답니다.\"");
         }
 
         public void ExitCar()
@@ -692,6 +826,12 @@ namespace Manyworld
         {
             Ended = true;
             Time.timeScale = 1f;
+            if (Field)
+            {
+                // 정산·뷰로는 나중에. 지금은 같은 숲에서 다시 시작한다
+                GameManager.Instance.StartField(outcome == CallOutcome.Wiped ? "…정신을 차려 보니 티코 옆이었다. 숲 쪽은 조용하다." : null);
+                return;
+            }
             var s = new Settlement
             {
                 contract = Contract,
@@ -788,7 +928,9 @@ namespace Manyworld
 
         void OnDestroy()
         {
-            if (Instance == this) Instance = null;
+            // 새 현장이 먼저 시작됐으면 그쪽 소음 구독·안개를 건드리지 않는다
+            if (Instance != this) return;
+            Instance = null;
             Time.timeScale = 1f;
             Noise.Reset();
             RenderSettings.fog = false;

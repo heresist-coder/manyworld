@@ -32,6 +32,37 @@ namespace Manyworld
             yield return null;
             var gm = GameManager.Instance;
             gm.ResetSave();
+
+            // 숲 현장 (자연 월드): 도착 → 출발 → 운전 → 빈 방 앞 → 곰인형을 집은 뒤 닫힌 방
+            gm.StartField();
+            yield return new WaitForSeconds(1.5f);
+            yield return Shot("0a_field_arrival");
+            yield return new WaitForSeconds(3f);
+            yield return Shot("0b_field_start");
+            var fm = MissionController.Instance;
+            fm.WarpParty(fm.Car.transform.position - fm.Car.transform.right * 2.2f + Vector3.up * 0.3f, fm.Car.transform.eulerAngles.y, fm.Car.transform.position + fm.Car.transform.right * 2.2f);
+            yield return null;
+            fm.EnterCar();
+            fm.Car.externalInput = new Vector2(0f, 1f);
+            yield return new WaitForSeconds(4f);
+            yield return Shot("0c_field_driving");
+            fm.Car.externalInput = Vector2.zero;
+            var room = fm.Room.transform;
+            var stand = room.position - room.forward * (ForestSiteBuilder.RoomHalf + 5f);
+            stand.y = fm.Layout.terrain.SampleHeight(stand) + 0.1f;
+            var beside = stand + room.right * 1.5f + room.forward * 1.5f;
+            beside.y = fm.Layout.terrain.SampleHeight(beside) + 0.1f;
+            fm.WarpParty(stand, room.eulerAngles.y, beside);
+            yield return new WaitForSeconds(1.5f);
+            yield return Shot("0d_field_room");
+            fm.Player.health.Init(100000f);
+            fm.WarpParty(room.position - room.forward * 1f, room.eulerAngles.y);
+            fm.CompleteFieldObjective();
+            yield return new WaitForSeconds(11f);
+            fm.Player.cam.yaw = room.eulerAngles.y + 180f;
+            yield return new WaitForSeconds(0.5f);
+            yield return Shot("0e_field_room_closed");
+
             var hub = gm.GetComponent<HubScreen>();
 
             // 보여 줄 데이터: 기절 사건 하나(테이프 포함), 도감 한 칸

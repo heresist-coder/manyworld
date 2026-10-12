@@ -19,7 +19,12 @@ namespace Manyworld.Tests
             yield return null;
             var gm = GameManager.Instance;
             gm.ResetSave();
-            if (gm.Mode != GameMode.Hub) gm.EnterHub();
+            // 자연 월드 (숲 현장) 먼저
+            MissionHUD.ShowArrival = false;
+            gm.StartField();
+            yield return new WaitForSeconds(2f);
+            yield return CaptureField(dir);
+            gm.EnterHub();
             yield return new WaitForSeconds(0.5f);
             Capture(Path.Combine(dir, "hub.png"));
 
@@ -124,6 +129,52 @@ namespace Manyworld.Tests
             Object.Destroy(mc.gameObject);
             yield return null;
             gm.EnterHub();
+        }
+
+        /// <summary>숲 현장: 목표 샷 01(흙길)·03(빈 방) 구도와 하늘, 닫힌 방.</summary>
+        static IEnumerator CaptureField(string dir)
+        {
+            var mc = MissionController.Instance;
+            var cam = Camera.main;
+            var pc = cam.GetComponent<PlayerCamera>();
+            var terrain = mc.Layout.terrain;
+            Vector3 Ground(Vector3 p, float up) { p.y = terrain.SampleHeight(p) + up; return p; }
+            void Shot(string name, Vector3 pos, Vector3 look)
+            {
+                cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(look - pos));
+                Capture(Path.Combine(dir, name));
+            }
+
+            Capture(Path.Combine(dir, "field_start.png"));
+            var keep = pc.target;
+            pc.target = null;
+            var car = mc.Car.transform;
+            Shot("field_road.png", Ground(car.position - car.forward * 8f + car.right * 1.5f, 2.3f), car.position + car.forward * 40f + Vector3.up * 3f);
+            Shot("field_aerial.png", new Vector3(170, 250, 120), new Vector3(430, 40, 470));
+            var room = mc.Room.transform;
+            float half = ForestSiteBuilder.RoomHalf;
+            Shot("field_trailhead.png", Ground(mc.Layout.midpointPos - room.forward * 8f, 2f), room.position + Vector3.up * 4f);
+            Shot("field_room.png", Ground(room.position - room.forward * (half + 6f), 1.7f), room.position + Vector3.up * 1.2f);
+            // 망원: 먼 산비탈 숲 (하얀 점 진단)
+            float fov = cam.fieldOfView;
+            cam.fieldOfView = 6f;
+            var north = new Vector3(ForestSiteBuilder.Size * 0.45f, 0, ForestSiteBuilder.Size - 90f);
+            Shot("field_tele.png", Ground(mc.Layout.ticoPos, 3f), Ground(north, 0f));
+            cam.fieldOfView = fov;
+            Shot("field_room_inside.png", Ground(room.position - room.forward * 2f + room.right * 3f, 1.6f), room.position + room.forward * half + Vector3.up * 3f);
+
+            // 기사와 은주가 방 앞에 선 모습 (3인칭)
+            pc.target = keep;
+            var stand = Ground(room.position - room.forward * (half + 5f), 0.1f);
+            mc.WarpParty(stand, room.eulerAngles.y, Ground(stand + room.right * 1.5f + room.forward * 1.5f, 0.1f));
+            yield return new WaitForSeconds(1.2f);
+            Capture(Path.Combine(dir, "field_party_room.png"));
+
+            pc.target = null;
+            mc.Room.ForceClosed();
+            yield return null;
+            Shot("field_room_closed.png", Ground(room.position + room.forward * 3f, 1.7f), mc.Room.Entrance + Vector3.up * 2.5f);
+            pc.target = keep;
         }
 
         static void Capture(string path)

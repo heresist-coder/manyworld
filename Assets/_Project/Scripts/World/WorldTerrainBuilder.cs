@@ -279,7 +279,7 @@ namespace Manyworld
             return Mathf.Lerp(hgt, 1.2f, s);
         }
 
-        static float Fbm(float x, float z, int octaves)
+        internal static float Fbm(float x, float z, int octaves)
         {
             float sum = 0f, amp = 0.5f, freq = 1f, norm = 0f;
             for (int i = 0; i < octaves; i++)
@@ -294,7 +294,7 @@ namespace Manyworld
 
         static Vector2 V2(Vector3 v) => new Vector2(v.x, v.z);
 
-        static List<Vector2> Densify(Vector2[] pts, float step)
+        internal static List<Vector2> Densify(Vector2[] pts, float step)
         {
             var list = new List<Vector2>();
             for (int i = 0; i < pts.Length - 1; i++)
@@ -317,7 +317,7 @@ namespace Manyworld
             return list;
         }
 
-        static float[] Smooth(float[] v, int radius)
+        internal static float[] Smooth(float[] v, int radius)
         {
             var o = new float[v.Length];
             for (int i = 0; i < v.Length; i++)
@@ -408,7 +408,7 @@ namespace Manyworld
             return new TerrainLayer { diffuseTexture = tex, tileSize = new Vector2(6f, 6f), smoothness = 0f };
         }
 
-        static TerrainLayer Layer(Color c, float tile, int seed)
+        internal static TerrainLayer Layer(Color c, float tile, int seed)
         {
             return new TerrainLayer { diffuseTexture = NoiseTex(c, 0.12f, seed), tileSize = new Vector2(tile, tile), smoothness = 0.05f, metallic = 0f };
         }

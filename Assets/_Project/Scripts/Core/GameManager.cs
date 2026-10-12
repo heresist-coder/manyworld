@@ -64,12 +64,45 @@ namespace Manyworld
             hub = gameObject.AddComponent<HubScreen>();
             settlementScreen = gameObject.AddComponent<SettlementScreen>();
             bureau = gameObject.AddComponent<BureauScreen>();
-            EnterHub();
+            // 자연 월드(숲 현장)로 시작한다. 예전 흐름(기사식당·멀티버스 콜)은 F12
+            StartField();
+        }
+
+        public bool InField => mission != null && mission.Field;
+
+        /// <summary>숲 현장: 차 옆에서 시작해 현장 → 차 → 콜 대기. note는 시작 무전 한 줄.</summary>
+        public void StartField(string note = null)
+        {
+            if (drive != null) Destroy(drive.gameObject);
+            drive = null;
+            DropMission();
+            if (homeTown != null) homeTown.SetActive(false);
+            Time.timeScale = 1f;
+            Mode = GameMode.Mission;
+            SetScreens();
+            mission = MissionController.BeginField(Cam);
+            if (note != null) mission.Toast(note);
+        }
+
+        /// <summary>진행 중인 현장을 치운다. 비활성화를 먼저 해서 새 월드의 네비메시에 섞이지 않게 한다.</summary>
+        void DropMission()
+        {
+            if (mission == null) return;
+            mission.gameObject.SetActive(false);
+            Destroy(mission.gameObject);
+            mission = null;
+            Cam.target = null;
         }
 
         void Update()
         {
-            if (UnityEngine.InputSystem.Keyboard.current?.mKey.wasPressedThisFrame == true) Sfx.Muted = !Sfx.Muted;
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard?.mKey.wasPressedThisFrame == true) Sfx.Muted = !Sfx.Muted;
+            if (keyboard?.f12Key.wasPressedThisFrame == true)
+            {
+                if (InField) EnterHub();          // 개발용: 예전 흐름
+                else if (Mode == GameMode.Hub) StartField();
+            }
 
             if (Mode == GameMode.Hub || Mode == GameMode.Settlement || Mode == GameMode.Bureau)
             {
@@ -84,6 +117,8 @@ namespace Manyworld
 
         public void EnterHub()
         {
+            DropMission();
+            Time.timeScale = 1f;
             Mode = GameMode.Hub;
             SetScreens();
             Cursor.lockState = CursorLockMode.None;

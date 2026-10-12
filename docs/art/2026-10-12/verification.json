@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-12",
+  "art_status": "generated concept only; not integrated",
+  "images": [
+    {
+      "path": "manyworld-drive-mission-wait-v1.png",
+      "size": [
+        1672,
+        941
+      ],
+      "bytes": 2308868,
+      "sha256": "3ea9185818f53c379ea43a9f217c43df75dfb77e310143fd44a41b6d496492ee"
+    },
+    {
+      "path": "manyworld-nature-target-v1.png",
+      "size": [
+        1672,
+        941
+      ],
+      "bytes": 2340499,
+      "sha256": "16ade15961e331f4d0bcbb01072768891f287d2e5406ba5accca5adaed73313e"
+    }
+  ],
+  "baseline_capture_count": 14,
+  "baseline_all_black": true,
+  "runtime_visual_acceptance": false
+}

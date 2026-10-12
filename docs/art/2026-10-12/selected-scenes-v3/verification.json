@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-12",
+  "status": "five generated target concepts; not Unity integration",
+  "satellite_excluded": "visually reviewed in all five generated outputs; no object detector used",
+  "files": [
+    {
+      "path": "01-floating-house-road-shadow.png",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "bytes": 2211600,
+      "sha256": "a2e034195d550ccb91c8f38117e828cc48545cc98614f48055487267f640f7e6",
+      "source": "C:\\Users\\heres\\.codex\\generated_images\\01a12f87-1951-74b0-a49c-c4b54c3169ad\\exec-a2ad19ca-18f5-4d4c-9c1f-9754c1f404a2.png",
+      "source_hash_matches": true,
+      "selected_anomalies": [
+        "floating_house",
+        "road_crossing_shadow"
+      ]
+    },
+    {
+      "path": "02-inward-leaning-forest.png",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "bytes": 2261142,
+      "sha256": "6c4b34bea4a74190cf884afacf383a8bd7ff890ec2ecc9d860957d4318284199",
+      "source": "C:\\Users\\heres\\.codex\\generated_images\\01a12f87-1951-74b0-a49c-c4b54c3169ad\\exec-7e1f8fb6-e17f-4fa3-9315-f953631ca78e.png",
+      "source_hash_matches": true,
+      "selected_anomalies": [
+        "inward_leaning_forest"
+      ]
+    },
+    {
+      "path": "03-empty-forest-room-dolls.png",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "bytes": 2073196,
+      "sha256": "283fafad23741fc0b13029af8aa44bbcec27cdd2cddd892f622788ddfb3d981d",
+      "source": "C:\\Users\\heres\\.codex\\generated_images\\01a12f87-1951-74b0-a49c-c4b54c3169ad\\exec-b0c547b8-6650-432f-8892-216fae3372e0.png",
+      "source_hash_matches": true,
+      "selected_anomalies": [
+        "empty_forest_room",
+        "forest_dolls"
+      ]
+    },
+    {
+      "path": "04-iron-tree.png",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "bytes": 2304823,
+      "sha256": "d51967185d7ee4c9813b8341f23989607c2bb311a1bf7a4f167d819960bf416d",
+      "source": "C:\\Users\\heres\\.codex\\generated_images\\01a12f87-1951-74b0-a49c-c4b54c3169ad\\exec-a3b4697d-acff-4fab-80d5-e63f79a94e9f.png",
+      "source_hash_matches": true,
+      "selected_anomalies": [
+        "iron_tree"
+      ]
+    },
+    {
+      "path": "05-unsinkable-rocks-submerged-house.png",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "bytes": 2150077,
+      "sha256": "02de5d13b9390dba65eb95f4874a914808c55c05f1ebc83d802e27fea9c9e0e0",
+      "source": "C:\\Users\\heres\\.codex\\generated_images\\01a12f87-1951-74b0-a49c-c4b54c3169ad\\exec-c7ab28cc-800f-4213-87b8-189e57cf7da8.png",
+      "source_hash_matches": true,
+      "selected_anomalies": [
+        "unsinkable_rocks",
+        "lit_submerged_house"
+      ]
+    }
+  ],
+  "unique_requested_anomaly_count": 8
+}

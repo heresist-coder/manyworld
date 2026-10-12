@@ -1,0 +1,47 @@
+[
+  {
+    "slug": "forest-mannequin",
+    "pack": "PolygonApocalypse",
+    "model": "SM_Prop_Mannequin_Male_01",
+    "source": "D:\\Codex\\cube125-unity_asset_backups\\20260830_172201_city_cute_transition\\Assets\\Synty\\PolygonApocalypse\\Models\\SM_Prop_Mannequin_Male_01.fbx",
+    "exists": true,
+    "mesh_count": 1,
+    "native_bounds_meters": [
+      0.6761807799339294,
+      0.30345046520233154,
+      1.7782554626464844
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\selected-scenes-v3\\native-references\\forest-mannequin.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "metal-antenna",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Prop_Antenna_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Prop_Antenna_01.fbx",
+    "exists": true,
+    "mesh_count": 1,
+    "native_bounds_meters": [
+      0.9638769030570984,
+      0.46737831830978394,
+      5.405924320220947
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\selected-scenes-v3\\native-references\\metal-antenna.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  },
+  {
+    "slug": "metal-powerline",
+    "pack": "PolygonSciFiWorlds",
+    "model": "SM_Prop_Powerline_Antenna_01",
+    "source": "D:\\Codex\\cube125-unity\\Assets\\Synty\\PolygonSciFiWorlds\\Models\\SM_Prop_Powerline_Antenna_01.fbx",
+    "exists": true,
+    "mesh_count": 1,
+    "native_bounds_meters": [
+      2.8920657634735107,
+      1.7356873750686646,
+      3.8593733310699463
+    ],
+    "preview": "C:\\VC3\\manyworld\\docs\\art\\2026-10-12\\selected-scenes-v3\\native-references\\metal-powerline.png",
+    "preview_material": "neutral grey geometry proof; not source texture"
+  }
+]

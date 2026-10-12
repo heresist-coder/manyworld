@@ -125,8 +125,27 @@ MonoBehaviour:
   - {fileID: 1293391846435280077, guid: 5d99032999c9c8c43bd6781f974032ab, type: 3}
   - {fileID: 4461688303847079993, guid: 1777bc34707d1cd4a82accb11fe13f42, type: 3}
   - {fileID: 3459195881841066666, guid: df8ec80861bc7b04a9e11ee64dcad2ad, type: 3}
-  driverModel: {fileID: 919132149155446097, guid: 5fd2bddfa5a8213478f4c1a433da55f8, type: 3}
-  companionModel: {fileID: 919132149155446097, guid: 601f3bee0760c1e41a9fb6e29cc4e918, type: 3}
+  pines:
+  - {fileID: 3955774227218184217, guid: b364e0983618a6747a045374e65ff826, type: 3}
+  - {fileID: 1769732641516730466, guid: f7f8bfc250862a848b9c06546a3c2d55, type: 3}
+  - {fileID: 210883309236173242, guid: 0605030d65775f04791e11bc12e47017, type: 3}
+  meadowTrees:
+  - {fileID: 8687938163307679898, guid: c0cc7d4e47a7f7740a8e00d79913321b, type: 3}
+  - {fileID: 8707289203678971748, guid: 499f1f985beeaba44b58ee243124075a, type: 3}
+  - {fileID: 3325203533952056148, guid: 691039b94eeff9046aa3f65664f7ae22, type: 3}
+  - {fileID: 8891306958227113927, guid: 4aff72e1d0fd9d34fae4c24f7c44f857, type: 3}
+  plushies:
+  - {fileID: 1891676619981234, guid: c9de463e7878f024eb5ec6291e400b69, type: 3}
+  - {fileID: 9083964541550487288, guid: 05ad8c304feb4824f86320fb68936cb2, type: 3}
+  - {fileID: 6237067051819545682, guid: df4a8b3ae70668747942eb6c3d729c5a, type: 3}
+  - {fileID: 3869567396065884629, guid: 9ecee7cf4f96fc3488fc39a300656944, type: 3}
+  siteChair: {fileID: 1348969466283686, guid: 4e08f084885c1ed41b9f205ca0e25fb9, type: 3}
+  mountains:
+  - {fileID: 1281693231686000807, guid: 3ec0e1c01c9ca62479f615e4b7590637, type: 3}
+  - {fileID: 7011771666569883076, guid: 1278b4a0c304ae24a8751d099610af62, type: 3}
+  - {fileID: 7794831731080064089, guid: 41973aea592d78d4d859c3633325aad3, type: 3}
+  driverModel: {fileID: 1018949230691400, guid: d461c345ada76d14f94fe72087cec0f9, type: 3}
+  companionModel: {fileID: 1971421721505344, guid: 7726852b74327584980d2b8f88a12239, type: 3}
   humanoidController: {fileID: 9100000, guid: 14d8bd2cc3b89314bb631b2210616fe7, type: 2}
   rifle: {fileID: 1103511012436976, guid: cc13ea7aca755ee4bb10925b6bf586c8, type: 3}
   companionRifle: {fileID: 1311854592980844, guid: 339cc5e61566f63428dc7728c5c3c5a0, type: 3}

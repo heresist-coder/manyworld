@@ -46,7 +46,7 @@ namespace Manyworld
             float W = UIStyle.ScaledWidth;
             const float H = 1080f;
 
-            DrawMeter(new Rect(W - 400, 24, 376, 210));
+            if (!mc.Field) DrawMeter(new Rect(W - 400, 24, 376, 210));
             DrawWorldInfo(new Rect(24, 24, 620, 140));
             DrawObjective(new Rect(W / 2 - 360, 24, 720, 70));
             DrawStatus(new Rect(24, H - 210, 520, 186));
@@ -83,6 +83,7 @@ namespace Manyworld
                 GUI.Label(new Rect(0, H / 2 - 30, W, 60), "타닥… 타닥… 쾅. (타자기 소리, 도장 찍는 소리)",
                     UIStyle.With(UIStyle.Label, new Color(1, 1, 1, mc.WipeFade), 22, TextAnchor.MiddleCenter));
             }
+            if (mc.Field) DrawFieldCall(W, H);
             if (mc.Paused) DrawPause(W, H);
             DrawArrival(W, H);
         }
@@ -98,9 +99,30 @@ namespace Manyworld
             float a = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 3.3f) / 1.2f));
             var ink = Color.Lerp(Color.white, new Color(0.2f, 0.2f, 0.22f), white);
             ink.a = a;
-            GUI.Label(new Rect(0, H * 0.3f, W, 60), $"제{mc.Spec.number}번 세계", UIStyle.With(UIStyle.Title, ink, 46, TextAnchor.MiddleCenter));
+            string title = mc.Field ? mc.Spec.nickname : $"제{mc.Spec.number}번 세계";
+            string subtitle = mc.Field ? $"현장 · {mc.Weather.Label}" : $"{mc.Spec.nickname} · {mc.Weather.Label}";
+            GUI.Label(new Rect(0, H * 0.3f, W, 60), title, UIStyle.With(UIStyle.Title, ink, 46, TextAnchor.MiddleCenter));
             var sub = ink; sub.a = a * 0.85f;
-            GUI.Label(new Rect(0, H * 0.3f + 62, W, 34), $"{mc.Spec.nickname} · {mc.Weather.Label}", UIStyle.With(UIStyle.Label, sub, 22, TextAnchor.MiddleCenter));
+            GUI.Label(new Rect(0, H * 0.3f + 62, W, 34), subtitle, UIStyle.With(UIStyle.Label, sub, 22, TextAnchor.MiddleCenter));
+        }
+
+        /// <summary>현장을 마치고 차에서 기다리는 무전 콜.</summary>
+        void DrawFieldCall(float W, float H)
+        {
+            if (!mc.FieldWaiting) return;
+            if (!mc.CallOffered)
+            {
+                float dots = Mathf.Repeat(Time.time, 1.5f);
+                GUI.Label(new Rect(W / 2 - 300, 104, 600, 30), "무전 대기 중" + (dots < 0.5f ? "." : dots < 1f ? ".." : "..."),
+                    UIStyle.With(UIStyle.Label, new Color(0.85f, 0.95f, 1f, 0.9f), 19, TextAnchor.MiddleCenter));
+                return;
+            }
+            var r = new Rect(W / 2 - 330, 104, 660, 120);
+            UIStyle.Fill(r, new Color(0.06f, 0.08f, 0.06f, 0.9f));
+            UIStyle.Fill(new Rect(r.x, r.y, r.width, 4), UIStyle.Amber);
+            GUI.Label(new Rect(r.x + 18, r.y + 12, r.width - 36, 30), "띠리릭─ 다음 콜입니다", UIStyle.With(UIStyle.Label, Color.white, 22));
+            GUI.Label(new Rect(r.x + 18, r.y + 46, r.width - 36, 26), "숲속의 빈 방 (다른 공터) · 의자 위 곰인형 회수", UIStyle.With(UIStyle.Label, new Color(1, 1, 1, 0.85f), 18));
+            GUI.Label(new Rect(r.x + 18, r.y + 80, r.width - 36, 26), "[Y] \"제가 받겠습니다\"    [N] 넘기기", UIStyle.With(UIStyle.Label, UIStyle.Amber, 18));
         }
 
         void DrawMeter(Rect r)
@@ -137,6 +159,19 @@ namespace Manyworld
         void DrawWorldInfo(Rect r)
         {
             var s = mc.Spec;
+            if (mc.Field)
+            {
+                GUI.Label(new Rect(r.x, r.y, r.width, 40), $"{s.nickname} <size=18>· 숲 현장</size>", UIStyle.Title);
+                int ft = Mathf.FloorToInt(mc.Elapsed);
+                string room = mc.Room == null ? "" : mc.Room.State switch
+                {
+                    TeddyRoom.Phase.Closing => "  ·  벽이 솟는다!",
+                    TeddyRoom.Phase.Closed => $"  ·  방이 닫혔다 (인형 {mc.Room.BearsStanding}개)",
+                    _ => "",
+                };
+                GUI.Label(new Rect(r.x, r.y + 42, r.width, 24), $"경과 {ft / 60:00}:{ft % 60:00}{room}", UIStyle.With(UIStyle.Small, new Color(1, 1, 1, 0.8f)));
+                return;
+            }
             GUI.Label(new Rect(r.x, r.y, r.width, 40), $"{s.Title} <size=18>· {s.nickname}</size>", UIStyle.Title);
             string rules = s.RuleText(true);
             if (mc.Discovered != WorldRule.None)
@@ -159,7 +194,22 @@ namespace Manyworld
         {
             string text;
             Vector3 dest;
-            if (!mc.MidReached && !mc.ObjectiveDone) { text = "중도금 지점 (장터거리 깃발)"; dest = mc.Layout.midpointPos; }
+            if (mc.Field)
+            {
+                var pp = mc.Player.transform.position;
+                if (mc.Room != null && mc.Room.State == TeddyRoom.Phase.Closed && mc.Room.Inside(pp))
+                { text = $"갇혔다 — 인형을 쓰러뜨려라 ({mc.Room.BearsStanding}개 남음)"; dest = mc.Layout.objectivePos; }
+                else if (!mc.ObjectiveDone)
+                {
+                    bool far = Vector3.Distance(pp, mc.Layout.midpointPos) > 40f && Vector3.Distance(pp, mc.Layout.objectivePos) > 60f;
+                    if (far && !mc.PlayerInCar && Vector3.Distance(pp, mc.Layout.ticoPos) < 30f) { text = "티코 타고 흙길 끝 주차 공터로"; dest = mc.Layout.midpointPos; }
+                    else if (far) { text = "흙길 끝 주차 공터"; dest = mc.Layout.midpointPos; }
+                    else { text = "숲속의 빈 방 — 의자 위 곰인형"; dest = mc.Layout.objectivePos; }
+                }
+                else if (!mc.FieldWaiting) { text = "티코로 돌아가기"; dest = mc.Car.transform.position; }
+                else { text = "콜 대기 중 (차 안)"; dest = mc.Car.transform.position; }
+            }
+            else if (!mc.MidReached && !mc.ObjectiveDone) { text = "중도금 지점 (장터거리 깃발)"; dest = mc.Layout.midpointPos; }
             else if (!mc.ObjectiveDone) { text = $"{mc.Contract.task} (북동쪽 측량 현장)"; dest = mc.Layout.objectivePos; }
             else { text = "게이트로 귀환"; dest = mc.Layout.gatePos; }
             float d = Vector3.Distance(mc.Player.transform.position, dest);
@@ -246,9 +296,12 @@ namespace Manyworld
                 GUI.Label(new Rect(p.x + 4, p.y - 10, 80, 20), label, UIStyle.With(UIStyle.Small, c, size));
             }
             foreach (var kv in lay.landmarks) Mark(kv.Value, kv.Key, new Color(0.15f, 0.12f, 0.1f, 0.8f), 11);
-            Mark(lay.gatePos, "게이트", new Color(0.6f, 0.3f, 0.9f));
-            Mark(lay.midpointPos, "중도금", mc.MidReached ? UIStyle.Green : UIStyle.Amber);
-            Mark(lay.objectivePos, "목표", mc.ObjectiveDone ? UIStyle.Green : UIStyle.Red);
+            if (!mc.Field)
+            {
+                Mark(lay.gatePos, "게이트", new Color(0.6f, 0.3f, 0.9f));
+                Mark(lay.midpointPos, "중도금", mc.MidReached ? UIStyle.Green : UIStyle.Amber);
+            }
+            Mark(lay.objectivePos, mc.Field ? "곰인형" : "목표", mc.ObjectiveDone ? UIStyle.Green : UIStyle.Red);
             if (!mc.PlayerInCar) Mark(mc.Car.transform.position, "티코", new Color(0.2f, 0.5f, 1f));
             if (!mc.Companion.InVehicle) Mark(mc.Companion.transform.position, "", Color.white, 1);
 
@@ -295,7 +348,7 @@ namespace Manyworld
             if (GUI.Button(new Rect(W / 2 - 160, H / 2 - 60, 320, 50), "계속하기", UIStyle.Button)) mc.SetPaused(false);
             VolumeControl(new Rect(W / 2 - 160, H / 2 + 140, 320, 60));
             GUI.Label(new Rect(0, H / 2 + 10, W, 120),
-                "WASD 이동 · Shift 달리기(발소리 큼) · 마우스 시점 · 좌클릭 사격(₩330/발) · 우클릭 조준\nR 재장전 · V 쇠파이프(공짜) · E 상호작용 · F 손전등 · 1~4 은주 명령 · Esc 일시 정지",
+                "WASD 이동 · Shift 달리기(발소리 큼) · 마우스 시점 · 좌클릭 사격(₩330/발) · 우클릭 조준\nR 재장전 · V 쇠파이프(공짜) · E 상호작용 · F 손전등 · 1~4 은주 명령 · Esc 일시 정지\n(개발) F12: 예전 흐름(기사식당·멀티버스 콜)",
                 UIStyle.With(UIStyle.Small, Color.white, 16, TextAnchor.UpperCenter));
         }
     }
