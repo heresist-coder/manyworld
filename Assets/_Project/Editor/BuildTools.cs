@@ -12,7 +12,10 @@ namespace Manyworld.EditorTools
             ProjectSetup.IncludeTerrainEngineShaders();
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
-                scenes = new[] { "Assets/_Project/Scenes/Main.unity" },
+                // 숲 현장의 구운 간접광 씬 (있으면)
+                scenes = System.IO.File.Exists("Assets/_Project/Scenes/ForestLighting.unity")
+                    ? new[] { "Assets/_Project/Scenes/Main.unity", "Assets/_Project/Scenes/ForestLighting.unity" }
+                    : new[] { "Assets/_Project/Scenes/Main.unity" },
                 locationPathName = "Builds/Windows/Manyworld.exe",
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None,

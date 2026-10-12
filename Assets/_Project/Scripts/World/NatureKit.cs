@@ -106,6 +106,10 @@ namespace Manyworld
             var mesh = new Mesh { name = "Boulder" };
             mesh.SetVertices(verts);
             mesh.SetNormals(norms);
+            // 조명 굽기에 UV가 필요하다 (위에서 내려다본 평면 투영)
+            var uvs = new List<Vector2>(verts.Count);
+            foreach (var p in verts) uvs.Add(new Vector2(p.x * 0.5f + 0.5f, p.z * 0.5f + 0.5f));
+            mesh.SetUVs(0, uvs);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             return mesh;

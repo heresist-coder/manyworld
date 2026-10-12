@@ -480,6 +480,7 @@ namespace Manyworld.EditorTools
         {
             FixFoliageMips();
             EnsureSsaoFeature();
+            EnsurePainterlyFeature();
             // 그레이박스 베이스 머티리얼에 인스턴싱 변형을 넣어 둔다 (빌드에서 풀 인스턴싱이 빠지지 않게)
             var baseOpaque = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Resources/Materials/GrayboxOpaque.mat");
             if (baseOpaque != null && !baseOpaque.enableInstancing) { baseOpaque.enableInstancing = true; EditorUtility.SetDirty(baseOpaque); }
@@ -635,6 +636,46 @@ namespace Manyworld.EditorTools
             EditorUtility.SetDirty(data);
             AssetDatabase.SaveAssets();
             Debug.Log("[Manyworld] SSAO 피처 준비");
+        }
+
+        /// <summary>회화풍 후처리 (쿠와하라) 전체 화면 패스를 PC 렌더러에 붙인다. 켜고 끄는 건 전역 _ManyworldPaint.</summary>
+        public static void EnsurePainterlyFeature()
+        {
+            const string matPath = "Assets/_Project/Resources/Materials/Painterly.mat";
+            var shader = Shader.Find("Manyworld/Painterly");
+            var data = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.Universal.ScriptableRendererData>("Assets/Settings/PC_Renderer.asset");
+            if (shader == null || data == null) { Debug.LogWarning("[Manyworld] 회화풍 후처리 준비 실패"); return; }
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null)
+            {
+                mat = new Material(shader) { name = "Painterly" };
+                AssetDatabase.CreateAsset(mat, matPath);
+            }
+            var feature = data.rendererFeatures.OfType<UnityEngine.Rendering.Universal.FullScreenPassRendererFeature>().FirstOrDefault(f => f.name == "Painterly");
+            if (feature == null)
+            {
+                feature = ScriptableObject.CreateInstance<UnityEngine.Rendering.Universal.FullScreenPassRendererFeature>();
+                feature.name = "Painterly";
+                AssetDatabase.AddObjectToAsset(feature, data);
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out _, out long localId);
+                var so = new SerializedObject(data);
+                var list = so.FindProperty("m_RendererFeatures");
+                var map = so.FindProperty("m_RendererFeatureMap");
+                list.arraySize++; list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = feature;
+                map.arraySize++; map.GetArrayElementAtIndex(map.arraySize - 1).longValue = localId;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            mat.SetFloat("_Radius", 3f);
+            mat.SetFloat("_Sharpness", 4f);
+            mat.SetFloat("_Amount", 1f);
+            EditorUtility.SetDirty(mat);
+            feature.passMaterial = mat;
+            feature.injectionPoint = UnityEngine.Rendering.Universal.FullScreenPassRendererFeature.InjectionPoint.AfterRenderingPostProcessing;
+            feature.fetchColorBuffer = true;
+            EditorUtility.SetDirty(feature);
+            EditorUtility.SetDirty(data);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[Manyworld] 회화풍 후처리 준비");
         }
 
         /// <summary>이펙트 번들의 구형 모바일 파티클 셰이더를 URP Particles/Unlit으로 바꾼다 (안 바꾸면 분홍색).</summary>

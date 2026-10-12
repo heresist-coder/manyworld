@@ -41,6 +41,8 @@
 | 바위 | 직접 만든 각진 로우폴리 바위 8종 (`NatureKit.Boulder`: 쪼갠 정이십면체, 면마다 법선). 길 어깨·숲 가장자리·방 입구 양옆, 잔돌 약 400개 |
 | 구름 | 카메라를 감싸는 구름 돔 셰이더 (`Shaders/CloudDome.shader`): fbm 뭉게구름, 해 쪽 샘플로 아래 그늘, 지평선은 대기색 |
 | 빛 | 늦은 오후 해(따뜻함, 22°) + 푸른 그늘, 선형 거리 안개 50~1350m로 먼 산이 푸르게 물러난다 |
+| 간접광 (D25) | 같은 시드의 숲에 APV를 구운 빛 데이터 씬 `Scenes/ForestLighting.unity`를 현장에 있는 동안 덧붙여 연다 (`ForestLighting`). 그늘이 흙·나무에서 튕긴 따뜻한 빛으로 찬다. 굽기: Manyworld > Field > Bake Forest Lighting (약 35초, 데이터는 깃 제외). 하늘 가림 굽기는 6000.3.22f1의 D3D12 레이트레이싱에서 에디터가 죽어 끔 |
+| 회화풍 후처리 (D25) | 일반화 쿠와하라 필터(`Shaders/Painterly.shader`, PC 렌더러의 전체 화면 패스). 숲 현장에서만, F9로 끄고 켬 |
 | 그림자·후처리 | 그림자 520m·4096·캐스케이드 4, SSAO, ACES + 스플릿 토닝 + 그늘 살짝 들기(Shadows/Midtones/Highlights), 약한 블룸 |
 | 먼 숲이 하얗게 보이던 문제 | 잎 텍스처의 투명 칸이 밝은 회색이라 먼 밉맵에서 번졌다. 투명 칸을 잎 평균색으로 채운 사본을 생성해 쓴다 (`ArtSetup.FilledLeafTexture`) |
 | 소리 | 숲 환경음, 곰인형 걸음, 나무 솟는 소리 (Agent Audio) |

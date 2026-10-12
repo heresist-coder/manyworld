@@ -84,6 +84,7 @@ Shader "Manyworld/Grass"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fog
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ProbeVolumeVariants.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             struct Varyings
@@ -125,7 +126,13 @@ Shader "Manyworld/Grass"
                 float atten = light.shadowAttenuation * light.distanceAttenuation;
                 float3 viewDir = normalize(GetWorldSpaceViewDir(i.positionWS));
                 float back = pow(saturate(dot(viewDir, -light.direction)), 4.0) * _Translucency * h; // 역광에 잎끝이 빛난다
-                half3 ambient = SampleSH(float3(0, 1, 0)) * (0.5 + 0.5 * h); // 뿌리 쪽은 어둡게
+                // 구운 간접광(APV)이 있으면 그 자리의 빛, 없으면 하늘 환경광. 뿌리 쪽은 어둡게
+                #if defined(PROBE_VOLUMES_L1) || defined(PROBE_VOLUMES_L2)
+                half3 ambient = SampleProbeVolumePixel(half3(0, 0, 0), i.positionWS, float3(0, 1, 0), viewDir, i.positionCS.xy);
+                #else
+                half3 ambient = SampleSH(float3(0, 1, 0));
+                #endif
+                ambient *= 0.5 + 0.5 * h;
                 half3 col = albedo * (ambient + light.color * atten * (wrap + back));
                 col = MixFog(col, i.fog);
                 return half4(col, 1);

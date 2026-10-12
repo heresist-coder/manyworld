@@ -568,7 +568,7 @@ namespace Manyworld
                     for (int k = 0; k < mats.Length; k++) mats[k] = far;
                     r.sharedMaterials = mats;
                 }
-                foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                foreach (var c in go.GetComponentsInChildren<Collider>()) Kill(c);
                 foreach (var r in go.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
         }
@@ -668,7 +668,7 @@ namespace Manyworld
                 float width = 170f + (float)rng.NextDouble() * 200f;
                 go.transform.localScale = Vector3.one * (width / Mathf.Max(1f, Mathf.Max(b.size.x, b.size.z)));
                 go.transform.position = p;
-                foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                foreach (var c in go.GetComponentsInChildren<Collider>()) Kill(c);
                 foreach (var r in go.GetComponentsInChildren<Renderer>())
                 {
                     r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -771,7 +771,7 @@ namespace Manyworld
                 post.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 6f, (float)rng.NextDouble() * 20f, (float)(rng.NextDouble() - 0.5) * 6f);
                 post.transform.localScale = new Vector3(0.16f, 1.2f, 0.16f);
                 post.GetComponent<Renderer>().sharedMaterial = wood;
-                Object.Destroy(post.GetComponent<Collider>());
+                Kill(post.GetComponent<Collider>());
                 if (havePrev)
                 {
                     for (int r = 0; r < 2; r++)
@@ -785,7 +785,7 @@ namespace Manyworld
                         rail.transform.rotation = Quaternion.LookRotation(b - a);
                         rail.transform.localScale = new Vector3(0.07f, 0.11f, Vector3.Distance(a, b) + 0.2f);
                         rail.GetComponent<Renderer>().sharedMaterial = wood;
-                        Object.Destroy(rail.GetComponent<Collider>());
+                        Kill(rail.GetComponent<Collider>());
                     }
                 }
                 prev = p;
@@ -849,6 +849,13 @@ namespace Manyworld
             drift.to = to;
             drift.period = 46f;
             body.transform.rotation = Quaternion.LookRotation(new Vector3(roadDir.x, 0, roadDir.y));
+        }
+
+        /// <summary>플레이 중엔 Destroy, 에디터에서 조명을 구울 땐 DestroyImmediate.</summary>
+        static void Kill(Object o)
+        {
+            if (Application.isPlaying) Object.Destroy(o);
+            else Object.DestroyImmediate(o);
         }
 
         static MaterialPropertyBlock mpb;
@@ -1064,7 +1071,7 @@ namespace Manyworld
             if (prefab != null)
             {
                 go = Object.Instantiate(prefab, parent);
-                foreach (var col in go.GetComponentsInChildren<Collider>()) Object.Destroy(col);
+                foreach (var col in go.GetComponentsInChildren<Collider>()) Kill(col);
                 go.transform.SetPositionAndRotation(pos, rot);
                 go.transform.localScale = Vector3.one;
                 var b = ArtCatalog.RendererBounds(go);

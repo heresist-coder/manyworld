@@ -70,6 +70,11 @@ namespace Manyworld
 
         public bool InField => mission != null && mission.Field;
 
+        /// <summary>숲 현장의 회화풍 후처리 (F9).</summary>
+        public static bool PaintFilter = true;
+
+        public void ApplyPaint() => Shader.SetGlobalFloat("_ManyworldPaint", PaintFilter && InField ? 1f : 0f);
+
         /// <summary>숲 현장: 차 옆에서 시작해 현장 → 차 → 콜 대기. note는 시작 무전 한 줄.</summary>
         public void StartField(string note = null)
         {
@@ -80,7 +85,9 @@ namespace Manyworld
             Time.timeScale = 1f;
             Mode = GameMode.Mission;
             SetScreens();
+            ForestLighting.Load(); // 구운 간접광
             mission = MissionController.BeginField(Cam);
+            ApplyPaint();
             if (note != null) mission.Toast(note);
         }
 
@@ -88,6 +95,8 @@ namespace Manyworld
         void DropMission()
         {
             if (mission == null) return;
+            if (mission.Field) ForestLighting.Unload();
+            Shader.SetGlobalFloat("_ManyworldPaint", 0f);
             mission.gameObject.SetActive(false);
             Destroy(mission.gameObject);
             mission = null;
@@ -98,6 +107,11 @@ namespace Manyworld
         {
             var keyboard = UnityEngine.InputSystem.Keyboard.current;
             if (keyboard?.mKey.wasPressedThisFrame == true) Sfx.Muted = !Sfx.Muted;
+            if (keyboard?.f9Key.wasPressedThisFrame == true)
+            {
+                PaintFilter = !PaintFilter; // 회화풍 후처리 켜고 끄기
+                ApplyPaint();
+            }
             if (keyboard?.f12Key.wasPressedThisFrame == true)
             {
                 if (InField) EnterHub();          // 개발용: 예전 흐름

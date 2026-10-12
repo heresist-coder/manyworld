@@ -51,3 +51,7 @@ Thumbs.db
 
 # 테스트 러너가 만드는 파일
 /Assets/Resources/PerformanceTestRun*
+
+# 숲 현장의 구운 간접광 데이터 (Manyworld > Field > Bake Forest Lighting으로 다시 만든다, 약 70MB)
+Assets/_Project/Scenes/ForestLighting/
+Assets/_Project/Scenes/ForestLighting.meta
