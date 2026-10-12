@@ -123,9 +123,9 @@ namespace Manyworld
                 for (int i = 0; i < boulders.Length; i++) boulders[i] = BoulderMesh(101 + i * 37);
                 rockMats = new[]
                 {
-                    RockMat(new Color(0.58f, 0.58f, 0.6f)),
-                    RockMat(new Color(0.52f, 0.52f, 0.53f)),
-                    RockMat(new Color(0.6f, 0.58f, 0.55f)),
+                    RockMat(new Color(0.48f, 0.48f, 0.5f)),
+                    RockMat(new Color(0.43f, 0.43f, 0.45f)),
+                    RockMat(new Color(0.5f, 0.48f, 0.46f)),
                 };
             }
             var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));

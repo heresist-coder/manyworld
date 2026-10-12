@@ -293,10 +293,10 @@ namespace Manyworld
                 float rest = Mathf.Max(0f, 1f - dirt - rock);
                 // 바퀴 자국 두 줄과 닳은 길 가장자리
                 float rut = road * (Mathf.Exp(-(rd - 1.35f) * (rd - 1.35f) * 4f) * 0.6f + Mathf.InverseLerp(3.1f, 4.6f, rd) * 0.45f);
-                a[z, x, 6] = rut;
-                a[z, x, 2] = dirt - floor * 0.3f - rut;
+                a[z, x, 6] = rut + floor * 0.55f; // 방 바닥: 주황빛 짙은 흙 + 솔잎 (목표 샷 03)
+                a[z, x, 2] = dirt - floor * 0.8f - rut;
                 a[z, x, 3] = rock;
-                a[z, x, 1] = rest * Mathf.InverseLerp(0.35f, 0.75f, forest) + floor * 0.3f; // 방 바닥은 솔잎 섞인 갈색 흙
+                a[z, x, 1] = rest * Mathf.InverseLerp(0.35f, 0.75f, forest) + floor * 0.25f;
                 float open = rest - a[z, x, 1];
                 a[z, x, 4] = open * dry;
                 float lush = Mathf.InverseLerp(0.45f, 0.65f, Sample(lushG, wx, wz));
@@ -396,7 +396,8 @@ namespace Manyworld
             {
                 float px = x + (float)(rng.NextDouble() - 0.5) * step, pz = z + (float)(rng.NextDouble() - 0.5) * step;
                 float rd = Sample(roadDist, px, pz);
-                if (rd < 4.6f || Sample(trailDist, px, pz) < 2f || InRoom(px, pz, 0.3f) || NatureKit.UnderRock(px, pz)) continue;
+                // 방 안은 비우되 벽 밑 1.5m에는 풀이 붙는다
+                if (rd < 4.6f || Sample(trailDist, px, pz) < 2f || InRoom(px, pz, -1.5f) || NatureKit.UnderRock(px, pz)) continue;
                 float forest = ForestMask(px, pz);
                 // 풀은 고르게 심긴 밭이 아니라 무더기로 뭉친다. 길가 어깨는 빽빽하고 키가 크다
                 float big = Mathf.PerlinNoise(px * 0.04f + 3f, pz * 0.04f + 7f);
@@ -681,6 +682,26 @@ namespace Manyworld
         {
             var art = ArtCatalog.Instance;
             Vector3 G(Vector2 p) => new Vector3(p.x, terrain.SampleHeight(new Vector3(p.x, 0, p.y)), p.y);
+
+            // 출발점 오른쪽 전경: 둥근 바위 무더기와 키 큰 풀 (목표 샷 01의 앞쪽)
+            var startDir = (Road[2] - Road[1]).normalized;
+            var startRight = new Vector2(startDir.y, -startDir.x);
+            for (int k = 0; k < 7; k++)
+            {
+                var p2 = CarStart + startDir * (-3f + k * 2.1f + (float)rng.NextDouble() * 1.2f) + startRight * (6.2f + (float)rng.NextDouble() * 3.5f);
+                NatureKit.Boulder(root, G(p2), 0.8f + (float)rng.NextDouble() * (k % 3 == 0 ? 1.1f : 0.6f), rng, true, "RoadRock");
+            }
+            for (int k = 0; k < 4; k++)
+            {
+                var p2 = CarStart + startDir * (-2f + (float)rng.NextDouble() * 14f) + startRight * (5.4f + (float)rng.NextDouble() * 1.5f);
+                NatureKit.Boulder(root, G(p2), 0.3f + (float)rng.NextDouble() * 0.35f, rng, false, "Pebble");
+            }
+            for (int k = 0; k < 90; k++)
+            {
+                var p2 = CarStart + startDir * (-5f + (float)rng.NextDouble() * 22f) + startRight * (4.9f + (float)rng.NextDouble() * 7f);
+                if (!NatureKit.UnderRock(p2.x, p2.y))
+                    GrassField.ClumpObject(root, G(p2) - Vector3.up * 0.05f, 1.2f + (float)rng.NextDouble() * 1.1f, rng);
+            }
             float since = 0f;
             for (int i = 1; i < road.Count - 1; i++)
             {

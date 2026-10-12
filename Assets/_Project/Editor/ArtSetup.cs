@@ -288,6 +288,61 @@ namespace Manyworld.EditorTools
         }
 
         /// <summary>
+        /// 목표 샷 01의 차는 깨끗한 노란 해치백이다. 신티 텍스처의 노란 칸에 박힌 진흙 얼룩을 노랑으로 덮은
+        /// 텍스처·머티리얼·프리팹 사본을 만든다 (아래 끝의 흙 띠는 조금 남긴다).
+        /// </summary>
+        static GameObject CleanCar(GameObject src)
+        {
+            const string dir = GeneratedDir + "/Vehicles";
+            if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder(GeneratedDir, "Vehicles");
+            const string texSrc = "Assets/Synty/PolygonMilitary/Textures/Vehicles/Land_Vehicles_03.png";
+            const string matSrc = "Assets/Synty/PolygonMilitary/Materials/Vehicles/Land_Vehicles_03.mat";
+            var texPath = dir + "/Land_Vehicles_03_Clean.png";
+            var matPath = dir + "/Land_Vehicles_03_Clean.mat";
+            var prefabPath = dir + "/" + src.name + "_Clean.prefab";
+            var srcMat = AssetDatabase.LoadAssetAtPath<Material>(matSrc);
+            if (srcMat == null || !File.Exists(texSrc)) return null;
+            if (!File.Exists(texPath))
+            {
+                var t = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                t.LoadImage(File.ReadAllBytes(texSrc));
+                int w = t.width, hgt = t.height;
+                var px = t.GetPixels32();
+                var yellow = new Color32(213, 165, 72, 255);
+                // PNG 위에서 1365~1600행, 가로 908~ (2048 기준) = 노란 차체 칸. Texture2D는 아래가 0행
+                float k = w / 2048f;
+                for (int y = Mathf.RoundToInt(1365 * k); y <= Mathf.RoundToInt(1600 * k); y++)
+                for (int x = Mathf.RoundToInt(908 * k); x < w; x++)
+                    px[(hgt - 1 - y) * w + x] = yellow;
+                t.SetPixels32(px);
+                File.WriteAllBytes(texPath, t.EncodeToPNG());
+                Object.DestroyImmediate(t);
+                AssetDatabase.ImportAsset(texPath);
+            }
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null)
+            {
+                mat = new Material(srcMat);
+                AssetDatabase.CreateAsset(mat, matPath);
+            }
+            foreach (var prop in new[] { "_Albedo_Map", "_BaseMap", "_MainTex" })
+                if (mat.HasProperty(prop)) mat.SetTexture(prop, tex);
+            EditorUtility.SetDirty(mat);
+            var inst = (GameObject)PrefabUtility.InstantiatePrefab(src);
+            PrefabUtility.UnpackPrefabInstance(inst, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+            foreach (var r in inst.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++) if (mats[i] == srcMat) mats[i] = mat;
+                r.sharedMaterials = mats;
+            }
+            var saved = PrefabUtility.SaveAsPrefabAsset(inst, prefabPath);
+            Object.DestroyImmediate(inst);
+            return saved;
+        }
+
+        /// <summary>
         /// 잎 텍스처의 투명한 칸은 밝은 회색이라 먼 밉맵에서 잎이 하얗게 번진다 (먼 숲이 눈 덮인 것처럼 보임).
         /// 투명한 칸을 잎의 평균색으로 채운 사본을 만든다.
         /// </summary>
@@ -462,7 +517,7 @@ namespace Manyworld.EditorTools
             var smallCar = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/PolygonMilitary/Prefabs/Vehicles/SM_Veh_Car_Small_01.prefab");
             if (smallCar != null)
             {
-                cat.ticoBody = smallCar;
+                cat.ticoBody = CleanCar(smallCar) ?? smallCar;
                 cat.ticoWheels = new GameObject[0];
             }
             else

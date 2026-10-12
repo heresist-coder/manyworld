@@ -50,7 +50,7 @@ MonoBehaviour:
   - {fileID: 1976048941788026, guid: f3670e9426db5f14282125c41eb76a18, type: 3}
   - {fileID: 121442, guid: 17fd2c85588a1954eb295a34c9775577, type: 3}
   tico: {fileID: 127632, guid: 0383b854a926f1643b20f9c7cdb2e4de, type: 3}
-  ticoBody: {fileID: 1773351328975956, guid: d33e727bddeea1543a85c0cd42478ca0, type: 3}
+  ticoBody: {fileID: 4392035498422786973, guid: 97569f3e94e92204f828870409dae83a, type: 3}
   ticoWheels: []
   trees:
   - {fileID: 747587073357975355, guid: 4e462e31d2a2a2147b43554d21ef6964, type: 3}
