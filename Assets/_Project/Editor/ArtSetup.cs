@@ -428,11 +428,14 @@ namespace Manyworld.EditorTools
             // 그레이박스 베이스 머티리얼에 인스턴싱 변형을 넣어 둔다 (빌드에서 풀 인스턴싱이 빠지지 않게)
             var baseOpaque = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Resources/Materials/GrayboxOpaque.mat");
             if (baseOpaque != null && !baseOpaque.enableInstancing) { baseOpaque.enableInstancing = true; EditorUtility.SetDirty(baseOpaque); }
-            // 숲 현장의 구름 돔 머티리얼 (셰이더가 빌드에 들어가도록 Resources에 둔다)
-            const string cloudPath = "Assets/_Project/Resources/Materials/CloudDome.mat";
-            var cloudShader = Shader.Find("Manyworld/CloudDome");
-            if (cloudShader != null && AssetDatabase.LoadAssetAtPath<Material>(cloudPath) == null)
-                AssetDatabase.CreateAsset(new Material(cloudShader) { name = "CloudDome" }, cloudPath);
+            // 숲 현장의 직접 만든 셰이더 머티리얼 (셰이더가 빌드에 들어가도록 Resources에 둔다)
+            foreach (var (shaderName, matName) in new[] { ("Manyworld/CloudDome", "CloudDome"), ("Manyworld/Grass", "Grass"), ("Manyworld/Backdrop", "Backdrop") })
+            {
+                var path = $"Assets/_Project/Resources/Materials/{matName}.mat";
+                var sh = Shader.Find(shaderName);
+                if (sh != null && AssetDatabase.LoadAssetAtPath<Material>(path) == null)
+                    AssetDatabase.CreateAsset(new Material(sh) { name = matName, enableInstancing = true }, path);
+            }
             var cat = AssetDatabase.LoadAssetAtPath<ArtCatalog>(CatalogPath);
             if (cat == null)
             {

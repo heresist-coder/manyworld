@@ -40,6 +40,10 @@ namespace Manyworld
             var root = new GameObject("ForestSite").transform;
             var layout = new MissionLayout { root = root, worldSize = Size, waterLevel = -10f };
             var rng = new System.Random(seed * 7717 + 11);
+            NatureKit.Footprints.Clear();
+            var laps = new System.Text.StringBuilder();
+            long lastLap = 0;
+            void Lap(string name) { laps.Append($" {name} {watch.ElapsedMilliseconds - lastLap}"); lastLap = watch.ElapsedMilliseconds; }
 
             // 1) 높이
             var h = new float[Res, Res];
@@ -78,7 +82,9 @@ namespace Manyworld
             var norm = new float[Res, Res];
             for (int z = 0; z < Res; z++) for (int x = 0; x < Res; x++) norm[z, x] = Mathf.Clamp01(h[z, x] / MaxHeight);
             td.SetHeights(0, 0, norm);
+            Lap("높이");
             Paint(td, h, roadDist, trailDist);
+            Lap("칠하기");
             var terrainGo = Terrain.CreateTerrainGameObject(td);
             terrainGo.name = "Terrain";
             terrainGo.transform.SetParent(root, false);
@@ -97,18 +103,19 @@ namespace Manyworld
             Vector3 G(Vector2 p) => new Vector3(p.x, terrain.SampleHeight(V3(p)), p.y);
 
             // 5) 자연물
-            PlantTrees(td, h, roadDist, trailDist, rng);
-            ScatterGrass(root, h, roadDist, trailDist, rng);
-            ScatterRocks(root, terrain, roadDist, trailDist, rng);
+            PlantTrees(td, h, roadDist, trailDist, rng); Lap("PlantTrees");
+            ScatterRocks(root, terrain, roadDist, trailDist, rng); Lap("ScatterRocks");
             PlaceMountains(root, rng);
             PlaceClouds(root, rng);
-            PlaceRoadside(root, terrain, roadPts, rng);
-            PlaceLeaningForest(root, terrain, rng);
+            PlaceRoadside(root, terrain, roadPts, rng); Lap("PlaceRoadside");
+            PlaceLeaningForest(root, terrain, rng); Lap("PlaceLeaningForest");
             PlaceFloatingHouse(root, terrain, rng);
             terrain.Flush();
 
             // 6) 빈 방 (목표)
             room = BuildRoom(root, terrain, rng);
+            Lap("방");
+            ScatterGrass(root, h, roadDist, trailDist, rng); Lap("ScatterGrass"); // 바위를 다 놓은 뒤 (바위 속에 풀이 나지 않게)
 
             // 7) 배치
             var roadDir = (Road[2] - Road[1]).normalized;
@@ -138,7 +145,7 @@ namespace Manyworld
             surface.BuildNavMesh();
 
             CollectSpawnPoints(layout, rng);
-            Debug.Log($"[Manyworld] 숲 현장 생성: {watch.ElapsedMilliseconds}ms, 나무 {td.treeInstanceCount}, 스폰 {layout.spawnPoints.Count}+{layout.bruteSpawnPoints.Count}");
+            Debug.Log($"[Manyworld] 숲 현장 생성: {watch.ElapsedMilliseconds}ms, 나무 {td.treeInstanceCount}, 스폰 {layout.spawnPoints.Count}+{layout.bruteSpawnPoints.Count} |{laps} 나머지 {watch.ElapsedMilliseconds - lastLap}");
             return layout;
         }
 
@@ -233,21 +240,38 @@ namespace Manyworld
             // 바랜 세이지·올리브 초원, 짙은 숲 바닥, 황토색 길, 회색 바위, 마른 풀
             td.terrainLayers = new[]
             {
-                WorldTerrainBuilder.Layer(new Color(0.47f, 0.5f, 0.28f), 7f, 1),   // 0 초원 (햇빛 받은 올리브)
-                WorldTerrainBuilder.Layer(new Color(0.15f, 0.16f, 0.1f), 6f, 2),   // 1 숲 바닥 (먼 산비탈 나무 사이가 밝게 비치지 않게 어둡게)
-                WorldTerrainBuilder.Layer(new Color(0.74f, 0.57f, 0.41f), 5f, 3),  // 2 흙길·방 바닥 (밝은 황토)
-                WorldTerrainBuilder.Layer(new Color(0.34f, 0.37f, 0.31f), 9f, 4),  // 3 바위 (이끼 낀 회녹색)
-                WorldTerrainBuilder.Layer(new Color(0.58f, 0.55f, 0.33f), 8f, 5),  // 4 마른 풀
+                NatureKit.Layer(NatureKit.Ground.Meadow, new Color(0.55f, 0.54f, 0.32f), 5f, 1),       // 0 초원 (햇빛 받은 올리브)
+                NatureKit.Layer(NatureKit.Ground.ForestFloor, new Color(0.17f, 0.17f, 0.1f), 4f, 2),  // 1 숲 바닥 (먼 산비탈 나무 사이가 밝게 비치지 않게 어둡게)
+                NatureKit.Layer(NatureKit.Ground.Dirt, new Color(0.74f, 0.58f, 0.42f), 4f, 3),        // 2 흙길·방 바닥 (밝은 황토, 자갈)
+                NatureKit.Layer(NatureKit.Ground.Rock, new Color(0.42f, 0.43f, 0.4f), 8f, 4),         // 3 바위
+                NatureKit.Layer(NatureKit.Ground.Dry, new Color(0.62f, 0.57f, 0.34f), 6f, 5),         // 4 마른 풀
+                NatureKit.Layer(NatureKit.Ground.Lush, new Color(0.42f, 0.46f, 0.26f), 5f, 6),        // 5 짙은 풀 얼룩
+                NatureKit.Layer(NatureKit.Ground.Rut, new Color(0.6f, 0.46f, 0.33f), 4f, 7),          // 6 바퀴 자국·길 가장자리 (짙은 흙)
             };
-            int ar = 512;
+            // 노이즈 마스크는 지형 격자(1.5m)에서 한 번만 계산하고 칠할 땐 보간한다 (생성 시간)
+            var forestG = new float[Res, Res];
+            var dryG = new float[Res, Res];
+            var lushG = new float[Res, Res];
+            var slopeG = new float[Res, Res];
+            for (int gz = 0; gz < Res; gz++)
+            for (int gx = 0; gx < Res; gx++)
+            {
+                float wx = gx * Cell, wz = gz * Cell;
+                forestG[gz, gx] = ForestMask(wx, wz);
+                dryG[gz, gx] = WorldTerrainBuilder.Fbm(wx * 0.012f + 31f, wz * 0.012f + 17f, 3);
+                lushG[gz, gx] = WorldTerrainBuilder.Fbm(wx * 0.02f + 71f, wz * 0.02f + 3f, 3);
+                int xa = Mathf.Max(0, gx - 1), xb = Mathf.Min(Res - 1, gx + 1), za = Mathf.Max(0, gz - 1), zb = Mathf.Min(Res - 1, gz + 1);
+                float dx = (h[gz, xb] - h[gz, xa]) / ((xb - xa) * Cell), dz = (h[zb, gx] - h[za, gx]) / ((zb - za) * Cell);
+                slopeG[gz, gx] = Mathf.Atan(Mathf.Sqrt(dx * dx + dz * dz)) * Mathf.Rad2Deg;
+            }
+            int ar = 768; // 1m. 바퀴 자국이 보이게
             td.alphamapResolution = ar;
-            var a = new float[ar, ar, 5];
+            var a = new float[ar, ar, 7];
             for (int z = 0; z < ar; z++)
             for (int x = 0; x < ar; x++)
             {
                 float wx = x / (float)(ar - 1) * Size, wz = z / (float)(ar - 1) * Size;
-                float e = Sample(h, wx + 2f, wz), w = Sample(h, wx - 2f, wz), n = Sample(h, wx, wz + 2f), s = Sample(h, wx, wz - 2f);
-                float slope = Mathf.Atan(new Vector2((e - w) / 4f, (n - s) / 4f).magnitude) * Mathf.Rad2Deg;
+                float slope = Sample(slopeG, wx, wz);
                 float rd = Sample(roadDist, wx, wz), td2 = Sample(trailDist, wx, wz);
                 float jitter = (Mathf.PerlinNoise(wx * 0.35f, wz * 0.35f) - 0.5f) * 0.3f;
                 float road = Mathf.Clamp01(Mathf.InverseLerp(5f, 3.9f, rd) + (rd < 5.6f ? jitter * 0.6f : 0f));
@@ -259,17 +283,25 @@ namespace Manyworld
                     float edge = Mathf.Max(Mathf.Abs(l.x), Mathf.Abs(l.y));
                     floor = Mathf.Clamp01(Mathf.InverseLerp(RoomHalf + 0.6f, RoomHalf - 0.8f, edge) + jitter * 0.5f);
                 }
-                float dirt = Mathf.Max(road, Mathf.Max(trail, floor));
+                // 기운 숲 바닥: 모래흙이 드러난 자리와 마른 풀 (목표 샷 02)
+                float band = Mathf.InverseLerp(30f, 14f, LeaningBandDistance(wx, wz));
+                float sandy = band * Mathf.InverseLerp(0.5f, 0.68f, Mathf.PerlinNoise(wx * 0.09f + 13f, wz * 0.09f + 41f)) * 0.5f;
+                float dirt = Mathf.Max(Mathf.Max(road, sandy), Mathf.Max(trail, floor));
                 float rock = Mathf.InverseLerp(50f, 64f, slope) * (1f - dirt); // 산비탈도 대부분 숲 바닥
-                float forest = ForestMask(wx, wz);
-                float dry = Mathf.Clamp01(Mathf.InverseLerp(0.55f, 0.7f, WorldTerrainBuilder.Fbm(wx * 0.012f + 31f, wz * 0.012f + 17f, 3)) + Mathf.InverseLerp(6.5f, 3.6f, rd) * 0.7f);
+                float forest = Sample(forestG, wx, wz);
+                float dry = Mathf.Clamp01(Mathf.InverseLerp(0.55f, 0.7f, Sample(dryG, wx, wz)) + Mathf.InverseLerp(6.5f, 3.6f, rd) * 0.7f + band * 0.45f);
                 float rest = Mathf.Max(0f, 1f - dirt - rock);
-                a[z, x, 2] = dirt - floor * 0.3f;
+                // 바퀴 자국 두 줄과 닳은 길 가장자리
+                float rut = road * (Mathf.Exp(-(rd - 1.35f) * (rd - 1.35f) * 4f) * 0.6f + Mathf.InverseLerp(3.1f, 4.6f, rd) * 0.45f);
+                a[z, x, 6] = rut;
+                a[z, x, 2] = dirt - floor * 0.3f - rut;
                 a[z, x, 3] = rock;
                 a[z, x, 1] = rest * Mathf.InverseLerp(0.35f, 0.75f, forest) + floor * 0.3f; // 방 바닥은 솔잎 섞인 갈색 흙
                 float open = rest - a[z, x, 1];
                 a[z, x, 4] = open * dry;
-                a[z, x, 0] = open * (1f - dry);
+                float lush = Mathf.InverseLerp(0.45f, 0.65f, Sample(lushG, wx, wz));
+                a[z, x, 5] = open * (1f - dry) * lush;
+                a[z, x, 0] = open * (1f - dry) * (1f - lush);
             }
             td.SetAlphamaps(0, 0, a);
         }
@@ -358,22 +390,32 @@ namespace Manyworld
             foreach (var k in kinds) total += k.weight;
             var lists = new List<Matrix4x4>[kinds.Count];
             for (int i = 0; i < lists.Length; i++) lists[i] = new List<Matrix4x4>();
-            const float step = 1.0f, lo = 135f, hi = Size - 135f;
+            const float step = 1.25f, lo = 135f, hi = Size - 135f;
             for (float z = lo; z < hi; z += step)
             for (float x = lo; x < hi; x += step)
             {
                 float px = x + (float)(rng.NextDouble() - 0.5) * step, pz = z + (float)(rng.NextDouble() - 0.5) * step;
-                if (Sample(roadDist, px, pz) < 4.6f || Sample(trailDist, px, pz) < 2f || InRoom(px, pz, 0.3f)) continue;
+                float rd = Sample(roadDist, px, pz);
+                if (rd < 4.6f || Sample(trailDist, px, pz) < 2f || InRoom(px, pz, 0.3f) || NatureKit.UnderRock(px, pz)) continue;
                 float forest = ForestMask(px, pz);
-                float clump = Mathf.PerlinNoise(px * 0.045f + 3f, pz * 0.045f + 7f);
-                float chance = Mathf.Lerp(0.85f, 0.12f, forest) * Mathf.InverseLerp(0.12f, 0.5f, clump);
+                // 풀은 고르게 심긴 밭이 아니라 무더기로 뭉친다. 길가 어깨는 빽빽하고 키가 크다
+                float big = Mathf.PerlinNoise(px * 0.04f + 3f, pz * 0.04f + 7f);
+                float small = Mathf.PerlinNoise(px * 0.22f + 11f, pz * 0.22f + 5f);
+                float verge = Mathf.InverseLerp(11f, 5f, rd);
+                float clumped = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 0.6f, big)) * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.28f, 0.62f, small));
+                float chance = Mathf.Lerp(0.95f, 0.1f, forest) * Mathf.Clamp01(clumped * 1.5f + verge * 0.7f);
                 if (rng.NextDouble() > chance) continue;
-                double pick = rng.NextDouble() * total;
-                int kind = 0;
-                for (; kind < kinds.Count - 1; kind++) { pick -= kinds[kind].weight; if (pick <= 0) break; }
-                float y = Sample(h, px, pz);
-                float s = kinds[kind].scale * (0.8f + (float)rng.NextDouble() * 0.7f) * (rng.NextDouble() < 0.07 ? 1.8f : 1f); // 가끔 키 큰 덤불
-                lists[kind].Add(Matrix4x4.TRS(new Vector3(px, y - 0.05f, pz), Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0), Vector3.one * s));
+                int count = 1 + (rng.NextDouble() < 0.55 ? 1 : 0) + (rng.NextDouble() < 0.3 ? 1 : 0);
+                for (int c = 0; c < count; c++)
+                {
+                    double pick = rng.NextDouble() * total;
+                    int kind = 0;
+                    for (; kind < kinds.Count - 1; kind++) { pick -= kinds[kind].weight; if (pick <= 0) break; }
+                    float qx = px + (float)(rng.NextDouble() - 0.5) * 0.9f, qz = pz + (float)(rng.NextDouble() - 0.5) * 0.9f;
+                    float y = Sample(h, qx, qz);
+                    float s = kinds[kind].scale * (0.65f + (float)rng.NextDouble() * 0.75f) * (1f + verge * 0.5f) * (rng.NextDouble() < 0.06 ? 1.7f : 1f); // 가끔 키 큰 덤불
+                    lists[kind].Add(Matrix4x4.TRS(new Vector3(qx, y - 0.05f, qz), Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0), Vector3.one * s));
+                }
             }
             var field = root.gameObject.AddComponent<GrassField>();
             for (int i = 0; i < kinds.Count; i++) field.Add(kinds[i].mesh, kinds[i].mat, lists[i]);
@@ -418,7 +460,7 @@ namespace Manyworld
 
         static void ScatterRocks(Transform root, Terrain terrain, float[,] roadDist, float[,] trailDist, System.Random rng)
         {
-            var art = ArtCatalog.Instance;
+            // 각진 회색 바위 (목표 샷 01·03). 길 어깨와 숲 가장자리에 몰린다
             int placed = 0;
             for (int tries = 0; tries < 1400 && placed < 190; tries++)
             {
@@ -428,45 +470,25 @@ namespace Manyworld
                 if (rd < 6f || Sample(trailDist, x, z) < 2.5f || InRoom(x, z, 3f)) continue;
                 var p2 = new Vector2(x, z);
                 if (Vector2.Distance(p2, CarStart) < 12f || Vector2.Distance(p2, Trailhead) < 15f) continue;
-                // 길 어깨와 숲 가장자리에 몰린다
                 float forest = ForestMask(x, z);
                 bool shoulder = rd < 14f;
                 bool edge = forest > 0.25f && forest < 0.6f;
                 if (!shoulder && !edge && rng.NextDouble() > 0.25) continue;
                 var p = new Vector3(x, 0, z);
-                p.y = terrain.SampleHeight(p) - 0.25f;
-                var rot = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);
-                var prefab = art != null ? ArtCatalog.Pick(art.rocks, rng.Next(100)) : null;
-                Bounds b;
-                if (prefab != null)
+                p.y = terrain.SampleHeight(p);
+                float r = (float)rng.NextDouble();
+                NatureKit.Boulder(root, p, 0.5f + r * r * 2f, rng, true);
+                // 가끔 작은 돌이 곁에 붙는다
+                if (rng.NextDouble() < 0.4)
                 {
-                    var inst = ArtCatalog.PlaceNatural(prefab, root, p, rot, out b);
-                    inst.name = "Rock";
-                    MatteRock(inst);
-                    // 큰 바위판은 줄인다 (흰 덩어리처럼 시선을 끈다)
-                    float big = Mathf.Max(b.size.y / 2.4f, Mathf.Max(b.size.x, b.size.z) / 5f);
-                    if (big > 1f)
-                    {
-                        inst.transform.localScale /= big;
-                        b = ArtCatalog.RendererBounds(inst);
-                    }
-                }
-                else
-                {
-                    float s = 1f + (float)rng.NextDouble() * 2f;
-                    var r = Graybox.Box(root, "Rock", p + Vector3.up * s * 0.4f, new Vector3(s, s * 0.8f, s * 1.2f), new Color(0.47f, 0.46f, 0.44f), false);
-                    r.transform.rotation = rot * Quaternion.Euler(10, 0, 8);
-                    b = new Bounds(r.transform.position, new Vector3(s, s * 0.8f, s * 1.2f));
-                }
-                if (b.size.y > 1.1f)
-                {
-                    var col = Graybox.Box(root, "RockCollider", b.center, b.size * 0.85f, Color.gray);
-                    col.GetComponent<Renderer>().enabled = false;
+                    var q = p + new Vector3((float)(rng.NextDouble() - 0.5) * 3f, 0, (float)(rng.NextDouble() - 0.5) * 3f);
+                    q.y = terrain.SampleHeight(q);
+                    NatureKit.Boulder(root, q, 0.25f + (float)rng.NextDouble() * 0.4f, rng, false, "Pebble");
                 }
                 placed++;
             }
 
-            // 잔돌: 초원과 숲길 가에 흩어진 무릎 아래 둥근 돌 (충돌 없음)
+            // 잔돌: 초원과 숲길 가에 흩어진 무릎 아래 돌 (충돌 없음)
             int pebbles = 0;
             for (int tries = 0; tries < 6000 && pebbles < 420; tries++)
             {
@@ -476,16 +498,10 @@ namespace Manyworld
                 if (rd < 5.2f || td < 2.4f || InRoom(x, z, 2f)) continue;
                 bool near = rd < 22f || (td < 9f && LeaningBandDistance(x, z) < 28f);
                 if (!near && (ForestMask(x, z) > 0.4f || rng.NextDouble() > 0.35)) continue;
-                var prefab = art != null ? ArtCatalog.Pick(art.rocks, rng.NextDouble() < 0.6 ? 4 : rng.Next(5)) : null;
-                if (prefab == null) break;
                 var p = new Vector3(x, 0, z);
-                p.y = terrain.SampleHeight(p) - 0.12f;
-                var inst = ArtCatalog.PlaceNatural(prefab, root, p, Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0), out var pb);
-                inst.name = "Pebble";
-                inst.transform.localScale *= Mathf.Clamp((0.25f + (float)rng.NextDouble() * 0.6f) / Mathf.Max(0.2f, pb.size.y), 0.05f, 3f);
-                foreach (var c in inst.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
-                foreach (var r in inst.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                MatteRock(inst);
+                p.y = terrain.SampleHeight(p);
+                var peb = NatureKit.Boulder(root, p, 0.18f + (float)rng.NextDouble() * 0.5f, rng, false, "Pebble");
+                peb.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 pebbles++;
             }
         }
@@ -508,6 +524,14 @@ namespace Manyworld
             {
                 var g = Graybox.Box(root, "OuterGround", pos, size, groundColor, false);
                 g.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            // 먼 산: 능선 띠 두 겹. 가까운 겹은 짙은 푸른색, 먼 겹은 하늘에 묻히는 옅은 색 (목표 샷 01)
+            var backdrop = Resources.Load<Material>("Materials/Backdrop");
+            if (backdrop != null)
+            {
+                RidgeRing(root, backdrop, 2050f, 560f, 1000f, new Color(0.46f, 0.53f, 0.65f), new Color(0.62f, 0.67f, 0.75f), 5);
+                RidgeRing(root, backdrop, 1500f, 380f, 700f, new Color(0.3f, 0.37f, 0.5f), new Color(0.55f, 0.6f, 0.7f), 9);
+                return;
             }
             int n = 16;
             for (int i = 0; i < n; i++)
@@ -546,6 +570,59 @@ namespace Manyworld
                 foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c);
                 foreach (var r in go.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
+        }
+
+        /// <summary>분지를 둘러싼 능선 띠 한 겹. 뾰족한 봉우리 = 1-|sin|을 여러 주기로 겹친다 (한 바퀴에 이어지는 정수 주기).</summary>
+        static void RidgeRing(Transform root, Material mat, float radius, float minH, float maxH, Color top, Color haze, int seed)
+        {
+            var rng = new System.Random(seed);
+            int[] freqs = { 3, 5, 9, 17, 31 };
+            float[] amps = { 1f, 0.6f, 0.4f, 0.22f, 0.12f };
+            var phase = new float[freqs.Length];
+            for (int k = 0; k < phase.Length; k++) phase[k] = (float)rng.NextDouble() * Mathf.PI * 2f;
+            const int seg = 480;
+            var center = new Vector3(Size / 2, 0, Size / 2);
+            var verts = new List<Vector3>();
+            var cols = new List<Color>();
+            var tris = new List<int>();
+            const float baseY = 40f;
+            for (int i = 0; i <= seg; i++)
+            {
+                float a = i / (float)seg * Mathf.PI * 2f;
+                float n = 0f, norm = 0f;
+                for (int k = 0; k < freqs.Length; k++)
+                {
+                    float r = 1f - Mathf.Abs(Mathf.Sin(freqs[k] * a * 0.5f + phase[k]));
+                    n += amps[k] * r * r;
+                    norm += amps[k];
+                }
+                n /= norm;
+                float hgt = Mathf.Lerp(minH, maxH, Mathf.Clamp01(n * 1.6f - 0.1f));
+                var dir = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a));
+                var p = center + dir * radius;
+                verts.Add(p + Vector3.up * baseY);
+                verts.Add(p + Vector3.up * (baseY + (hgt - baseY) * 0.45f));
+                verts.Add(p + Vector3.up * hgt);
+                // 정점색은 감마 변환 없이 그대로 쓰여서 선형 색으로 넣는다
+                cols.Add(haze.linear); cols.Add(haze.linear); cols.Add(Color.Lerp(top, haze, 0.15f * (1f - n)).linear);
+                if (i > 0)
+                {
+                    int b = (i - 1) * 3, c = i * 3;
+                    tris.AddRange(new[] { b, c, b + 1, b + 1, c, c + 1, b + 1, c + 1, b + 2, b + 2, c + 1, c + 2 });
+                }
+            }
+            var mesh = new Mesh { name = "RidgeRing", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            mesh.SetVertices(verts);
+            mesh.SetColors(cols);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            var go = new GameObject("FarMountain", typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(root, false);
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.GetComponent<MeshRenderer>();
+            mr.sharedMaterial = mat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
         }
 
         /// <summary>뭉게구름: 분지 위와 먼 하늘에 낮게 (목표 샷 01).</summary>
@@ -621,18 +698,8 @@ namespace Manyworld
                     for (int k = 0; k < n; k++)
                     {
                         var p2 = road[i] + right * side * (5.2f + (float)rng.NextDouble() * 3f) + dir * (k * 1.8f);
-                        // 둥근 바위 위주 (목표 샷 01). 큰 바위 무더기는 길을 가린다
-                        var prefab = art != null ? ArtCatalog.Pick(art.rocks, rng.NextDouble() < 0.7 ? 4 : rng.Next(4)) : null;
-                        var p = G(p2) - Vector3.up * 0.25f;
-                        if (prefab != null)
-                        {
-                            var inst = ArtCatalog.PlaceNatural(prefab, root, p, Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0), out var b);
-                            float s = (1.0f + (float)rng.NextDouble() * 1.3f) / Mathf.Max(0.3f, b.size.y); // 무릎~가슴 높이 둥근 바위
-                            inst.transform.localScale *= Mathf.Clamp(s, 0.3f, 4f);
-                            inst.name = "RoadRock";
-                            MatteRock(inst);
-                        }
-                        else Graybox.Box(root, "RoadRock", p + Vector3.up * 0.5f, Vector3.one * 1.2f, new Color(0.5f, 0.5f, 0.48f), false);
+                        // 무릎~가슴 높이 각진 바위 (목표 샷 01). 큰 바위 무더기는 길을 가린다
+                        NatureKit.Boulder(root, G(p2), (k == 0 ? 0.9f : 0.5f) + (float)rng.NextDouble() * 1.1f, rng, true, "RoadRock");
                     }
                 }
 
@@ -647,7 +714,7 @@ namespace Manyworld
                         var inst = Object.Instantiate(bush, root);
                         inst.transform.SetPositionAndRotation(G(p2) - Vector3.up * 0.1f, Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0));
                         inst.transform.localScale = Vector3.one * (0.9f + (float)rng.NextDouble() * 0.8f);
-                        Brighten(inst, new Color(1.05f, 1.1f, 0.85f)); // 아틀라스 초록이 어두워 그늘에선 검게 보인다
+                        Brighten(inst, new Color(0.82f, 0.92f, 0.7f)); // 아틀라스 연두가 볕에서 형광처럼 뜬다. 짙은 덤불로
                     }
                 }
 
@@ -657,7 +724,8 @@ namespace Manyworld
                     if (rng.NextDouble() > 0.7) continue;
                     float side = rng.NextDouble() < 0.5 ? -1f : 1f;
                     var p2 = road[i] + right * side * (4.8f + (float)rng.NextDouble() * 3.5f);
-                    GrassField.ClumpObject(root, G(p2) - Vector3.up * 0.05f, 1.1f + (float)rng.NextDouble() * 0.7f, rng);
+                    if (!NatureKit.UnderRock(p2.x, p2.y))
+                        GrassField.ClumpObject(root, G(p2) - Vector3.up * 0.05f, 1.1f + (float)rng.NextDouble() * 0.7f, rng);
                 }
             }
 
@@ -775,20 +843,6 @@ namespace Manyworld
             }
         }
 
-        static Material rockMat;
-
-        /// <summary>바위는 무광 회색 면으로 (목표 샷의 둥근 회색 바위). 신티 바위 텍스처는 모래색이다.</summary>
-        static void MatteRock(GameObject go)
-        {
-            if (rockMat == null) rockMat = Graybox.Mat(new Color(0.43f, 0.43f, 0.46f));
-            foreach (var r in go.GetComponentsInChildren<Renderer>())
-            {
-                var mats = new Material[r.sharedMaterials.Length];
-                for (int k = 0; k < mats.Length; k++) mats[k] = rockMat;
-                r.sharedMaterials = mats;
-            }
-        }
-
         // ---------------- 기운 숲 (목표 샷 02) ----------------
 
         /// <summary>숲길 양옆 띠. 주차 공터 → 방 입구 사이.</summary>
@@ -838,7 +892,8 @@ namespace Manyworld
                 var onPath = a + ab * tt;
                 if (Vector2.Distance(p2, onPath) < 6.5f) continue; // 기운 수관이 길 한가운데를 덮지 않게
                 if (rng.NextDouble() < 0.22) continue;
-                var prefab = art != null ? ArtCatalog.Pick(art.pines, rng.Next(100)) : null;
+                // 줄기가 길게 드러난 큰 소나무 위주 (목표 샷 02의 굵은 기운 줄기)
+                var prefab = art != null && art.pines != null && art.pines.Length > 2 && rng.NextDouble() < 0.75 ? art.pines[2] : art != null ? ArtCatalog.Pick(art.pines, rng.Next(100)) : null;
                 var t = prefab != null ? Object.Instantiate(prefab, go.transform) : Object.Instantiate(FallbackPine(), go.transform);
                 t.SetActive(true);
                 t.name = "LeaningPine";
@@ -928,17 +983,14 @@ namespace Manyworld
             for (int k = 0; k < 9; k++)
             {
                 float side = k % 2 == 0 ? -1f : 1f;
-                var p = W(side * (RoomHalf + 1.5f + (float)rng.NextDouble() * 5f), -RoomHalf - 1f - (float)rng.NextDouble() * 9f);
-                var rockPrefab = art != null ? ArtCatalog.Pick(art.rocks, rng.Next(5)) : null;
-                if (rockPrefab != null && k < 6)
-                {
-                    var inst = ArtCatalog.PlaceNatural(rockPrefab, go.transform, p - Vector3.up * 0.2f, Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0), out var rb);
-                    inst.transform.localScale *= Mathf.Clamp((0.8f + (float)rng.NextDouble() * 1.1f) / Mathf.Max(0.3f, rb.size.y), 0.3f, 4f);
-                    foreach (var col in inst.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(col);
-                    MatteRock(inst);
-                }
+                // 입구 양옆을 액자처럼: 가운데 길(±3.5m)은 비운다 (목표 샷 03)
+                var p = W(side * (3.8f + (float)rng.NextDouble() * (RoomHalf + 1f)), -RoomHalf - 1f - (float)rng.NextDouble() * 8f);
+                if (k < 6) NatureKit.Boulder(go.transform, p, 0.6f + (float)rng.NextDouble() * 1.0f, rng, false);
                 for (int q = 0; q < 3; q++)
-                    GrassField.ClumpObject(go.transform, p + new Vector3((float)rng.NextDouble() * 3f - 1.5f, -0.05f, (float)rng.NextDouble() * 3f - 1.5f), 1.3f + (float)rng.NextDouble() * 0.8f, rng);
+                {
+                    var cp = p + new Vector3((float)rng.NextDouble() * 3f - 1.5f, -0.05f, (float)rng.NextDouble() * 3f - 1.5f);
+                    if (!NatureKit.UnderRock(cp.x, cp.z)) GrassField.ClumpObject(go.transform, cp, 1.3f + (float)rng.NextDouble() * 0.8f, rng);
+                }
             }
             var logPos = W(RoomHalf + 1.5f, -RoomHalf - 3.5f);
             var log = Graybox.Prim(PrimitiveType.Cylinder, go.transform, "FallenLog", logPos + Vector3.up * 0.3f, new Vector3(0.6f, 2.6f, 0.6f), new Color(0.33f, 0.24f, 0.17f), false);

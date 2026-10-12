@@ -55,57 +55,79 @@ namespace Manyworld
         static Mesh[] clumpMeshes;
         static Material[] clumpMaterials;
 
-        /// <summary>삼각형 잎 여러 장이 바깥으로 기운 덤불. 법선은 위쪽으로 섞어 앞뒤 밝기가 비슷하게.</summary>
+        /// <summary>
+        /// 잎 여러 장이 바깥으로 휘어 기운 덤불. 잎마다 아래 사각형 + 위 삼각형 두 마디로 휜다.
+        /// uv.y는 높이 비율(풀 셰이더가 뿌리→끝 색과 바람에 쓴다). 법선은 위쪽으로 섞어 앞뒤 밝기가 비슷하게.
+        /// </summary>
         static Mesh BladeClump(int seed, int blades, float height)
         {
             var rng = new System.Random(seed);
             var verts = new List<Vector3>();
             var norms = new List<Vector3>();
+            var uvs = new List<Vector2>();
             var tris = new List<int>();
             for (int i = 0; i < blades; i++)
             {
-                float ang = (float)(i / (double)blades * Mathf.PI * 2.0 + rng.NextDouble() * 0.8);
+                float ang = (float)(i / (double)blades * Mathf.PI * 2.0 + rng.NextDouble() * 0.9);
                 var dir = new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang));
                 var side = new Vector3(-dir.z, 0, dir.x);
-                float r0 = 0.03f + (float)rng.NextDouble() * 0.05f;
-                float w = 0.05f + (float)rng.NextDouble() * 0.05f;
-                float hgt = height * (0.55f + (float)rng.NextDouble() * 0.6f);
-                float lean = hgt * (0.25f + (float)rng.NextDouble() * 0.45f);
+                float r0 = 0.02f + (float)rng.NextDouble() * 0.07f;
+                float w = 0.045f + (float)rng.NextDouble() * 0.045f;
+                float hgt = height * (0.5f + (float)rng.NextDouble() * 0.65f);
+                float lean = hgt * (0.2f + (float)rng.NextDouble() * 0.5f);
                 var b = dir * r0;
-                var a0 = b - side * w;
-                var a1 = b + side * w;
-                var tip = dir * (r0 + lean) + Vector3.up * hgt + side * (float)(rng.NextDouble() - 0.5) * 0.06f;
-                var n = Vector3.Cross(a1 - a0, tip - a0).normalized;
-                n = Vector3.Lerp(n, Vector3.up, 0.65f).normalized;
+                // 아래 마디는 거의 곧게, 끝으로 갈수록 바깥으로 휜다
+                var midC = b + dir * lean * 0.25f + Vector3.up * hgt * 0.55f;
+                var tip = b + dir * lean + Vector3.up * hgt + side * (float)(rng.NextDouble() - 0.5) * 0.06f;
+                var p0 = b - side * w; var p1 = b + side * w;
+                var p2 = midC - side * w * 0.72f; var p3 = midC + side * w * 0.72f;
+                var n = Vector3.Cross(p1 - p0, tip - p0).normalized;
+                n = Vector3.Lerp(n, Vector3.up, 0.6f).normalized;
                 int k = verts.Count;
-                verts.Add(a0); verts.Add(a1); verts.Add(tip);
-                norms.Add(n); norms.Add(n); norms.Add(n);
+                verts.Add(p0); verts.Add(p1); verts.Add(p2); verts.Add(p3); verts.Add(tip);
+                for (int q = 0; q < 5; q++) norms.Add(n);
+                uvs.Add(new Vector2(0, 0)); uvs.Add(new Vector2(1, 0)); uvs.Add(new Vector2(0, 0.55f)); uvs.Add(new Vector2(1, 0.55f)); uvs.Add(new Vector2(0.5f, 1f));
                 tris.Add(k); tris.Add(k + 2); tris.Add(k + 1);
+                tris.Add(k + 1); tris.Add(k + 2); tris.Add(k + 3);
+                tris.Add(k + 2); tris.Add(k + 4); tris.Add(k + 3);
             }
             var mesh = new Mesh { name = "GrassClump" };
             mesh.SetVertices(verts);
             mesh.SetNormals(norms);
+            mesh.SetUVs(0, uvs);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             return mesh;
         }
 
-        /// <summary>덤불 메시 3종과 색 3종 (햇빛 받은 연두, 올리브, 그늘진 초록).</summary>
+        /// <summary>덤불 메시 3종과 머티리얼 3종 (볕 받은 연두, 올리브, 마른 기운이 많은 것).</summary>
         public static void Clumps(out Mesh[] meshes, out Material[] materials)
         {
             if (clumpMeshes == null)
             {
-                clumpMeshes = new[] { BladeClump(11, 9, 0.6f), BladeClump(23, 12, 0.8f), BladeClump(37, 7, 0.5f) };
-                var colors = new[] { new Color(0.46f, 0.53f, 0.22f), new Color(0.4f, 0.46f, 0.2f), new Color(0.3f, 0.39f, 0.18f) };
-                clumpMaterials = new Material[colors.Length];
+                clumpMeshes = new[] { BladeClump(11, 14, 0.6f), BladeClump(23, 18, 0.8f), BladeClump(37, 10, 0.5f) };
+                var grass = Resources.Load<Material>("Materials/Grass");
+                var tips = new[] { new Color(0.5f, 0.58f, 0.23f), new Color(0.43f, 0.51f, 0.2f), new Color(0.55f, 0.56f, 0.27f) };
+                var dry = new[] { 0.45f, 0.35f, 0.75f };
+                clumpMaterials = new Material[tips.Length];
                 var template = Resources.Load<Material>("Materials/GrayboxOpaque");
-                for (int i = 0; i < colors.Length; i++)
+                for (int i = 0; i < tips.Length; i++)
                 {
-                    var m = template != null ? new Material(template) : new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                    Material m;
+                    if (grass != null)
+                    {
+                        m = new Material(grass);
+                        m.SetColor("_TipColor", tips[i]);
+                        m.SetFloat("_DryAmount", dry[i]);
+                    }
+                    else
+                    {
+                        m = template != null ? new Material(template) : new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                        m.color = tips[i] * 0.85f;
+                        m.SetFloat("_Smoothness", 0f);
+                        m.SetFloat("_Cull", 0f); // 양면
+                    }
                     m.name = "GrassClump_" + i;
-                    m.color = colors[i];
-                    m.SetFloat("_Smoothness", 0f);
-                    m.SetFloat("_Cull", 0f); // 양면
                     m.enableInstancing = true;
                     clumpMaterials[i] = m;
                 }
