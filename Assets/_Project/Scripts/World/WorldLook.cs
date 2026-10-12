@@ -17,6 +17,7 @@ namespace Manyworld
             public float sunIntensity, sunPitch, sunYaw, atmosphere, skyExposure;
             public float postExposure, contrast, saturation, grain, vignette, bloom;
             public Color filter, shadowsTint, highlightsTint;
+            public float lift; // 그늘을 살짝 들어 올린다 (0이면 그대로)
         }
 
         /// <summary>우리 동네: 노을 진 겨울 오후. 따뜻하고 바랬다.</summary>
@@ -34,12 +35,13 @@ namespace Manyworld
         /// <summary>숲 현장: 늦은 오후. 따뜻한 해와 차가운 숲 그늘, 푸르게 물러나는 먼 산 (목표 샷 01~03).</summary>
         public static Palette Field => new Palette
         {
-            skyTint = new Color(0.42f, 0.58f, 0.86f), ground = new Color(0.36f, 0.34f, 0.28f), horizon = new Color(0.7f, 0.78f, 0.86f),
-            sunColor = new Color(1f, 0.88f, 0.7f), sunIntensity = 1.5f, sunPitch = 30f, sunYaw = 70f, // 차→숲 방향(북동)으로 갈 때 해가 등 뒤 왼쪽
-            ambientSky = new Color(0.5f, 0.56f, 0.64f), ambientEquator = new Color(0.47f, 0.48f, 0.42f), ambientGround = new Color(0.22f, 0.2f, 0.15f),
-            atmosphere = 0.85f, skyExposure = 1.2f,
-            postExposure = 0.35f, contrast = 12f, saturation = -6f, grain = 0.06f, vignette = 0.18f, bloom = 0.22f,
+            skyTint = new Color(0.56f, 0.66f, 0.8f), ground = new Color(0.36f, 0.34f, 0.28f), horizon = new Color(0.8f, 0.83f, 0.86f),
+            sunColor = new Color(1f, 0.84f, 0.62f), sunIntensity = 1.7f, sunPitch = 22f, sunYaw = 70f, // 차→숲 방향(북동)으로 갈 때 해가 등 뒤 왼쪽
+            ambientSky = new Color(0.68f, 0.75f, 0.84f), ambientEquator = new Color(0.62f, 0.62f, 0.52f), ambientGround = new Color(0.3f, 0.27f, 0.2f),
+            atmosphere = 1.05f, skyExposure = 1.3f,
+            postExposure = 0.62f, contrast = 9f, saturation = 4f, grain = 0.06f, vignette = 0.18f, bloom = 0.22f,
             filter = new Color(1f, 0.98f, 0.95f), shadowsTint = new Color(0.4f, 0.48f, 0.62f), highlightsTint = new Color(1f, 0.92f, 0.8f),
+            lift = 0.07f,
         };
 
         /// <summary>멀티버스: 규칙에 따라. 같은 구도인데 차갑다.</summary>
@@ -161,6 +163,12 @@ namespace Manyworld
             split.shadows.Override(p.shadowsTint);
             split.highlights.Override(p.highlightsTint);
             split.balance.Override(10f);
+
+            if (p.lift > 0f)
+            {
+                var smh = profile.Add<ShadowsMidtonesHighlights>(true);
+                smh.shadows.Override(new Vector4(0.98f, 1f, 1.06f, p.lift)); // 그늘은 살짝 푸르고 덜 검게
+            }
 
             var vignette = profile.Add<Vignette>(true);
             vignette.intensity.Override(p.vignette);

@@ -157,8 +157,44 @@ namespace Manyworld
             }
         }
 
+        /// <summary>차체 모델에 바퀴가 따로 붙어 있으면(신티 차량: _Wheel_fl/fr/rl/rr) 그걸 굴린다. 서스펜션 위치도 거기에 맞춘다.</summary>
+        bool AdoptModelWheels()
+        {
+            var art = transform.Find("Art_Tico");
+            if (art == null) return false;
+            string[] keys = { "_wheel_fl", "_wheel_fr", "_wheel_rl", "_wheel_rr" };
+            var found = new Transform[4];
+            foreach (var t in art.GetComponentsInChildren<Transform>())
+            {
+                string n = t.name.ToLowerInvariant();
+                for (int i = 0; i < 4; i++) if (n.EndsWith(keys[i])) found[i] = t;
+            }
+            for (int i = 0; i < 4; i++) if (found[i] == null) return false;
+            // 차체를 내려서, 모델의 바퀴 자리가 서스펜션이 받친 바퀴 높이와 맞게 한다 (안 그러면 몬스터 트럭처럼 뜬다)
+            float modelWheelY = 0f;
+            for (int i = 0; i < 4; i++) modelWheelY += transform.InverseTransformPoint(found[i].GetComponentInChildren<Renderer>() != null ? found[i].GetComponentInChildren<Renderer>().bounds.center : found[i].position).y / 4f;
+            float settledWheelY = mounts[0].y - suspensionRest + 0.06f;
+            art.localPosition += Vector3.up * (settledWheelY - modelWheelY);
+            for (int i = 0; i < 4; i++)
+            {
+                var w = found[i];
+                var r = w.GetComponentInChildren<Renderer>();
+                if (i == 0 && r != null) wheelRadius = Mathf.Clamp(r.bounds.size.y * 0.5f, 0.2f, 0.45f);
+                w.SetParent(transform, true);
+                var local = w.localPosition;
+                mounts[i] = new Vector3(local.x, mounts[i].y, local.z);
+                wheelBase[i] = w.localRotation;
+                w.gameObject.layer = 2;
+                wheelVisuals[i] = w;
+            }
+            foreach (Transform t in transform)
+                if (t.name == "Wheel") t.gameObject.SetActive(false);
+            return true;
+        }
+
         void BuildWheels()
         {
+            if (AdoptModelWheels()) return;
             var art = ArtCatalog.Instance;
             for (int i = 0; i < 4; i++)
             {

@@ -158,6 +158,11 @@ namespace Manyworld
             toMid.y = 0;
             Car = TicoCar.Create(transform, Layout.ticoPos, Layout.ticoRotation ?? Quaternion.LookRotation(toMid), false);
             Car.controllable = false;
+            if (Field)
+            {
+                var carLabel = Car.transform.Find("Label_티코");
+                if (carLabel != null) carLabel.gameObject.SetActive(false); // 미니맵에 있다. 화면엔 차만
+            }
             Car.health.Damaged += _ =>
             {
                 if (PlayerInCar && Time.time > nextCarHitToast)
@@ -300,9 +305,9 @@ namespace Manyworld
             // 공기 원근: 먼 숲과 산이 푸르게 물러난다
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.62f, 0.7f, 0.8f);
-            RenderSettings.fogStartDistance = 110f;
-            RenderSettings.fogEndDistance = 1700f;
+            RenderSettings.fogColor = new Color(0.58f, 0.67f, 0.79f);
+            RenderSettings.fogStartDistance = 50f;
+            RenderSettings.fogEndDistance = 1350f; // 원경 산은 안개색 실루엣으로 겹겹이
             cam.farClipPlane = 3000f;
             float s = Layout.worldSize;
             VolumetricAtmosphere.Create(transform, new Vector3(s / 2, 0, s / 2), s + 80f,
@@ -760,7 +765,7 @@ namespace Manyworld
             if (PlayerInCar) ExitCar();
             var cc = Player.GetComponent<CharacterController>();
             if (cc != null) cc.enabled = false;
-            Player.transform.position = player;
+            Player.transform.SetPositionAndRotation(player, Quaternion.Euler(0, yaw, 0));
             if (cc != null) cc.enabled = true;
             Player.cam.yaw = yaw;
             if (companion.HasValue)

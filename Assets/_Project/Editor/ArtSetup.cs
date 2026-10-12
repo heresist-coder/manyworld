@@ -193,7 +193,7 @@ namespace Manyworld.EditorTools
         static GameObject[] Prefabs(params string[] names) => names.Select(Prefab).Where(g => g != null).ToArray();
 
         /// <summary>터레인 나무가 차를 막도록 줄기에 캡슐 콜라이더를 단 변형 프리팹을 만든다.</summary>
-        static GameObject[] WithTrunkColliders(GameObject[] trees)
+        static GameObject[] WithTrunkColliders(GameObject[] trees, string suffix = "_Col", float leafShade = 1f)
         {
             const string dir = GeneratedDir + "/Trees";
             if (!AssetDatabase.IsValidFolder(GeneratedDir)) AssetDatabase.CreateFolder(ThirdParty, "Generated");
@@ -201,7 +201,7 @@ namespace Manyworld.EditorTools
             var result = new List<GameObject>();
             foreach (var t in trees)
             {
-                string path = $"{dir}/{t.name}_Col.prefab";
+                string path = $"{dir}/{t.name}{suffix}.prefab";
                 var inst = (GameObject)PrefabUtility.InstantiatePrefab(t);
                 foreach (var c in inst.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
                 // 신티 LOD 셰이더(SyntyStudios_LOD)가 이 URP에서 하얗게 나온다. LOD0만 남긴다
@@ -223,7 +223,7 @@ namespace Manyworld.EditorTools
                 foreach (var r in inst.GetComponentsInChildren<Renderer>())
                 {
                     var mats = r.sharedMaterials;
-                    for (int i = 0; i < mats.Length; i++) mats[i] = MatteFoliage(mats[i]);
+                    for (int i = 0; i < mats.Length; i++) mats[i] = MatteFoliage(mats[i], leafShade);
                     r.sharedMaterials = mats;
                 }
                 var cap = inst.AddComponent<CapsuleCollider>();
@@ -238,36 +238,42 @@ namespace Manyworld.EditorTools
         }
 
         /// <summary>신티 나무 머티리얼 → 광택·반사 없는 URP Lit (잎은 알파 클립 + 양면). 같은 원본은 한 번만 만든다.</summary>
-        static Material MatteFoliage(Material src)
+        static Material MatteFoliage(Material src, float leafShade = 1f)
         {
             if (src == null) return null;
             // 신티 기본 나무 셰이더(_Main_Texture)만 바꾼다. 잎·줄기 텍스처가 따로인 바이옴 셰이더는 그대로
-            if (!src.HasProperty("_Main_Texture") || src.HasProperty("_Leaf_Texture")) return src;
+            bool trees = src.HasProperty("_Main_Texture") && !src.HasProperty("_Leaf_Texture");
+            bool grass = src.HasProperty("_Leaf_Texture") && !src.HasProperty("_Trunk_Texture"); // 바이옴 풀: 잎 텍스처 하나
+            if (!trees && !grass) return src;
             const string dir = GeneratedDir + "/Trees/Materials";
             if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder(GeneratedDir + "/Trees", "Materials");
-            string path = $"{dir}/{src.name}_Matte.mat";
+            string path = leafShade < 0.99f ? $"{dir}/{src.name}_Matte_Dark.mat" : $"{dir}/{src.name}_Matte.mat";
             var lit = Shader.Find("Universal Render Pipeline/Lit");
             var m = AssetDatabase.LoadAssetAtPath<Material>(path);
             bool created = m == null;
             if (created) m = new Material(lit);
             m.shader = lit;
-            Texture tex = src.HasProperty("_Main_Texture") ? src.GetTexture("_Main_Texture") : null;
+            Texture tex = src.HasProperty("_Main_Texture") ? src.GetTexture("_Main_Texture") : src.HasProperty("_Leaf_Texture") ? src.GetTexture("_Leaf_Texture") : null;
             if (tex == null && src.HasProperty("_BaseMap")) tex = src.GetTexture("_BaseMap");
             if (tex == null && src.HasProperty("_MainTex")) tex = src.GetTexture("_MainTex");
             var tint = src.HasProperty("_Color_Tint") ? src.GetColor("_Color_Tint") : Color.white;
             // 줄기 텍스처가 밝아서 그림자 거리 밖에선 줄기만 하얗게 줄지어 보인다. 어둡게
             if (src.name.Contains("Trunk")) tint *= new Color(0.5f, 0.44f, 0.4f);
-            else tint *= new Color(0.82f, 0.86f, 0.8f); // 잎도 조금 어둡게: 숲이 덩어리로 읽히게
+            else tint *= new Color(1.2f, 1.26f, 1.02f) * leafShade; // 잎: 볕 받는 면이 초록으로 읽히게 (먼 숲은 leafShade로 어둡게)
+            if (src.name.Contains("Trunk")) tint *= leafShade;
+            else if (leafShade < 0.99f) tint *= new Color(0.9f, 1.06f, 0.78f); // 먼 숲은 회색이 아니라 짙은 초록으로
             tint.a = 1f;
             m.SetTexture("_BaseMap", tex);
             m.SetColor("_BaseColor", tint);
+            m.enableInstancing = true; // 터레인 디테일(풀)은 인스턴싱 머티리얼이어야 그려진다
             m.SetFloat("_Smoothness", 0f);
             m.SetFloat("_Metallic", 0f);
             m.SetFloat("_SpecularHighlights", 0f);
             m.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
             m.SetFloat("_EnvironmentReflections", 0f);
             m.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
-            bool clip = (src.HasProperty("_AlphaClip") && src.GetFloat("_AlphaClip") > 0.5f) || src.name.Contains("Leaves") || src.name.Contains("Leaf");
+            bool clip = (src.HasProperty("_AlphaClip") && src.GetFloat("_AlphaClip") > 0.5f) || src.name.Contains("Leaves") || src.name.Contains("Leaf") || grass;
+            if (clip && tex is Texture2D leafTex) m.SetTexture("_BaseMap", FilledLeafTexture(leafTex));
             if (clip)
             {
                 m.SetFloat("_AlphaClip", 1f);
@@ -279,6 +285,107 @@ namespace Manyworld.EditorTools
             if (created) AssetDatabase.CreateAsset(m, path);
             else EditorUtility.SetDirty(m);
             return m;
+        }
+
+        /// <summary>
+        /// 잎 텍스처의 투명한 칸은 밝은 회색이라 먼 밉맵에서 잎이 하얗게 번진다 (먼 숲이 눈 덮인 것처럼 보임).
+        /// 투명한 칸을 잎의 평균색으로 채운 사본을 만든다.
+        /// </summary>
+        static Texture2D FilledLeafTexture(Texture2D src)
+        {
+            var srcPath = AssetDatabase.GetAssetPath(src);
+            if (string.IsNullOrEmpty(srcPath) || !srcPath.EndsWith(".png")) return src;
+            const string dir = GeneratedDir + "/Trees/Textures";
+            if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder(GeneratedDir + "/Trees", "Textures");
+            var path = $"{dir}/{Path.GetFileNameWithoutExtension(srcPath)}_Fill.png";
+            if (!File.Exists(path))
+            {
+                var t = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                t.LoadImage(File.ReadAllBytes(srcPath));
+                var px = t.GetPixels32();
+                long r = 0, g = 0, b = 0, n = 0;
+                foreach (var c in px) if (c.a > 127) { r += c.r; g += c.g; b += c.b; n++; }
+                if (n == 0) return src;
+                var fill = new Color32((byte)(r / n), (byte)(g / n), (byte)(b / n), 0);
+                for (int i = 0; i < px.Length; i++) if (px[i].a <= 127) px[i] = new Color32(fill.r, fill.g, fill.b, px[i].a);
+                t.SetPixels32(px);
+                File.WriteAllBytes(path, t.EncodeToPNG());
+                Object.DestroyImmediate(t);
+                AssetDatabase.ImportAsset(path);
+                if (AssetImporter.GetAtPath(path) is TextureImporter ti)
+                {
+                    ti.alphaIsTransparency = true;
+                    ti.mipMapsPreserveCoverage = true;
+                    ti.alphaTestReferenceValue = 0.5f;
+                    ti.SaveAndReimport();
+                }
+            }
+            var filled = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            return filled != null ? filled : src;
+        }
+
+        /// <summary>풀·덤불: 광택 없는 URP Lit 사본 프리팹 (터레인 디테일 인스턴싱이 되도록, 콜라이더 없음).</summary>
+        static GameObject[] MatteCopies(GameObject[] prefabs)
+        {
+            const string dir = GeneratedDir + "/Plants";
+            if (!AssetDatabase.IsValidFolder(GeneratedDir)) AssetDatabase.CreateFolder(ThirdParty, "Generated");
+            if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder(GeneratedDir, "Plants");
+            var result = new List<GameObject>();
+            foreach (var t in prefabs)
+            {
+                var inst = (GameObject)PrefabUtility.InstantiatePrefab(t);
+                PrefabUtility.UnpackPrefabInstance(inst, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+                foreach (var c in inst.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+                var lod = inst.GetComponent<LODGroup>();
+                if (lod != null)
+                {
+                    var lods = lod.GetLODs();
+                    if (lods.Length > 1)
+                    {
+                        var keep = new HashSet<Renderer>(lods[0].renderers.Where(r => r != null));
+                        for (int i = 1; i < lods.Length; i++)
+                            foreach (var r in lods[i].renderers)
+                                if (r != null && !keep.Contains(r)) Object.DestroyImmediate(r.gameObject);
+                    }
+                    Object.DestroyImmediate(lod);
+                }
+                foreach (var r in inst.GetComponentsInChildren<Renderer>())
+                {
+                    var mats = r.sharedMaterials;
+                    for (int i = 0; i < mats.Length; i++) mats[i] = MatteFoliage(mats[i]);
+                    r.sharedMaterials = mats;
+                }
+                // 터레인 디테일은 프리팹 루트의 메시만 그린다. LOD 자식에 있으면 루트로 올린다
+                if (inst.GetComponent<MeshFilter>() == null)
+                {
+                    var child = inst.GetComponentInChildren<MeshFilter>();
+                    var childR = child != null ? child.GetComponent<MeshRenderer>() : null;
+                    if (child != null && childR != null)
+                    {
+                        var mesh = child.sharedMesh;
+                        var mats = childR.sharedMaterials;
+                        var local = Matrix4x4.TRS(child.transform.localPosition, child.transform.localRotation, child.transform.localScale);
+                        if (local != Matrix4x4.identity)
+                        {
+                            // 자식 변환을 메시에 굽는다
+                            var baked = Object.Instantiate(mesh);
+                            var v = baked.vertices; var n = baked.normals;
+                            for (int k = 0; k < v.Length; k++) v[k] = local.MultiplyPoint3x4(v[k]);
+                            for (int k = 0; k < n.Length; k++) n[k] = local.MultiplyVector(n[k]).normalized;
+                            baked.vertices = v; baked.normals = n; baked.RecalculateBounds();
+                            AssetDatabase.CreateAsset(baked, $"{dir}/{t.name}_Mesh.asset");
+                            mesh = baked;
+                        }
+                        foreach (Transform c in inst.transform.Cast<Transform>().ToList()) Object.DestroyImmediate(c.gameObject);
+                        inst.AddComponent<MeshFilter>().sharedMesh = mesh;
+                        inst.AddComponent<MeshRenderer>().sharedMaterials = mats;
+                    }
+                }
+                var saved = PrefabUtility.SaveAsPrefabAsset(inst, $"{dir}/{t.name}_Matte.prefab");
+                Object.DestroyImmediate(inst);
+                if (saved != null) result.Add(saved);
+            }
+            return result.ToArray();
         }
 
         static GameObject FirstPrefabIn(string dir)
@@ -317,6 +424,15 @@ namespace Manyworld.EditorTools
         public static void BuildCatalog()
         {
             FixFoliageMips();
+            EnsureSsaoFeature();
+            // 그레이박스 베이스 머티리얼에 인스턴싱 변형을 넣어 둔다 (빌드에서 풀 인스턴싱이 빠지지 않게)
+            var baseOpaque = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Resources/Materials/GrayboxOpaque.mat");
+            if (baseOpaque != null && !baseOpaque.enableInstancing) { baseOpaque.enableInstancing = true; EditorUtility.SetDirty(baseOpaque); }
+            // 숲 현장의 구름 돔 머티리얼 (셰이더가 빌드에 들어가도록 Resources에 둔다)
+            const string cloudPath = "Assets/_Project/Resources/Materials/CloudDome.mat";
+            var cloudShader = Shader.Find("Manyworld/CloudDome");
+            if (cloudShader != null && AssetDatabase.LoadAssetAtPath<Material>(cloudPath) == null)
+                AssetDatabase.CreateAsset(new Material(cloudShader) { name = "CloudDome" }, cloudPath);
             var cat = AssetDatabase.LoadAssetAtPath<ArtCatalog>(CatalogPath);
             if (cat == null)
             {
@@ -339,10 +455,23 @@ namespace Manyworld.EditorTools
             cat.rifle = Prefab("SM_Wep_American_Rifle_01");
             cat.companionRifle = Prefab("SM_Wep_HuntingRifle_Clean_01");
 
-            // 티코 = ithappy Car_06 (차체 + 바퀴 4개)
-            cat.ticoBody = Prefab("Car_06");
-            cat.ticoWheels = new[] { Prefab("Car_06_Wheel_Front_Left"), Prefab("Car_06_Wheel_Front_Right"), Prefab("Car_06_Wheel_Rear_Left"), Prefab("Car_06_Wheel_Rear_Right") };
-            if (cat.ticoWheels.Any(w => w == null)) cat.ticoWheels = new GameObject[0];
+            // 티코 = 신티 Military 노란 소형 해치백 (바퀴가 자식으로 붙어 있다). 없으면 ithappy Car_06
+            var smallCar = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Synty/PolygonMilitary/Prefabs/Vehicles/SM_Veh_Car_Small_01.prefab");
+            if (smallCar != null)
+            {
+                cat.ticoBody = smallCar;
+                cat.ticoWheels = new GameObject[0];
+            }
+            else
+            {
+                cat.ticoBody = Prefab("Car_06");
+                cat.ticoWheels = new[] { Prefab("Car_06_Wheel_Front_Left"), Prefab("Car_06_Wheel_Front_Right"), Prefab("Car_06_Wheel_Rear_Left"), Prefab("Car_06_Wheel_Rear_Right") };
+                if (cat.ticoWheels.Any(w => w == null)) cat.ticoWheels = new GameObject[0];
+            }
+            cat.clouds = Prefabs("SM_Gen_Env_Cloud_01", "SM_Gen_Env_Cloud_02", "SM_Gen_Env_Cloud_03");
+            cat.fieldProps = MatteCopies(Prefabs("SM_Env_Grass_Tall_Clump_01", "SM_Env_Grass_Tall_Clump_02"));
+            cat.fieldGrass = MatteCopies(Prefabs("SM_Env_Grass_Tall_Clump_01", "SM_Env_Grass_Tall_Clump_02", "SM_Env_Wildflowers_Patch_01"));
+            cat.fieldBushes = MatteCopies(Prefabs("SM_Plant_Bush_01", "SM_Plant_Bush_02", "SM_Plant_Bush_03"));
 
             // 큰 월드 자연물
             cat.trees = WithTrunkColliders(Prefabs("SM_Tree_01", "SM_Tree_02", "SM_Tree_03", "SM_Tree_04", "SM_Tree_Round_01", "SM_Tree_Round_02", "SM_Tree_Round_03",
@@ -361,6 +490,7 @@ namespace Manyworld.EditorTools
 
             // 숲 현장
             cat.pines = WithTrunkColliders(Prefabs("SM_Tree_Pine_01", "SM_Tree_Pine_02", "SM_Tree_Pine_Large_01"));
+            cat.pinesDark = WithTrunkColliders(Prefabs("SM_Tree_Pine_01", "SM_Tree_Pine_02", "SM_Tree_Pine_Large_01"), "_Dark", 0.55f);
             cat.meadowTrees = WithTrunkColliders(Prefabs("SM_Tree_Round_01", "SM_Tree_Round_02", "SM_Env_Tree_Meadow_01", "SM_Env_Tree_Meadow_02"));
             cat.plushies = Prefabs("SM_Prop_Toy_Bear_01", "SM_Prop_Plushie_04", "SM_Prop_Plushie_03", "SM_Prop_Plushie_07");
             cat.siteChair = Prefab("SM_Prop_DiningChair_01");
@@ -412,6 +542,41 @@ namespace Manyworld.EditorTools
                 Debug.Log($"[Manyworld] Volumetric Fog 렌더 피처 추가: {path}");
             }
             AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>SSAO(화면 공간 주변광 차폐): 바위·나무 밑동·인물 발밑을 땅에 붙인다. PC 렌더러에 한 번만.</summary>
+        [MenuItem("Manyworld/Art/Ensure SSAO Feature")]
+        public static void EnsureSsaoFeature()
+        {
+            var baseType = typeof(UnityEngine.Rendering.Universal.ScriptableRendererFeature);
+            var type = baseType.Assembly.GetType("UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion");
+            var data = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.Universal.ScriptableRendererData>("Assets/Settings/PC_Renderer.asset");
+            if (type == null || data == null) { Debug.LogWarning("[Manyworld] SSAO 피처를 못 찾음"); return; }
+            var feature = data.rendererFeatures.FirstOrDefault(f => f != null && f.GetType() == type);
+            if (feature == null)
+            {
+                feature = (UnityEngine.Rendering.Universal.ScriptableRendererFeature)ScriptableObject.CreateInstance(type);
+                feature.name = "SSAO";
+                AssetDatabase.AddObjectToAsset(feature, data);
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out _, out long localId);
+                var so = new SerializedObject(data);
+                var list = so.FindProperty("m_RendererFeatures");
+                var map = so.FindProperty("m_RendererFeatureMap");
+                list.arraySize++; list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = feature;
+                map.arraySize++; map.GetArrayElementAtIndex(map.arraySize - 1).longValue = localId;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            var fs = new SerializedObject(feature);
+            void SetF(string n, float v) { var p = fs.FindProperty("m_Settings." + n); if (p != null) p.floatValue = v; }
+            SetF("Intensity", 0.7f);
+            SetF("Radius", 0.45f);
+            SetF("DirectLightingStrength", 0.25f);
+            SetF("Falloff", 120f);
+            fs.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(feature);
+            EditorUtility.SetDirty(data);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[Manyworld] SSAO 피처 준비");
         }
 
         /// <summary>이펙트 번들의 구형 모바일 파티클 셰이더를 URP Particles/Unlit으로 바꾼다 (안 바꾸면 분홍색).</summary>

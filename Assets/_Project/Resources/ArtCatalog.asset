@@ -50,12 +50,8 @@ MonoBehaviour:
   - {fileID: 1976048941788026, guid: f3670e9426db5f14282125c41eb76a18, type: 3}
   - {fileID: 121442, guid: 17fd2c85588a1954eb295a34c9775577, type: 3}
   tico: {fileID: 127632, guid: 0383b854a926f1643b20f9c7cdb2e4de, type: 3}
-  ticoBody: {fileID: 4396910223530327419, guid: 6ae7112de2e44917a2896cb290f7880b, type: 3}
-  ticoWheels:
-  - {fileID: 8513631214012832537, guid: 59b2efed89e241cdb915c6a2cf8dd99a, type: 3}
-  - {fileID: 5057439925067541619, guid: f40694262c9d46e49bd9ae09a981aa50, type: 3}
-  - {fileID: 3064070220389238375, guid: afa7aa13e1b14ff6b266cf0e6876ea1b, type: 3}
-  - {fileID: 4766102040437165098, guid: 27cdd29a541b439b882c0209f19da546, type: 3}
+  ticoBody: {fileID: 1773351328975956, guid: d33e727bddeea1543a85c0cd42478ca0, type: 3}
+  ticoWheels: []
   trees:
   - {fileID: 747587073357975355, guid: 4e462e31d2a2a2147b43554d21ef6964, type: 3}
   - {fileID: 777683815519305480, guid: 2d20a2f650b0772499a0f76c1ff4cfc9, type: 3}
@@ -134,6 +130,10 @@ MonoBehaviour:
   - {fileID: 8707289203678971748, guid: 499f1f985beeaba44b58ee243124075a, type: 3}
   - {fileID: 3325203533952056148, guid: 691039b94eeff9046aa3f65664f7ae22, type: 3}
   - {fileID: 8891306958227113927, guid: 4aff72e1d0fd9d34fae4c24f7c44f857, type: 3}
+  pinesDark:
+  - {fileID: 524340806558505824, guid: 5d920eed987f0b64c8ad51e76077237d, type: 3}
+  - {fileID: 1725121622922846936, guid: efc5b329ee9ab274ba09e8f162616da6, type: 3}
+  - {fileID: 1898768119749907729, guid: 7969debf871b31043b9f8e29e502b233, type: 3}
   plushies:
   - {fileID: 1891676619981234, guid: c9de463e7878f024eb5ec6291e400b69, type: 3}
   - {fileID: 9083964541550487288, guid: 05ad8c304feb4824f86320fb68936cb2, type: 3}
@@ -144,6 +144,21 @@ MonoBehaviour:
   - {fileID: 1281693231686000807, guid: 3ec0e1c01c9ca62479f615e4b7590637, type: 3}
   - {fileID: 7011771666569883076, guid: 1278b4a0c304ae24a8751d099610af62, type: 3}
   - {fileID: 7794831731080064089, guid: 41973aea592d78d4d859c3633325aad3, type: 3}
+  clouds:
+  - {fileID: 1303749361690147404, guid: 558d2e8d6a925a54b966e334cde71254, type: 3}
+  - {fileID: 8892280870535951620, guid: 41808df6b98baea42937230454fa246f, type: 3}
+  - {fileID: 7197250241063739570, guid: fbe52ea26b12a5749b8717ed027f5a38, type: 3}
+  fieldProps:
+  - {fileID: 1557563587737256809, guid: d6ef7bc291fcecc4893383ca304898d7, type: 3}
+  - {fileID: 5532811327847553639, guid: 68fb344d982385c40b075ea860cbcae8, type: 3}
+  fieldGrass:
+  - {fileID: 1557563587737256809, guid: d6ef7bc291fcecc4893383ca304898d7, type: 3}
+  - {fileID: 5532811327847553639, guid: 68fb344d982385c40b075ea860cbcae8, type: 3}
+  - {fileID: 4049941405309778177, guid: 051136d4b41b571488679ab5d3868b3f, type: 3}
+  fieldBushes:
+  - {fileID: 4436040544436858620, guid: a16521c8aa35bf644afe6d3327e52ce4, type: 3}
+  - {fileID: 3413295523483196663, guid: 3e3d0348b665f3f43bdd9dcedaf54e4c, type: 3}
+  - {fileID: 7668701623488267201, guid: 7a4ab733336a1044092c564764141f96, type: 3}
   driverModel: {fileID: 1018949230691400, guid: d461c345ada76d14f94fe72087cec0f9, type: 3}
   companionModel: {fileID: 1971421721505344, guid: 7726852b74327584980d2b8f88a12239, type: 3}
   humanoidController: {fileID: 9100000, guid: 14d8bd2cc3b89314bb631b2210616fe7, type: 2}

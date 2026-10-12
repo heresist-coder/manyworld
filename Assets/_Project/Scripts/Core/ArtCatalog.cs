@@ -34,9 +34,14 @@ namespace Manyworld
         [Header("숲 현장 (자연 월드)")]
         public GameObject[] pines;         // 줄기 콜라이더 달린 소나무
         public GameObject[] meadowTrees;   // 초원의 둥근 나무
+        public GameObject[] pinesDark;     // 멀리 보이는 산비탈용 짙은 소나무
         public GameObject[] plushies;      // 곰인형·봉제 인형. 0번은 의자 위 곰인형
         public GameObject siteChair;       // 빈 방의 나무 의자
         public GameObject[] mountains;     // 먼 산 원경
+        public GameObject[] clouds;        // 하늘의 뭉게구름 (메시)
+        public GameObject[] fieldProps;    // 길가 키 큰 풀 덤불
+        public GameObject[] fieldGrass;    // 숲 현장 터레인 풀 (무광 사본)
+        public GameObject[] fieldBushes;   // 숲 현장 덤불 (무광 사본)
 
         [Header("인물 (Tripo, Mixamo 뼈대)")]
         public GameObject driverModel;
