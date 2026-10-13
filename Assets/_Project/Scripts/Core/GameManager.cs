@@ -66,6 +66,7 @@ namespace Manyworld
             bureau = gameObject.AddComponent<BureauScreen>();
             // 자연 월드(숲 현장)로 시작한다. 예전 흐름(기사식당·멀티버스 콜)은 F12
             StartField();
+            if (PerfProbe.Requested) gameObject.AddComponent<PerfProbe>(); // 빌드 실행 인자 -mw-perf: 성능 측정 후 종료
         }
 
         public bool InField => mission != null && mission.Field;

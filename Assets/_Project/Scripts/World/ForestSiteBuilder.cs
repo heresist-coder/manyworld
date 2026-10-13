@@ -115,6 +115,8 @@ namespace Manyworld
             PlaceLeaningForest(root, terrain, rng); Lap("PlaceLeaningForest");
             PlaceFloatingHouse(root, terrain, rng);
             terrain.Flush();
+            // 나무는 GPU 인스턴싱으로 그린다 (지형이 한 그루씩 그리면 프레임 절반). 에디터 굽기는 지형 나무 자리를 직접 읽는다
+            if (Application.isPlaying) TreeField.FromTerrain(terrain);
 
             // 6) 빈 방 (목표)
             room = BuildRoom(root, terrain, rng);

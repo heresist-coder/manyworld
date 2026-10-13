@@ -54,6 +54,12 @@ namespace Manyworld.EditorTools
                     AssetDatabase.Refresh();
                     mi.SaveAndReimport();
                 }
+                // 인물 텍스처는 2048까지 (Tripo detailed는 4K로 나온다. 3인칭 근접에서도 2048이면 충분)
+                foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { texDir }))
+                {
+                    var ti = AssetImporter.GetAtPath(AssetDatabase.GUIDToAssetPath(guid)) as TextureImporter;
+                    if (ti != null && ti.maxTextureSize != 2048) { ti.maxTextureSize = 2048; ti.SaveAndReimport(); }
+                }
             }
 
             // ithappy 차: 머티리얼(Color.mat)에 팔레트 텍스처가 비어 있다. Textures_4.png를 넣는다
@@ -180,6 +186,21 @@ namespace Manyworld.EditorTools
             EditorUtility.SetDirty(ctrl);
         }
 
+        /// <summary>Tripo20261013 폴더의 리깅된 FBX (tools/tripo/generate_characters.py가 내려받은 것). 휴머노이드로 임포트됐을 때만.</summary>
+        static GameObject TripoCharacter(string key)
+        {
+            const string dir = CharactersDir + "/Tripo20261013";
+            if (!AssetDatabase.IsValidFolder(dir)) return null;
+            foreach (var path in Fbx(dir))
+            {
+                if (!Path.GetFileName(path).StartsWith(key + "-rigged")) continue;
+                var mi = AssetImporter.GetAtPath(path) as ModelImporter;
+                if (mi == null || mi.animationType != ModelImporterAnimationType.Human) continue;
+                return AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            }
+            return null;
+        }
+
         static GameObject Prefab(string fileName)
         {
             foreach (var guid in AssetDatabase.FindAssets(fileName + " t:Prefab"))
@@ -223,7 +244,7 @@ namespace Manyworld.EditorTools
                 foreach (var r in inst.GetComponentsInChildren<Renderer>())
                 {
                     var mats = r.sharedMaterials;
-                    for (int i = 0; i < mats.Length; i++) mats[i] = MatteFoliage(mats[i], leafShade);
+                    for (int i = 0; i < mats.Length; i++) mats[i] = Instanced(MatteFoliage(mats[i], leafShade));
                     r.sharedMaterials = mats;
                 }
                 var cap = inst.AddComponent<CapsuleCollider>();
@@ -235,6 +256,22 @@ namespace Manyworld.EditorTools
                 if (saved != null) result.Add(saved);
             }
             return result.ToArray();
+        }
+
+        /// <summary>나무는 TreeField가 GPU 인스턴싱으로 그린다. 인스턴싱이 꺼진 원본 머티리얼은 켠 사본을 만든다.</summary>
+        static Material Instanced(Material m)
+        {
+            if (m == null || m.enableInstancing) return m;
+            string path = AssetDatabase.GetAssetPath(m);
+            if (path.StartsWith(GeneratedDir)) { m.enableInstancing = true; EditorUtility.SetDirty(m); return m; }
+            const string dir = GeneratedDir + "/Trees/Materials";
+            if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder(GeneratedDir + "/Trees", "Materials");
+            string copyPath = $"{dir}/{m.name}_Inst.mat";
+            var copy = AssetDatabase.LoadAssetAtPath<Material>(copyPath);
+            if (copy == null) { copy = new Material(m); AssetDatabase.CreateAsset(copy, copyPath); }
+            copy.enableInstancing = true;
+            EditorUtility.SetDirty(copy);
+            return copy;
         }
 
         /// <summary>신티 나무 머티리얼 → 광택·반사 없는 URP Lit (잎은 알파 클립 + 양면). 같은 원본은 한 번만 만든다.</summary>
@@ -512,9 +549,10 @@ namespace Manyworld.EditorTools
                 "SM_Prop_ParkBench_01", "SM_Prop_PowerBox_01", "SM_Prop_RubbishBin_01", "SM_Prop_Mailbox_01");
             cat.tico = Prefab("SM_Veh_Car_Small_01");
 
-            // 인물: 신티 휴머노이드 (City 재킷 남자, Town 딸). 없으면 Tripo 모델
-            cat.driverModel = Prefab("Character_Male_Jacket") ?? AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/01-dohyun-rigged.fbx");
-            cat.companionModel = Prefab("SM_Chr_Daughter_01") ?? AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/02-luna-rigged.fbx");
+            // 인물: 2026-10-13 Tripo 인물(목표 샷 02·03의 두 사람, docs/art/2026-10-13-characters)이 있으면 그것,
+            // 없으면 신티 휴머노이드 (City 재킷 남자, Town 딸), 그것도 없으면 예전 Tripo 동료
+            cat.driverModel = TripoCharacter("01-driver") ?? Prefab("Character_Male_Jacket") ?? AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/01-dohyun-rigged.fbx");
+            cat.companionModel = TripoCharacter("02-eunju") ?? Prefab("SM_Chr_Daughter_01") ?? AssetDatabase.LoadAssetAtPath<GameObject>(CharactersDir + "/02-luna-rigged.fbx");
             cat.humanoidController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(GeneratedDir + "/Humanoid.controller");
             cat.rifle = Prefab("SM_Wep_American_Rifle_01");
             cat.companionRifle = Prefab("SM_Wep_HuntingRifle_Clean_01");
