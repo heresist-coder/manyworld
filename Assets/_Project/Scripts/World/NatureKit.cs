@@ -154,6 +154,123 @@ namespace Manyworld
             return go;
         }
 
+        // ---------------- 키 큰 소나무 (목표 샷 02) ----------------
+
+        static Mesh[] tallPines;
+        static Material[] tallPineMats;
+
+        /// <summary>
+        /// 목표 샷 02의 기운 숲 소나무: 맨 줄기가 길게 드러나고 위쪽 절반에 각진 원뿔 층이 쌓인다.
+        /// 신티 소나무는 가지가 땅까지 내려와 덤불처럼 읽혔다. 높이 1 기준 메시, 하위 메시 0 줄기·1 잎.
+        /// </summary>
+        static Mesh TallPineMesh(int seed)
+        {
+            var rng = new System.Random(seed);
+            float R() => (float)rng.NextDouble();
+            var verts = new List<Vector3>();
+            var norms = new List<Vector3>();
+            var trunk = new List<int>();
+            var leaves = new List<int>();
+            // outward: 면이 바깥을 보게 하는 방향 (감는 순서를 거기에 맞춘다. 반대로 감겨 잎이 컬링되고 줄기 속만 보였다)
+            void Tri(List<int> to, Vector3 a, Vector3 b, Vector3 c, Vector3 outward)
+            {
+                var n = Vector3.Cross(b - a, c - a).normalized;
+                if (Vector3.Dot(n, outward) < 0f) { (b, c) = (c, b); n = -n; }
+                int k = verts.Count;
+                verts.Add(a); verts.Add(b); verts.Add(c);
+                norms.Add(n); norms.Add(n); norms.Add(n);
+                to.Add(k); to.Add(k + 1); to.Add(k + 2);
+            }
+            // 줄기: 6각, 밑동 반지름 0.022 → 끝 0.004 (높이 1 기준, 20m 나무면 밑동 지름 0.9m)
+            const int ts = 6;
+            float twist = R() * 60f;
+            for (int i = 0; i < ts; i++)
+            {
+                float a0 = (i * 360f / ts + twist) * Mathf.Deg2Rad, a1 = ((i + 1) * 360f / ts + twist) * Mathf.Deg2Rad;
+                Vector3 b0 = new Vector3(Mathf.Cos(a0), 0, Mathf.Sin(a0)) * 0.022f, b1 = new Vector3(Mathf.Cos(a1), 0, Mathf.Sin(a1)) * 0.022f;
+                Vector3 t0 = new Vector3(Mathf.Cos(a0), 0, Mathf.Sin(a0)) * 0.004f + Vector3.up * 0.97f, t1 = new Vector3(Mathf.Cos(a1), 0, Mathf.Sin(a1)) * 0.004f + Vector3.up * 0.97f;
+                b0.y -= 0.02f; b1.y -= 0.02f; // 땅에 묻히는 몫
+                var o0 = new Vector3(Mathf.Cos((a0 + a1) * 0.5f), 0, Mathf.Sin((a0 + a1) * 0.5f));
+                Tri(trunk, b0, t0, t1, o0);
+                Tri(trunk, b0, t1, b1, o0);
+            }
+            // 잎 층: 위쪽 60%에 8~9층, 아래 층이 넓다. 층마다 5~6각, 꼭짓점 반지름을 흔들어 각지게
+            int tiers = 8 + rng.Next(2);
+            float start = 0.38f + R() * 0.06f; // 수관이 눈높이 위 화면 위쪽 절반을 채운다
+            for (int t = 0; t < tiers; t++)
+            {
+                float u = t / (float)(tiers - 1);
+                float y0 = Mathf.Lerp(start, 0.9f, u);
+                float rad = Mathf.Lerp(0.105f, 0.035f, u) * (0.9f + R() * 0.2f); // 목표 샷 02는 좁은 첨탑 (0.17은 우산처럼 덮었다)
+                float hgt = Mathf.Lerp(0.12f, 0.09f, u);
+                int sides = 5 + rng.Next(2);
+                float rot = R() * 360f;
+                var ring = new Vector3[sides];
+                for (int i = 0; i < sides; i++)
+                {
+                    float a = (i * 360f / sides + rot + (R() - 0.5f) * 18f) * Mathf.Deg2Rad;
+                    float r = rad * (0.85f + R() * 0.3f);
+                    ring[i] = new Vector3(Mathf.Cos(a) * r, y0 - hgt * 0.18f * (0.7f + R() * 0.6f), Mathf.Sin(a) * r); // 가지 끝이 처진다
+                }
+                var apex = new Vector3((R() - 0.5f) * 0.01f, y0 + hgt, (R() - 0.5f) * 0.01f);
+                var under = new Vector3(0, y0 + hgt * 0.12f, 0);
+                for (int i = 0; i < sides; i++)
+                {
+                    var a = ring[i]; var c = ring[(i + 1) % sides];
+                    var side = (a + c) * 0.5f; side.y = 0f;
+                    Tri(leaves, a, apex, c, side + Vector3.up * rad * 0.6f);
+                    Tri(leaves, a, c, under, Vector3.down); // 밑면 (아래서 올려다볼 때 속이 비지 않게)
+                }
+            }
+            // 꼭대기 뾰족
+            var topBase = 0.9f + 0.1f;
+            for (int i = 0; i < 5; i++)
+            {
+                float a0 = i * 72f * Mathf.Deg2Rad, a1 = (i + 1) * 72f * Mathf.Deg2Rad;
+                var p0 = new Vector3(Mathf.Cos(a0) * 0.025f, topBase, Mathf.Sin(a0) * 0.025f);
+                var p1 = new Vector3(Mathf.Cos(a1) * 0.025f, topBase, Mathf.Sin(a1) * 0.025f);
+                Tri(leaves, p0, new Vector3(0, topBase + 0.07f, 0), p1, (p0 + p1) * 0.5f - Vector3.up * topBase);
+            }
+            var mesh = new Mesh { name = "TallPine" };
+            mesh.SetVertices(verts);
+            mesh.SetNormals(norms);
+            var uvs = new List<Vector2>(verts.Count);
+            foreach (var p in verts) uvs.Add(new Vector2(p.x * 2f + 0.5f, p.y)); // 조명 굽기용
+            mesh.SetUVs(0, uvs);
+            mesh.subMeshCount = 2;
+            mesh.SetTriangles(trunk, 0);
+            mesh.SetTriangles(leaves, 1);
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        /// <summary>키 큰 소나무 하나 (밑동 기준, 높이 height). 줄기에 기운 캡슐 충돌을 단다.</summary>
+        public static GameObject TallPine(Transform parent, float height, System.Random rng)
+        {
+            if (tallPines == null)
+            {
+                tallPines = new Mesh[5];
+                for (int i = 0; i < tallPines.Length; i++) tallPines[i] = TallPineMesh(211 + i * 53);
+                // 목표 샷 02: 붉은 갈색 줄기, 올리브 초록 잎 (볕 든 쪽 75,95,55)
+                tallPineMats = new[]
+                {
+                    RockMat(new Color(0.34f, 0.24f, 0.18f)), RockMat(new Color(0.3f, 0.22f, 0.17f)), // 볕에 붉게 떠서 채도를 낮췄다
+                    RockMat(new Color(0.24f, 0.32f, 0.17f)), RockMat(new Color(0.21f, 0.3f, 0.17f)), RockMat(new Color(0.27f, 0.34f, 0.18f)),
+                };
+                foreach (var m in tallPineMats) m.name = "TallPine";
+            }
+            var go = new GameObject("TallPine", typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(parent, false);
+            go.GetComponent<MeshFilter>().sharedMesh = tallPines[rng.Next(tallPines.Length)];
+            go.GetComponent<MeshRenderer>().sharedMaterials = new[] { tallPineMats[rng.Next(2)], tallPineMats[2 + rng.Next(3)] };
+            go.transform.localScale = Vector3.one * height;
+            var col = go.AddComponent<CapsuleCollider>();
+            col.radius = 0.019f;
+            col.height = 0.4f;
+            col.center = new Vector3(0, 0.2f, 0);
+            return go;
+        }
+
         static Material RockMat(Color c)
         {
             var m = new Material(Graybox.Mat(c)) { name = "Boulder" };

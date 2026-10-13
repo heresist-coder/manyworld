@@ -221,9 +221,10 @@ namespace Manyworld.Tests
             // t02: 숲길 위에서 방 쪽으로 (길은 가운데서 살짝 꺾인다)
             var th = ForestSiteBuilder.Trailhead;
             var bend = Vector2.Lerp(th, ForestSiteBuilder.RoomEntrance, 0.5f) + new Vector2(-6f, 2f);
-            var onTrail = Vector2.Lerp(th, bend, 0.45f);
+            // 목표 샷 02 구도: 터널 어귀(주차 공터 끝)에서 조금 높게, 기운 숲 속으로
+            var onTrail = Vector2.Lerp(th, bend, 0.2f);
             var ent = ForestSiteBuilder.RoomEntrance;
-            yield return Shot("t02_path.png", Ground(new Vector3(onTrail.x, 0, onTrail.y), 2.4f), Ground(new Vector3(ent.x, 0, ent.y), 1.5f));
+            yield return Shot("t02_path.png", Ground(new Vector3(onTrail.x, 0, onTrail.y), 3.2f), Ground(new Vector3(ent.x, 0, ent.y), 2.5f));
             hud.enabled = true;
             pc.target = keep;
             gm.EnterHub();

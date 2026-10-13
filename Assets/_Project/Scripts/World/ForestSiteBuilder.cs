@@ -254,7 +254,7 @@ namespace Manyworld
                 NatureKit.Layer(NatureKit.Ground.ForestFloor, new Color(0.17f, 0.17f, 0.1f), 4f, 2),  // 1 숲 바닥 (먼 산비탈 나무 사이가 밝게 비치지 않게 어둡게)
                 NatureKit.Layer(NatureKit.Ground.Dirt, new Color(0.74f, 0.58f, 0.42f), 4f, 3),        // 2 흙길·방 바닥 (밝은 황토, 자갈)
                 NatureKit.Layer(NatureKit.Ground.Rock, new Color(0.42f, 0.43f, 0.4f), 8f, 4),         // 3 바위
-                NatureKit.Layer(NatureKit.Ground.Dry, new Color(0.62f, 0.57f, 0.34f), 6f, 5),         // 4 마른 풀
+                NatureKit.Layer(NatureKit.Ground.Dry, new Color(0.55f, 0.51f, 0.33f), 6f, 5),         // 4 마른 풀 (0.62,0.57,0.34는 01 오른쪽 언덕이 노랗게 떴다)
                 NatureKit.Layer(NatureKit.Ground.Lush, new Color(0.42f, 0.46f, 0.26f), 5f, 6),        // 5 짙은 풀 얼룩
                 NatureKit.Layer(NatureKit.Ground.Rut, new Color(0.6f, 0.46f, 0.33f), 4f, 7),          // 6 바퀴 자국·길 가장자리 (짙은 흙)
             };
@@ -317,7 +317,7 @@ namespace Manyworld
             td.SetAlphamaps(0, 0, a);
 
             // 풀 컬러맵: 칠한 지형 색을 위에서 내려다본 텍스처 (풀 밑동이 바로 아래 땅 색을 따른다, Stylized Grass Shader)
-            var layerColors = new[] { new Color(0.54f, 0.5f, 0.3f), new Color(0.17f, 0.17f, 0.1f), new Color(0.74f, 0.58f, 0.42f), new Color(0.42f, 0.43f, 0.4f), new Color(0.62f, 0.57f, 0.34f), new Color(0.42f, 0.46f, 0.26f), new Color(0.6f, 0.46f, 0.33f) };
+            var layerColors = new[] { new Color(0.54f, 0.5f, 0.3f), new Color(0.17f, 0.17f, 0.1f), new Color(0.74f, 0.58f, 0.42f), new Color(0.42f, 0.43f, 0.4f), new Color(0.55f, 0.51f, 0.33f), new Color(0.42f, 0.46f, 0.26f), new Color(0.6f, 0.46f, 0.33f) };
             const int cm = 512;
             var cpx = new Color[cm * cm];
             for (int z = 0; z < cm; z++)
@@ -430,6 +430,10 @@ namespace Manyworld
                 float big = Mathf.PerlinNoise(px * 0.04f + 3f, pz * 0.04f + 7f);
                 float small = Mathf.PerlinNoise(px * 0.22f + 11f, pz * 0.22f + 5f);
                 float verge = Mathf.InverseLerp(11f, 5f, rd);
+                // 기운 숲 숲길 어깨도 풀이 빽빽하다 (목표 샷 02: 길 양옆 낮은 풀과 바위)
+                // (방 둘레는 빼고: 03 방 안쪽까지 덤불이 번졌다)
+                float awayFromRoom = Mathf.InverseLerp(RoomHalf + 4f, RoomHalf + 10f, Vector2.Distance(new Vector2(px, pz), RoomCenter));
+                verge = Mathf.Max(verge, Mathf.InverseLerp(9f, 3f, Sample(trailDist, px, pz)) * Mathf.InverseLerp(30f, 14f, LeaningBandDistance(px, pz)) * 0.8f * awayFromRoom);
                 float clumped = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 0.6f, big)) * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.28f, 0.62f, small));
                 float chance = Mathf.Lerp(0.95f, 0.1f, forest) * Mathf.Clamp01(clumped * 1.5f + verge * 0.7f);
                 if (rng.NextDouble() > chance) continue;
@@ -692,8 +696,11 @@ namespace Manyworld
             var backdrop = Resources.Load<Material>("Materials/Backdrop");
             if (backdrop != null)
             {
+                // 목표 샷 01은 세 겹: 숲 덮인 가까운 언덕(푸른 초록) → 짙은 푸른 산 → 하늘에 묻히는 먼 봉우리.
+                // (비탈 명암은 띠가 세로 기둥이라 커튼 줄무늬로 보여서 끈다: shade 0)
                 RidgeRing(root, backdrop, 2050f, 560f, 1000f, new Color(0.46f, 0.53f, 0.65f), new Color(0.62f, 0.67f, 0.75f), 5);
                 RidgeRing(root, backdrop, 1500f, 380f, 700f, new Color(0.3f, 0.37f, 0.5f), new Color(0.55f, 0.6f, 0.7f), 9);
+                RidgeRing(root, backdrop, 1020f, 190f, 360f, new Color(0.17f, 0.25f, 0.24f), new Color(0.36f, 0.44f, 0.5f), 13);
                 return;
             }
             int n = 16;
@@ -735,23 +742,26 @@ namespace Manyworld
             }
         }
 
-        /// <summary>분지를 둘러싼 능선 띠 한 겹. 뾰족한 봉우리 = 1-|sin|을 여러 주기로 겹친다 (한 바퀴에 이어지는 정수 주기).</summary>
-        static void RidgeRing(Transform root, Material mat, float radius, float minH, float maxH, Color top, Color haze, int seed)
+        /// <summary>
+        /// 분지를 둘러싼 능선 띠 한 겹. 뾰족한 봉우리 = 1-|sin|을 여러 주기로 겹친다 (한 바퀴에 이어지는 정수 주기).
+        /// shade: 비탈이 해를 보는 정도로 밝기를 바꾸는 세기 (정점색). 세로 얼룩은 커튼처럼 보여서 뺐다.
+        /// </summary>
+        static void RidgeRing(Transform root, Material mat, float radius, float minH, float maxH, Color top, Color haze, int seed, float shade = 0f)
         {
             var rng = new System.Random(seed);
             int[] freqs = { 3, 5, 9, 17, 31 };
             float[] amps = { 1f, 0.6f, 0.4f, 0.22f, 0.12f };
             var phase = new float[freqs.Length];
             for (int k = 0; k < phase.Length; k++) phase[k] = (float)rng.NextDouble() * Mathf.PI * 2f;
-            const int seg = 480;
+            const int seg = 960;
+            const int rows = 5;
             var center = new Vector3(Size / 2, 0, Size / 2);
             var verts = new List<Vector3>();
             var cols = new List<Color>();
             var tris = new List<int>();
             const float baseY = 40f;
-            for (int i = 0; i <= seg; i++)
+            float Height(float a)
             {
-                float a = i / (float)seg * Mathf.PI * 2f;
                 float n = 0f, norm = 0f;
                 for (int k = 0; k < freqs.Length; k++)
                 {
@@ -759,19 +769,42 @@ namespace Manyworld
                     n += amps[k] * r * r;
                     norm += amps[k];
                 }
-                n /= norm;
+                return n / norm;
+            }
+            var field = WorldLook.Field;
+            var toSun = -(Quaternion.Euler(field.sunPitch, field.sunYaw, 0f) * Vector3.forward);
+            float step = Mathf.PI * 2f / seg;
+            for (int i = 0; i <= seg; i++)
+            {
+                float a = i * step;
+                float n = Height(a);
                 float hgt = Mathf.Lerp(minH, maxH, Mathf.Clamp01(n * 1.6f - 0.1f));
                 var dir = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a));
+                var tangent = new Vector3(-Mathf.Sin(a), 0, Mathf.Cos(a));
+                // 비탈 법선: 분지 쪽(안쪽)을 보고, 능선이 오르는 쪽으로 기운다
+                // 비탈은 넓게 (±8칸) 재서 잔 봉우리마다 명암이 뒤집혀 줄무늬가 지지 않게
+                float h0 = Mathf.Lerp(minH, maxH, Mathf.Clamp01(Height(a - step * 8f) * 1.6f - 0.1f));
+                float h1 = Mathf.Lerp(minH, maxH, Mathf.Clamp01(Height(a + step * 8f) * 1.6f - 0.1f));
+                float slope = (h1 - h0) / (radius * step * 16f);
+                var normal = (-dir * 0.8f - tangent * slope * 1.6f + Vector3.up * 0.45f).normalized;
+                float lit = 1f + shade * (Vector3.Dot(normal, toSun) * 1.6f - 0.35f);
                 var p = center + dir * radius;
-                verts.Add(p + Vector3.up * baseY);
-                verts.Add(p + Vector3.up * (baseY + (hgt - baseY) * 0.45f));
-                verts.Add(p + Vector3.up * hgt);
-                // 정점색은 감마 변환 없이 그대로 쓰여서 선형 색으로 넣는다
-                cols.Add(haze.linear); cols.Add(haze.linear); cols.Add(Color.Lerp(top, haze, 0.15f * (1f - n)).linear);
+                for (int r = 0; r < rows; r++)
+                {
+                    float v = r / (float)(rows - 1);
+                    // 아래쪽은 안개에 묻히고 위로 갈수록 산 색. 꼭대기 가까이 해 그늘 차이가 가장 크다
+                    float y = baseY + (hgt - baseY) * v;
+                    var c = Color.Lerp(haze, Color.Lerp(top, haze, 0.15f * (1f - n)), Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.2f, 0.9f, v)));
+                    float k = Mathf.Lerp(1f, lit, Mathf.InverseLerp(0.1f, 0.8f, v));
+                    c = new Color(c.r * k, c.g * k, c.b * k);
+                    verts.Add(p + Vector3.up * y);
+                    cols.Add(c.linear); // 정점색은 감마 변환 없이 그대로 쓰여서 선형 색으로 넣는다
+                }
                 if (i > 0)
                 {
-                    int b = (i - 1) * 3, c = i * 3;
-                    tris.AddRange(new[] { b, c, b + 1, b + 1, c, c + 1, b + 1, c + 1, b + 2, b + 2, c + 1, c + 2 });
+                    int b0 = (i - 1) * rows, c0 = i * rows;
+                    for (int r = 0; r < rows - 1; r++)
+                        tris.AddRange(new[] { b0 + r, c0 + r, b0 + r + 1, b0 + r + 1, c0 + r, c0 + r + 1 });
                 }
             }
             var mesh = new Mesh { name = "RidgeRing", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
@@ -1070,10 +1103,11 @@ namespace Manyworld
             var axis = Vector3.Cross(Vector3.up, lean);
             int leaning = 0;
             // 목표 샷 02는 굵은 줄기가 2~3m 간격으로 길가에 붙어 터널을 만든다 (4.1m 격자·6.5m 비움은 듬성한 공터로 읽혔다)
-            for (float x = RoomCenter.x - 120f; x < RoomCenter.x + 60f; x += 3.2f)
-            for (float z = RoomCenter.y - 140f; z < RoomCenter.y + 20f; z += 3.2f)
+            // (3.2m는 줄기가 벽처럼 막아 하늘이 안 보였다 → 4.3m)
+            for (float x = RoomCenter.x - 120f; x < RoomCenter.x + 60f; x += 4.3f)
+            for (float z = RoomCenter.y - 140f; z < RoomCenter.y + 20f; z += 4.3f)
             {
-                float px = x + (float)(rng.NextDouble() - 0.5) * 2.6f, pz = z + (float)(rng.NextDouble() - 0.5) * 2.6f;
+                float px = x + (float)(rng.NextDouble() - 0.5) * 3f, pz = z + (float)(rng.NextDouble() - 0.5) * 3f;
                 if (!InLeaningBand(px, pz, 0f) || InRoom(px, pz, 4f)) continue;
                 var p2 = new Vector2(px, pz);
                 if (Vector2.Distance(p2, Trailhead) < 16f) continue;
@@ -1082,26 +1116,39 @@ namespace Manyworld
                 float tt = Mathf.Clamp01(Vector2.Dot(p2 - a, ab) / ab.sqrMagnitude);
                 var onPath = a + ab * tt;
                 float side = Vector2.Distance(p2, onPath);
-                if (side < 4.6f) continue; // 길(폭 약 4m)만 비운다. 기운 수관이 길 위로 모인다
-                if (rng.NextDouble() < (side < 12f ? 0.08 : 0.3)) continue; // 길가 두 줄은 빽빽하게, 안쪽은 성기게
-                // 줄기가 길게 드러난 큰 소나무 위주 (목표 샷 02의 굵은 기운 줄기)
-                var prefab = art != null && art.pines != null && art.pines.Length > 2 && rng.NextDouble() < 0.75 ? art.pines[2] : art != null ? ArtCatalog.Pick(art.pines, rng.Next(100)) : null;
-                var t = prefab != null ? Object.Instantiate(prefab, go.transform) : Object.Instantiate(FallbackPine(), go.transform);
-                t.SetActive(true);
-                t.name = "LeaningPine";
+                if (side < 6.2f) continue; // 길(폭 약 4m)과 어깨를 비운다. 기운 수관이 길 위로 모인다 (4.6m에선 줄기가 길을 가로질러 A자 들보가 됐다)
+                if (rng.NextDouble() < (side < 12f ? 0.12 : 0.35)) continue; // 길가 두 줄은 빽빽하게, 안쪽은 성기게
+                // 맨 줄기가 길게 드러난 키 큰 소나무 (목표 샷 02). 길가 줄이 가장 크다
+                float height = Mathf.Lerp(18f, 13f, Mathf.InverseLerp(6f, 18f, side)) + (float)rng.NextDouble() * 3f;
+                var t = NatureKit.TallPine(go.transform, height, rng);
                 var p = new Vector3(px, 0, pz);
                 p.y = terrain.SampleHeight(p) - 0.2f;
                 // 길 쪽으로 기울고 조금은 방 쪽으로 (목표 샷 02: 길 위로 V자로 모인다)
                 var inward = (onPath - p2).normalized;
                 var dir2 = (inward + RoomForward * 0.45f).normalized;
                 var tiltAxis = Vector3.Cross(Vector3.up, new Vector3(dir2.x, 0, dir2.y));
-                float tilt = Mathf.Lerp(26f, 16f, Mathf.InverseLerp(5f, 20f, side)) + (float)rng.NextDouble() * 6f; // 길가 줄기가 가장 많이 기운다
+                float tilt = Mathf.Lerp(20f, 13f, Mathf.InverseLerp(6f, 20f, side)) + (float)rng.NextDouble() * 5f; // 길가 줄기가 가장 많이 기운다 (목표 샷 02는 15~20°)
                 t.transform.SetPositionAndRotation(p, Quaternion.AngleAxis(tilt, tiltAxis) * Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0));
-                // 길가 줄기는 크게: 아래 가지가 눈높이 위로 올라가 굵은 줄기가 드러나고, 수관이 길 위에서 맞닿는다
-                t.transform.localScale = Vector3.one * (Mathf.Lerp(1.55f, 1.05f, Mathf.InverseLerp(5f, 16f, side)) + (float)rng.NextDouble() * 0.35f);
                 leaning++;
             }
-            Debug.Log($"[Manyworld] 기운 숲 {leaning}그루");
+            // 숲길 가장자리 바위 (목표 샷 02: 길 양옆에 회색 바위가 줄지어 있다)
+            int rocks = 0;
+            var bendPt = Vector2.Lerp(Trailhead, RoomEntrance, 0.5f) + new Vector2(-6f, 2f); // 숲길 꺾임 (BuildTerrain의 trailPts와 같다)
+            var legs = new[] { (Trailhead + (bendPt - Trailhead).normalized * 12f, bendPt), (bendPt, RoomEntrance - RoomForward * 3f) };
+            foreach (var (pa, pb) in legs)
+            for (float d = 0f; d < Vector2.Distance(pa, pb); d += 3.5f)
+            {
+                if (rng.NextDouble() < 0.45) continue;
+                var fwd = (pb - pa).normalized;
+                var pathRight = new Vector2(fwd.y, -fwd.x);
+                float sideSign = rng.NextDouble() < 0.5 ? -1f : 1f;
+                var q = pa + fwd * d + pathRight * sideSign * (3.4f + (float)rng.NextDouble() * 3f);
+                var ground = new Vector3(q.x, 0, q.y);
+                ground.y = terrain.SampleHeight(ground);
+                NatureKit.Boulder(go.transform, ground, 0.35f + (float)rng.NextDouble() * (rng.NextDouble() < 0.25 ? 1.1f : 0.5f), rng, true, "PathRock");
+                rocks++;
+            }
+            Debug.Log($"[Manyworld] 기운 숲 {leaning}그루, 길가 바위 {rocks}");
         }
 
         // ---------------- 빈 방 ----------------
