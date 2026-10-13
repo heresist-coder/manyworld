@@ -292,6 +292,22 @@ namespace Manyworld.Tests
                     }
                 }
             }
+            // 실제 플레이 카메라(배틀그라운드식 어깨 너머 TPS)로 서 있기·조준
+            pc.target = keep;
+            pc.yaw = Quaternion.LookRotation(fwd).eulerAngles.y;
+            pc.pitch = 4f;
+            foreach (var state in new[] { "idle", "aim" })
+            {
+                CharacterRig.QaAim = state == "aim";
+                PlayerCamera.QaAim = state == "aim";
+                mc.Player.transform.rotation = Quaternion.LookRotation(fwd);
+                for (float tt = 0; tt < 1f; tt += Time.unscaledDeltaTime) yield return null; // 카메라가 따라와 가라앉게
+                yield return Settle(cam, 8);
+                Capture(Path.Combine(dir, $"tps_{state}.png"));
+            }
+            PlayerCamera.QaAim = null;
+            pc.target = null;
+
             // 걷기: 둘을 앞으로 1.4m/s로 1.2초 옮기며 옆에서 (이동 부품은 잠시 끈다)
             CharacterRig.QaAim = false;
             var cc = mc.Player.GetComponent<CharacterController>();

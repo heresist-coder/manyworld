@@ -19,10 +19,12 @@ namespace Manyworld
             public Material material;
             public Bounds bounds;
             public Matrix4x4[] matrices;
+            public float minDistance, maxDistance = float.MaxValue; // 먼 LOD는 거리 구간에서만
         }
 
         public float drawDistance = 1500f;
         public float shadowKeepDistance = 160f;
+        public float shadowCastDistance = 180f; // 이보다 먼 나무는 그림자를 그리지 않는다 (그림자 4단 패스가 나무 비용의 큰 몫)
         public int InstanceCount { get; private set; }
         readonly List<Batch> batches = new List<Batch>();
         readonly Plane[] planes = new Plane[6];
@@ -49,8 +51,18 @@ namespace Manyworld
                     parts[i].Add((mf.sharedMesh, r.sharedMaterials, rootInv * r.transform.localToWorldMatrix));
                 }
             }
-            // 칸별 행렬 모으기
-            var groups = new Dictionary<(int proto, int part, int sub, Vector2Int cell), List<Matrix4x4>>();
+            // 먼 거리 LOD (TreeLods: 신티 LOD1·2 메시, LOD0과 같은 머티리얼)
+            var lodMeshes = new Mesh[protos.Length][];
+            var lodFrom = new float[protos.Length][];
+            for (int i = 0; i < protos.Length; i++)
+            {
+                var tl = protos[i].prefab != null ? protos[i].prefab.GetComponent<TreeLods>() : null;
+                if (tl == null || tl.lods == null || tl.lods.Length == 0 || parts[i].Count != 1) continue;
+                lodMeshes[i] = tl.lods;
+                lodFrom[i] = tl.fromDistance;
+            }
+            // 칸별 행렬 모으기 (LOD 단계마다 따로)
+            var groups = new Dictionary<(int proto, int part, int sub, Vector2Int cell, int lod), List<Matrix4x4>>();
             var origin = terrain.transform.position;
             foreach (var ti in td.treeInstances)
             {
@@ -59,14 +71,19 @@ namespace Manyworld
                 var wp = Vector3.Scale(ti.position, td.size) + origin;
                 var trs = Matrix4x4.TRS(wp, Quaternion.Euler(0f, ti.rotation * Mathf.Rad2Deg, 0f), new Vector3(ti.widthScale, ti.heightScale, ti.widthScale));
                 var cell = new Vector2Int(Mathf.FloorToInt(wp.x / chunk), Mathf.FloorToInt(wp.z / chunk));
+                int levels = lodMeshes[ti.prototypeIndex] != null ? lodMeshes[ti.prototypeIndex].Length + 1 : 1;
                 for (int p = 0; p < list.Count; p++)
                 {
                     var m = trs * list[p].local;
-                    for (int s = 0; s < list[p].mesh.subMeshCount && s < list[p].mats.Length; s++)
+                    for (int lod = 0; lod < levels; lod++)
                     {
-                        var key = (ti.prototypeIndex, p, s, cell);
-                        if (!groups.TryGetValue(key, out var g)) groups[key] = g = new List<Matrix4x4>();
-                        g.Add(m);
+                        var mesh = lod == 0 ? list[p].mesh : lodMeshes[ti.prototypeIndex][lod - 1];
+                        for (int s = 0; s < mesh.subMeshCount && s < list[p].mats.Length; s++)
+                        {
+                            var key = (ti.prototypeIndex, p, s, cell, lod);
+                            if (!groups.TryGetValue(key, out var g)) groups[key] = g = new List<Matrix4x4>();
+                            g.Add(m);
+                        }
                     }
                 }
             }
@@ -79,7 +96,12 @@ namespace Manyworld
                 var mat = part.mats[kv.Key.sub];
                 if (mat == null) continue;
                 if (!mat.enableInstancing) mat = InstancedCopy(mat); // 카탈로그가 켜 두지만, 빠진 게 있어도 나무가 사라지지 않게
-                var meshBounds = part.mesh.bounds;
+                int lodLevel = kv.Key.lod;
+                var drawMesh = lodLevel == 0 ? part.mesh : lodMeshes[kv.Key.proto][lodLevel - 1];
+                var from = lodFrom[kv.Key.proto];
+                float minD = lodLevel == 0 ? 0f : from[lodLevel - 1];
+                float maxD = from == null ? float.MaxValue : lodLevel < from.Length ? from[lodLevel] : float.MaxValue;
+                var meshBounds = drawMesh.bounds;
                 for (int start = 0; start < kv.Value.Count; start += 1000)
                 {
                     int n = Mathf.Min(1000, kv.Value.Count - start);
@@ -90,12 +112,12 @@ namespace Manyworld
                         b.Encapsulate(m.MultiplyPoint3x4(meshBounds.min));
                         b.Encapsulate(m.MultiplyPoint3x4(meshBounds.max));
                     }
-                    field.batches.Add(new Batch { mesh = part.mesh, submesh = kv.Key.sub, material = mat, bounds = b, matrices = arr });
+                    field.batches.Add(new Batch { mesh = drawMesh, submesh = kv.Key.sub, material = mat, bounds = b, matrices = arr, minDistance = minD, maxDistance = maxD });
                 }
             }
             field.InstanceCount = td.treeInstanceCount;
             terrain.drawTreesAndFoliage = false; // 충돌은 TerrainCollider가 계속 맡는다
-            Debug.Log($"[Manyworld] 나무 인스턴싱: {field.InstanceCount}그루, 묶음 {field.batches.Count}");
+            Debug.Log($"[Manyworld] 나무 인스턴싱: {field.InstanceCount}그루, 묶음 {field.batches.Count}, 먼 LOD 원형 {System.Linq.Enumerable.Count(lodMeshes, l => l != null)}/{protos.Length}");
             return field;
         }
 
@@ -114,16 +136,16 @@ namespace Manyworld
             if (cam.cameraType == CameraType.Preview || cam.cameraType == CameraType.Reflection) return;
             var p = cam.transform.position;
             GeometryUtility.CalculateFrustumPlanes(cam, planes);
-            float d2 = drawDistance * drawDistance, k2 = shadowKeepDistance * shadowKeepDistance;
+            float d2 = drawDistance * drawDistance, k2 = shadowKeepDistance * shadowKeepDistance, c2 = shadowCastDistance * shadowCastDistance;
             foreach (var b in batches)
             {
                 float sq = b.bounds.SqrDistance(p);
-                if (sq > d2) continue;
+                if (sq > d2 || sq < b.minDistance * b.minDistance || sq >= b.maxDistance * b.maxDistance) continue;
                 if (sq > k2 && !GeometryUtility.TestPlanesAABB(planes, b.bounds)) continue;
                 var rp = new RenderParams(b.material)
                 {
                     camera = cam,
-                    shadowCastingMode = ShadowCastingMode.On,
+                    shadowCastingMode = sq < c2 ? ShadowCastingMode.On : ShadowCastingMode.Off,
                     receiveShadows = true,
                     worldBounds = b.bounds,
                     layer = gameObject.layer,

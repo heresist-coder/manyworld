@@ -23,7 +23,8 @@ namespace Manyworld
         public static readonly Vector2 CarStart = new Vector2(238, 220); // 흙길 위 (가장자리 산비탈을 피해 초원 안쪽)
         static readonly Vector2[] Road =
         {
-            new Vector2(214, 196), new Vector2(262, 240), new Vector2(305, 262), new Vector2(346, 300), new Vector2(378, 348), new Vector2(400, 396),
+            // 차 앞(Road[1]→[2])은 그대로, 그 너머는 오른쪽으로 살짝 벌어졌다가 왼쪽으로 크게 휘어 숲길 입구로 (목표 샷 01의 S자 흙길)
+            new Vector2(214, 196), new Vector2(262, 240), new Vector2(305, 262), new Vector2(352, 287), new Vector2(374, 355), new Vector2(400, 396),
         };
         public static readonly Vector2 Trailhead = new Vector2(404, 404);
         public static readonly Vector2 RoomCenter = new Vector2(430, 482);
@@ -284,12 +285,13 @@ namespace Manyworld
                 float jitter = (Mathf.PerlinNoise(wx * 0.35f, wz * 0.35f) - 0.5f) * 0.3f;
                 float road = Mathf.Clamp01(Mathf.InverseLerp(5f, 3.9f, rd) + (rd < 5.6f ? jitter * 0.6f : 0f));
                 float trail = Mathf.Clamp01(Mathf.InverseLerp(2.4f, 1.2f, td2) + (td2 < 3f ? jitter : 0f)) * 0.9f;
-                float floor = 0f;
+                float floor = 0f, roomEdge = 0f;
                 if (InRoom(wx, wz, 0.6f))
                 {
                     var l = RoomLocal(wx, wz);
                     float edge = Mathf.Max(Mathf.Abs(l.x), Mathf.Abs(l.y));
                     floor = Mathf.Clamp01(Mathf.InverseLerp(RoomHalf + 0.6f, RoomHalf - 0.8f, edge) + jitter * 0.5f);
+                    roomEdge = Mathf.InverseLerp(RoomHalf - 3f, RoomHalf - 0.3f, edge) * floor; // 목표 샷 03: 나무 밑 가장자리는 솔잎 깔린 짙은 흙
                 }
                 // 기운 숲 바닥: 모래흙이 드러난 자리와 마른 풀 (목표 샷 02)
                 float band = Mathf.InverseLerp(30f, 14f, LeaningBandDistance(wx, wz));
@@ -301,10 +303,10 @@ namespace Manyworld
                 float rest = Mathf.Max(0f, 1f - dirt - rock);
                 // 바퀴 자국 두 줄과 닳은 길 가장자리
                 float rut = road * (Mathf.Exp(-(rd - 1.35f) * (rd - 1.35f) * 4f) * 0.6f + Mathf.InverseLerp(3.1f, 4.6f, rd) * 0.45f);
-                a[z, x, 6] = rut + floor * 0.55f; // 방 바닥: 주황빛 짙은 흙 + 솔잎 (목표 샷 03)
+                a[z, x, 6] = rut + floor * 0.55f - roomEdge * 0.55f; // 가장자리 몫은 숲 바닥(1)으로 옮긴다 (합 1 유지) // 방 바닥: 주황빛 짙은 흙 + 솔잎 (목표 샷 03)
                 a[z, x, 2] = dirt - floor * 0.8f - rut;
                 a[z, x, 3] = rock;
-                a[z, x, 1] = rest * Mathf.InverseLerp(0.35f, 0.75f, forest) + floor * 0.25f;
+                a[z, x, 1] = rest * Mathf.InverseLerp(0.35f, 0.75f, forest) + floor * 0.25f + roomEdge * 0.55f;
                 float open = rest - a[z, x, 1];
                 a[z, x, 4] = open * dry;
                 float lush = Mathf.InverseLerp(0.45f, 0.65f, Sample(lushG, wx, wz));
@@ -476,6 +478,26 @@ namespace Manyworld
             }
             GameObject PickOf(GameObject[] a) => a != null && a.Length > 0 ? a[rng.Next(a.Length)] : null;
             bool Blocked(float x, float z) => Sample(roadDist, x, z) < 4.2f || Sample(trailDist, x, z) < 1.1f || NatureKit.UnderRock(x, z);
+
+            // 0) 방 입구 양옆: 쓰러진 통나무와 고사리 무리 (목표 샷 03의 앞쪽 전경). 입구 길(숲길)은 비운다
+            var across = new Vector2(RoomForward.y, -RoomForward.x);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                var logAt = RoomEntrance - RoomForward * (1.5f + (float)rng.NextDouble() * 2f) + across * side * (4.2f + (float)rng.NextDouble() * 1.5f);
+                var log = Put(art.clutterLogs != null && art.clutterLogs.Length > 0 ? art.clutterLogs[rng.Next(Mathf.Min(2, art.clutterLogs.Length))] : null, logAt.x, logAt.y, 1.1f + (float)rng.NextDouble() * 0.3f, true);
+                if (log != null)
+                {
+                    // 방 앞면과 나란히 눕힌다 (입구를 가로막지 않게)
+                    log.transform.rotation = Quaternion.LookRotation(new Vector3(across.x, 0, across.y)) * Quaternion.Euler(0, 90f + (float)(rng.NextDouble() - 0.5) * 30f, 0);
+                    NatureKit.Footprints.Add(logAt.x, logAt.y, 1.5f);
+                }
+                for (int k = 0; k < 7; k++)
+                {
+                    var f = RoomEntrance - RoomForward * ((float)rng.NextDouble() * 5f - 1f) + across * side * (2.6f + (float)rng.NextDouble() * 4f);
+                    if (InRoom(f.x, f.y, 0.3f) || Sample(trailDist, f.x, f.y) < 1.4f) continue;
+                    Put(PickOf(k < 5 ? art.clutterFerns : art.clutterPebbles), f.x, f.y, 0.8f + (float)rng.NextDouble() * 0.6f, k < 5);
+                }
+            }
 
             // 1) 방: 벽(나무) 밑 띠에 낙엽·잔가지가 쌓이고 가운데는 드문드문 (목표 샷 03)
             for (int i = 0; i < 260; i++)

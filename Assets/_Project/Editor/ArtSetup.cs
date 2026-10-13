@@ -274,6 +274,23 @@ namespace Manyworld.EditorTools
                     var lods = lodGroup.GetLODs();
                     if (lods.Length > 1)
                     {
+                        // 먼 거리 메시는 TreeLods에 남겨 TreeField가 LOD0 머티리얼로 그린다 (LOD0이 메시 하나일 때만)
+                        var lod0 = lods[0].renderers.Where(r => r != null).ToArray();
+                        var far = new List<Mesh>();
+                        if (lod0.Length == 1)
+                            for (int i = 1; i < lods.Length; i++)
+                            {
+                                var rs = lods[i].renderers.Where(r => r != null).ToArray();
+                                var mf = rs.Length == 1 ? rs[0].GetComponent<MeshFilter>() : null;
+                                if (mf == null || mf.sharedMesh == null) break;
+                                far.Add(mf.sharedMesh);
+                            }
+                        if (far.Count > 0)
+                        {
+                            var tl = inst.AddComponent<TreeLods>();
+                            tl.lods = far.ToArray();
+                            tl.fromDistance = far.Select((m, i) => i == 0 ? 70f : 70f * Mathf.Pow(2.6f, i)).ToArray(); // 70m, 182m, 473m
+                        }
                         var keep = new HashSet<Renderer>(lods[0].renderers.Where(r => r != null));
                         for (int i = 1; i < lods.Length; i++)
                             foreach (var r in lods[i].renderers)
