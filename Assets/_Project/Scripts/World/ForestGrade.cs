@@ -13,7 +13,7 @@ namespace Manyworld
     {
         public ColorAdjustments color;
         public float baseExposure, baseSaturation;
-        public float exposureDrop = 0.7f, saturationDrop = 12f;
+        public float exposureDrop = 0.7f, saturationDrop = 7f; // 12는 02 하늘 틈·줄기가 회색으로 죽었다 (it70)
         float w = -1f;
 
         void LateUpdate()

@@ -178,7 +178,8 @@ namespace Manyworld.Tests
                 shadow.transform.position = Vector3.Lerp(ds.from, ds.to, 0.45f);
             }
             // 목표 샷 01 구도: 오른쪽 뒤 높은 곳에서 길을 따라. 차는 왼쪽, 바위 무더기는 오른쪽 앞
-            yield return Shot("t01_road.png", Ground(car.position - car.forward * 6.5f + car.right * 3.8f, 3.3f), car.position + car.forward * 40f - car.right * 6f + Vector3.up * 1f);
+            // (길이 차 앞 40m에서 오른쪽으로 휘므로 시선도 길을 따라 오른쪽으로: 차가 화면 왼쪽 아래에 온다)
+            yield return Shot("t01_road.png", Ground(car.position - car.forward * 6.5f + car.right * 3.8f, 3.8f), car.position + car.forward * 40f + car.right * 5f + Vector3.up * 1f);
             yield return Shot("t01_chase.png", Ground(car.position - car.forward * 7f + car.right * 1.4f, 2.1f), car.position + car.forward * 50f - car.right * 8f + Vector3.up * 6f);
             yield return Shot("t01_wide.png", Ground(car.position - car.forward * 12f - car.right * 3f, 3.5f), car.position + car.forward * 120f + Vector3.up * 20f);
             yield return Shot("aerial.png", new Vector3(170, 250, 120), new Vector3(430, 40, 470));

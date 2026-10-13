@@ -330,8 +330,8 @@ namespace Manyworld
         public static VolumetricAtmosphere.Look FieldMist = new VolumetricAtmosphere.Look
         {
             // 1차(it47): 밀도 0.012로 300m 너머가 하얗게 지워졌다. 160m 안쪽에만 옅게 (먼 산은 거리 안개)
-            density = 0.004f, height = 40f, brightness = 1f, turbulence = 0.4f, wind = 0.01f, distant = 0f, ambient = 0.45f, noise = 0.45f,
-            albedo = new Color(0.9f, 0.92f, 0.95f), shafts = 0.9f, diffusion = 0.35f, diffusionPower = 24f, maxDistance = 160f, border = 0.45f,
+            density = 0.0032f, height = 40f, brightness = 1f, turbulence = 0.4f, wind = 0.01f, distant = 0f, ambient = 0.45f, noise = 0.45f,
+            albedo = new Color(0.84f, 0.89f, 0.97f), shafts = 0.9f, diffusion = 0.35f, diffusionPower = 24f, maxDistance = 160f, border = 0.45f,
         };
 
         void SpawnMonsters()

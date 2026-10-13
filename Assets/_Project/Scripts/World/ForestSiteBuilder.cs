@@ -23,8 +23,9 @@ namespace Manyworld
         public static readonly Vector2 CarStart = new Vector2(238, 220); // 흙길 위 (가장자리 산비탈을 피해 초원 안쪽)
         static readonly Vector2[] Road =
         {
-            // 차 앞(Road[1]→[2])은 그대로, 그 너머는 오른쪽으로 살짝 벌어졌다가 왼쪽으로 크게 휘어 숲길 입구로 (목표 샷 01의 S자 흙길)
-            new Vector2(214, 196), new Vector2(262, 240), new Vector2(305, 262), new Vector2(352, 287), new Vector2(374, 355), new Vector2(400, 396),
+            // 차 앞(Road[1]→[2])은 그대로, 그 너머 40m에서 오른쪽으로 27° 꺾였다가 왼쪽으로 크게 휘어 숲길 입구로 (목표 샷 01의 S자 흙길:
+            // 예전 점들은 휨이 130m 너머라 01 구도에서 곧은 길로 읽혔다)
+            new Vector2(214, 196), new Vector2(262, 240), new Vector2(305, 262), new Vector2(348, 264), new Vector2(382, 290), new Vector2(397, 340), new Vector2(400, 396),
         };
         public static readonly Vector2 Trailhead = new Vector2(404, 404);
         public static readonly Vector2 RoomCenter = new Vector2(430, 482);
@@ -1068,10 +1069,11 @@ namespace Manyworld
             var lean = new Vector3(RoomForward.x, 0, RoomForward.y);
             var axis = Vector3.Cross(Vector3.up, lean);
             int leaning = 0;
-            for (float x = RoomCenter.x - 120f; x < RoomCenter.x + 60f; x += 4.1f)
-            for (float z = RoomCenter.y - 140f; z < RoomCenter.y + 20f; z += 4.1f)
+            // 목표 샷 02는 굵은 줄기가 2~3m 간격으로 길가에 붙어 터널을 만든다 (4.1m 격자·6.5m 비움은 듬성한 공터로 읽혔다)
+            for (float x = RoomCenter.x - 120f; x < RoomCenter.x + 60f; x += 3.2f)
+            for (float z = RoomCenter.y - 140f; z < RoomCenter.y + 20f; z += 3.2f)
             {
-                float px = x + (float)(rng.NextDouble() - 0.5) * 3.2f, pz = z + (float)(rng.NextDouble() - 0.5) * 3.2f;
+                float px = x + (float)(rng.NextDouble() - 0.5) * 2.6f, pz = z + (float)(rng.NextDouble() - 0.5) * 2.6f;
                 if (!InLeaningBand(px, pz, 0f) || InRoom(px, pz, 4f)) continue;
                 var p2 = new Vector2(px, pz);
                 if (Vector2.Distance(p2, Trailhead) < 16f) continue;
@@ -1079,8 +1081,9 @@ namespace Manyworld
                 var a = Trailhead; var b = RoomEntrance; var ab = b - a;
                 float tt = Mathf.Clamp01(Vector2.Dot(p2 - a, ab) / ab.sqrMagnitude);
                 var onPath = a + ab * tt;
-                if (Vector2.Distance(p2, onPath) < 6.5f) continue; // 기운 수관이 길 한가운데를 덮지 않게
-                if (rng.NextDouble() < 0.22) continue;
+                float side = Vector2.Distance(p2, onPath);
+                if (side < 4.6f) continue; // 길(폭 약 4m)만 비운다. 기운 수관이 길 위로 모인다
+                if (rng.NextDouble() < (side < 12f ? 0.08 : 0.3)) continue; // 길가 두 줄은 빽빽하게, 안쪽은 성기게
                 // 줄기가 길게 드러난 큰 소나무 위주 (목표 샷 02의 굵은 기운 줄기)
                 var prefab = art != null && art.pines != null && art.pines.Length > 2 && rng.NextDouble() < 0.75 ? art.pines[2] : art != null ? ArtCatalog.Pick(art.pines, rng.Next(100)) : null;
                 var t = prefab != null ? Object.Instantiate(prefab, go.transform) : Object.Instantiate(FallbackPine(), go.transform);
@@ -1092,9 +1095,10 @@ namespace Manyworld
                 var inward = (onPath - p2).normalized;
                 var dir2 = (inward + RoomForward * 0.45f).normalized;
                 var tiltAxis = Vector3.Cross(Vector3.up, new Vector3(dir2.x, 0, dir2.y));
-                float tilt = 16f + (float)rng.NextDouble() * 8f;
+                float tilt = Mathf.Lerp(26f, 16f, Mathf.InverseLerp(5f, 20f, side)) + (float)rng.NextDouble() * 6f; // 길가 줄기가 가장 많이 기운다
                 t.transform.SetPositionAndRotation(p, Quaternion.AngleAxis(tilt, tiltAxis) * Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0));
-                t.transform.localScale = Vector3.one * (1.0f + (float)rng.NextDouble() * 0.4f);
+                // 길가 줄기는 크게: 아래 가지가 눈높이 위로 올라가 굵은 줄기가 드러나고, 수관이 길 위에서 맞닿는다
+                t.transform.localScale = Vector3.one * (Mathf.Lerp(1.55f, 1.05f, Mathf.InverseLerp(5f, 16f, side)) + (float)rng.NextDouble() * 0.35f);
                 leaning++;
             }
             Debug.Log($"[Manyworld] 기운 숲 {leaning}그루");
