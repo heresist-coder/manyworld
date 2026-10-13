@@ -317,7 +317,14 @@ namespace Manyworld.Tests
                     yield return null;
                 }
                 // 프레임을 넘기는 동안 카메라 스크립트가 카메라를 옮기므로 찍기 직전에 놓는다
-                var p = rigW != null && rigW.animator != null ? rigW.animator.transform.position : t.position;
+                // 실제로 보이는 몸(스킨 메시 범위)을 겨눈다. 뿌리·애니메이터 위치를 겨누면 기사 컷이 비었다
+                var p = t.position;
+                if (rigW != null && rigW.animator != null)
+                {
+                    var smr = rigW.animator.GetComponentInChildren<SkinnedMeshRenderer>();
+                    if (smr != null) { p = smr.bounds.center; p.y = smr.bounds.min.y; }
+                }
+                Debug.Log($"[GUN-POSE] walk {name} root={t.position} body={p}");
                 var pos = p + t.right * 2.4f + t.forward * 0.6f + Vector3.up * 1.3f;
                 cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(p + Vector3.up * 1.1f - pos));
                 Capture(Path.Combine(dir, $"gun_{name}_walk_side.png"));

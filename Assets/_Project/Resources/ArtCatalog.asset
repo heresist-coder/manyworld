@@ -209,8 +209,8 @@ MonoBehaviour:
   - {fileID: 7170295694990207602, guid: 4425216ae0e345c43adc010abcdd90f1, type: 3}
   - {fileID: 7196810933511123041, guid: 29cecbe5f22b8f248abca9b49e8fe3ef, type: 3}
   - {fileID: 5329577460968038239, guid: 38d257c588f863747bd31ff57651e099, type: 3}
-  driverModel: {fileID: 1018949230691400, guid: d461c345ada76d14f94fe72087cec0f9, type: 3}
-  companionModel: {fileID: 1971421721505344, guid: 7726852b74327584980d2b8f88a12239, type: 3}
+  driverModel: {fileID: 919132149155446097, guid: 390766b861a62a1408ca4a0159ce3a0b, type: 3}
+  companionModel: {fileID: 919132149155446097, guid: 9b069a1a9df0cba4e8c1a0bcc7881804, type: 3}
   humanoidController: {fileID: 9100000, guid: 14d8bd2cc3b89314bb631b2210616fe7, type: 2}
   rifle: {fileID: 1103511012436976, guid: cc13ea7aca755ee4bb10925b6bf586c8, type: 3}
   companionRifle: {fileID: 1311854592980844, guid: 339cc5e61566f63428dc7728c5c3c5a0, type: 3}

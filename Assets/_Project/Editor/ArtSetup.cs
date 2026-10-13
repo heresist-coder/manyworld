@@ -186,6 +186,48 @@ namespace Manyworld.EditorTools
             EditorUtility.SetDirty(ctrl);
         }
 
+        /// <summary>
+        /// 2026-10-13 Tripo 인물(웹에서 생성·리깅, Mixamo 뼈대): 휴머노이드로 임포트하고, 기본색 텍스처만 쓰는 무광 URP Lit로 바꿔 끼운다.
+        /// zip의 노멀·금속도·거칠기 맵은 쓰지 않는다 (평면 색 세계, 숲에서 피부·옷이 번들거리지 않게. docs/art/2026-10-13-characters).
+        /// </summary>
+        static void SetupTripoCharacters()
+        {
+            const string dir = CharactersDir + "/Tripo20261013";
+            if (!AssetDatabase.IsValidFolder(dir)) return;
+            var lit = Shader.Find("Universal Render Pipeline/Lit");
+            foreach (var path in Fbx(dir))
+            {
+                string key = Path.GetFileNameWithoutExtension(path).Replace("-rigged", "");
+                var mi = (ModelImporter)AssetImporter.GetAtPath(path);
+                bool dirty = false;
+                if (mi.animationType != ModelImporterAnimationType.Human) { mi.animationType = ModelImporterAnimationType.Human; mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel; dirty = true; }
+                if (mi.importAnimation) { mi.importAnimation = false; dirty = true; }
+                var texPath = $"{dir}/Textures/{key}_basecolor.png";
+                if (AssetImporter.GetAtPath(texPath) is TextureImporter ti && ti.maxTextureSize != 2048) { ti.maxTextureSize = 2048; ti.SaveAndReimport(); }
+                var matPath = $"{dir}/Tripo_{key}.mat";
+                var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+                if (mat == null) { mat = new Material(lit); AssetDatabase.CreateAsset(mat, matPath); }
+                mat.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(texPath));
+                mat.SetColor("_BaseColor", Color.white);
+                mat.SetFloat("_Smoothness", 0.1f);
+                mat.SetFloat("_Metallic", 0f);
+                mat.SetFloat("_SpecularHighlights", 0f);
+                mat.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+                mat.enableInstancing = true;
+                EditorUtility.SetDirty(mat);
+                foreach (var src in AssetDatabase.LoadAllAssetsAtPath(path).OfType<Material>())
+                {
+                    mi.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), src.name), mat);
+                    dirty = true;
+                }
+                if (dirty) mi.SaveAndReimport();
+                var model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                int tris = model != null ? model.GetComponentsInChildren<SkinnedMeshRenderer>(true).Sum(r => r.sharedMesh != null ? r.sharedMesh.triangles.Length / 3 : 0) : 0;
+                var avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().FirstOrDefault();
+                Debug.Log($"[Manyworld] Tripo 인물 {key}: 삼각형 {tris}, 휴머노이드 {(avatar != null && avatar.isHuman ? "o" : "x")}");
+            }
+        }
+
         /// <summary>Tripo20261013 폴더의 리깅된 FBX (tools/tripo/generate_characters.py가 내려받은 것). 휴머노이드로 임포트됐을 때만.</summary>
         static GameObject TripoCharacter(string key)
         {
@@ -515,6 +557,7 @@ namespace Manyworld.EditorTools
         [MenuItem("Manyworld/Art/3 Build Catalog")]
         public static void BuildCatalog()
         {
+            SetupTripoCharacters();
             FixFoliageMips();
             EnsureSsaoFeature();
             EnsureRadiantFeature();

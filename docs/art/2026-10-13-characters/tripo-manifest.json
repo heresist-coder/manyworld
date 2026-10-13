@@ -1,0 +1,27 @@
+{
+  "created": "2026-10-13",
+  "source": "Tripo web (user-run generation and rigging), downloaded as zip; API script not used",
+  "note": "PBR maps (normal/metallic/roughness/rm) in the zip are not used: base color only per README spec",
+  "characters": [
+    {
+      "key": "01-driver",
+      "input": "inputs/01-driver.png",
+      "zip": "Downloads/stylized+man+3d+model.zip",
+      "zip_sha256": "25acd3d28c43f695b2ce5a21af954ffff56f11cebed1d78a5cb59669c5ae1098",
+      "fbx": "Assets/ThirdParty/Characters/Tripo20261013/01-driver-rigged.fbx",
+      "fbx_sha256": "d8f581e57e7d1084a172747002542adfc360369c02fc6ecb81bce903d49763f4",
+      "rig": "Mixamo skeleton incl. fingers",
+      "basecolor": "2048x2048"
+    },
+    {
+      "key": "02-eunju",
+      "input": "inputs/02-eunju.png",
+      "zip": "Downloads/3d+female+character.zip",
+      "zip_sha256": "8e6519e0d4d4906bd0880a394eb5f0291bc5e89ee68396e1656057c96e59f347",
+      "fbx": "Assets/ThirdParty/Characters/Tripo20261013/02-eunju-rigged.fbx",
+      "fbx_sha256": "4c978e3bd646f0c1a2c8c22738595d65c617e5033cb1fb82101fbea503654914",
+      "rig": "Mixamo skeleton incl. fingers",
+      "basecolor": "2048x2048"
+    }
+  ]
+}

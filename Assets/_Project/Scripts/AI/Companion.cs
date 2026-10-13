@@ -90,7 +90,7 @@ namespace Manyworld
             tag.gameObject.AddComponent<Billboard>();
             Graybox.SetLayerRecursive(go, 2);
             var art = ArtCatalog.Instance;
-            c.rig = CharacterRig.Attach(c.visual, art != null ? art.companionModel : null, 1.68f, art != null ? art.companionRifle : null);
+            c.rig = CharacterRig.Attach(c.visual, art != null ? art.companionModel : null, 1.66f, art != null ? art.companionRifle : null);
             if (c.rig != null) Graybox.SetLayerRecursive(go, 2);
 
             c.agent = go.GetComponent<NavMeshAgent>();

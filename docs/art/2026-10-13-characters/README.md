@@ -37,3 +37,11 @@
    - 생성, 리깅, 내려받기를 차례로 한다.
    - 결과는 `Assets/ThirdParty/Characters/Tripo20261013/`(깃 제외)에, 기록은 `tripo-manifest.json`에 남는다.
 3. Manyworld > Art > Setup All을 실행해 임포트하고 카탈로그를 만든다.
+
+## 결과 (2026-10-13)
+
+- 원화: Codex CLI 내장 ImageGen, 목표 샷 03을 그림체 참고 이미지로 붙였다 (`inputs/`, 각 1024×1536).
+- 모델: 사용자가 Tripo 웹에서 생성·리깅해 zip으로 받았다 (API 스크립트는 쓰지 않음). Mixamo 뼈대(손가락 포함), 기본색 2048.
+  기사 삼각형 9,970개, 은주 9,424개. 출처와 해시는 `tripo-manifest.json`.
+- Unity: `Assets/ThirdParty/Characters/Tripo20261013/`(깃 제외). `ArtSetup.SetupTripoCharacters`가 휴머노이드 임포트, 기본색만 쓰는 무광 URP Lit(`Tripo_{key}.mat`)로 바꿔 끼우기를 한다. zip의 노멀·금속도·거칠기 맵은 쓰지 않는다.
+- 카탈로그가 신티 인물 대신 이 둘을 쓴다. 총 들기 QA(`CaptureGunPose`): 서 있기·조준 모두 왼손 받침 오차 0.03cm 이하.
