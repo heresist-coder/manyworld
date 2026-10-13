@@ -84,6 +84,12 @@ namespace Manyworld.EditorTools
                 mi.SaveAndReimport();
             }
 
+            ConfigureMixamo();
+        }
+
+        /// <summary>Mixamo 클립 임포트: 휴머노이드, 제자리 (위치는 코드가 움직인다).</summary>
+        static void ConfigureMixamo()
+        {
             foreach (var path in Fbx(MixamoDir))
             {
                 var mi = (ModelImporter)AssetImporter.GetAtPath(path);
@@ -183,7 +189,63 @@ namespace Manyworld.EditorTools
             var t4 = down.AddTransition(move);
             t4.AddCondition(AnimatorConditionMode.IfNot, 0, "Down");
             t4.hasExitTime = false; t4.duration = 0.3f;
+
+            // 상체 레이어 (gun-pose-unity): 재장전·사격 클립을 게임 상태의 진행도(ReloadT·FireT)로 재생한다.
+            // 다리는 이동 클립 그대로. CharacterRig가 레이어 무게를 올리고 내린다
+            var reload = Clip("reloading");
+            var fire = Clip("firing rifle");
+            if (reload != null || fire != null)
+            {
+                ctrl.AddParameter("UpperState", AnimatorControllerParameterType.Int);
+                ctrl.AddParameter("ReloadT", AnimatorControllerParameterType.Float);
+                ctrl.AddParameter("FireT", AnimatorControllerParameterType.Float);
+                var mask = new AvatarMask { name = "UpperBody" };
+                foreach (AvatarMaskBodyPart part in System.Enum.GetValues(typeof(AvatarMaskBodyPart)))
+                {
+                    if (part == AvatarMaskBodyPart.LastBodyPart) continue;
+                    bool upper = part != AvatarMaskBodyPart.Root && part != AvatarMaskBodyPart.LeftLeg && part != AvatarMaskBodyPart.RightLeg
+                                 && part != AvatarMaskBodyPart.LeftFootIK && part != AvatarMaskBodyPart.RightFootIK;
+                    mask.SetHumanoidBodyPartActive(part, upper);
+                }
+                AssetDatabase.AddObjectToAsset(mask, ctrl);
+                ctrl.AddLayer("Upper");
+                var layers = ctrl.layers;
+                var upperLayer = layers[layers.Length - 1];
+                upperLayer.avatarMask = mask;
+                upperLayer.blendingMode = AnimatorLayerBlendingMode.Override;
+                upperLayer.defaultWeight = 0f;
+                ctrl.layers = layers;
+                var usm = upperLayer.stateMachine;
+                var none = usm.AddState("None");
+                usm.defaultState = none;
+                void Timed(string stateName, AnimationClip clip, int code, string param)
+                {
+                    if (clip == null) return;
+                    var st = usm.AddState(stateName);
+                    st.motion = clip;
+                    st.timeParameterActive = true;
+                    st.timeParameter = param;
+                    var tin = usm.AddAnyStateTransition(st);
+                    tin.AddCondition(AnimatorConditionMode.Equals, code, "UpperState");
+                    tin.hasExitTime = false; tin.duration = 0.1f; tin.canTransitionToSelf = false;
+                }
+                Timed("Reload", reload, 1, "ReloadT");
+                Timed("Fire", fire, 2, "FireT");
+                var toNone = usm.AddAnyStateTransition(none);
+                toNone.AddCondition(AnimatorConditionMode.Equals, 0, "UpperState");
+                toNone.hasExitTime = false; toNone.duration = 0.15f; toNone.canTransitionToSelf = false;
+            }
             EditorUtility.SetDirty(ctrl);
+        }
+
+        /// <summary>애니메이션만 다시: Mixamo 임포트 → 애니메이터 → 카탈로그 (Setup All은 기본 머티리얼을 다시 만들어 쓰지 않는다).</summary>
+        [MenuItem("Manyworld/Art/Rebuild Animation")]
+        public static void RebuildAnimation()
+        {
+            ConfigureMixamo();
+            BuildAnimator();
+            BuildCatalog();
+            AssetDatabase.SaveAssets();
         }
 
         /// <summary>

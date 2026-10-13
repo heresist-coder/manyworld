@@ -306,6 +306,35 @@ namespace Manyworld.Tests
                 Capture(Path.Combine(dir, $"tps_{state}.png"));
             }
             PlayerCamera.QaAim = null;
+
+            // 재장전 중간 (상체 레이어 재장전 클립 + 왼손 받침 풀림): 기사는 실제 무기로, 은주는 진행도를 직접
+            CharacterRig.QaAim = false;
+            var weapon = mc.Player.GetComponent<PlayerWeapon>();
+            var compRig = mc.Companion.GetComponent<CharacterRig>();
+            if (weapon != null)
+            {
+                weapon.StartReload();
+                for (float tt = 0; tt < weapon.reloadTime * 0.45f; tt += Time.deltaTime)
+                {
+                    if (compRig != null) compRig.ReloadT = Mathf.Clamp01(tt / weapon.reloadTime);
+                    if (mc.Player.rig != null) mc.Player.rig.ReloadT = weapon.ReloadProgress; // 배치 실행엔 키보드가 없어 PlayerController가 안 넘길 수 있다
+                    yield return null;
+                }
+                Capture(Path.Combine(dir, "tps_reload.png"));
+                pc.target = null;
+                foreach (var (name, t) in people)
+                {
+                    var p = t.position; var tr = t.right; var tf = t.forward;
+                    var pos = p + tr * 2.3f + tf * 0.4f + Vector3.up * 1.35f;
+                    cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(p + Vector3.up * 1.2f + tf * 0.2f - pos));
+                    if (mc.Player.rig != null) mc.Player.rig.ReloadT = weapon.ReloadProgress;
+                    yield return Settle(cam, 2);
+                    Capture(Path.Combine(dir, $"gun_{name}_reload_side.png"));
+                }
+                if (compRig != null) compRig.ReloadT = -1f;
+                if (mc.Player.rig != null) mc.Player.rig.ReloadT = -1f;
+                for (float tt = 0; tt < weapon.reloadTime; tt += Time.deltaTime) yield return null;
+            }
             pc.target = null;
 
             // 걷기: 둘을 앞으로 1.4m/s로 1.2초 옮기며 옆에서 (이동 부품은 잠시 끈다)

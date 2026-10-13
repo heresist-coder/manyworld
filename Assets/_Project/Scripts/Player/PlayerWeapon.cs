@@ -14,7 +14,7 @@ namespace Manyworld
         public int mag = 15;
         public float damage = 26f;
         public float fireInterval = 0.14f;
-        public float reloadTime = 1.6f;
+        public float reloadTime = 2.2f; // 상체 재장전 클립이 이 시간에 맞춰 돈다 (1.6초는 탄창 갈기가 허둥댔다)
 
         float nextFire, reloadEnd, meleeReady, lastFire = -10f, focusUntil;
 
@@ -22,6 +22,9 @@ namespace Manyworld
         public void GiveFocus(float seconds) => focusUntil = Time.time + seconds;
         public bool Reloading => Time.time < reloadEnd;
         public bool RecentlyFired => Time.time - lastFire < 0.6f;
+        /// <summary>재장전 진행도 0~1, 안 하면 −1 (상체 재장전 클립 시간).</summary>
+        public float ReloadProgress => Reloading ? Mathf.Clamp01(1f - (reloadEnd - Time.time) / reloadTime) : -1f;
+        public float FireAge => Time.time - lastFire;
 
         const int EnvMask = ~(1 << 2);
 
@@ -45,7 +48,7 @@ namespace Manyworld
             if (kb.vKey.wasPressedThisFrame && Time.time >= meleeReady) Melee();
         }
 
-        void StartReload()
+        public void StartReload()
         {
             reloadEnd = Time.time + reloadTime;
             mag = magSize;
@@ -69,7 +72,7 @@ namespace Manyworld
             if (Time.time < focusUntil) spread *= 0.6f;
             ray.direction = Quaternion.Euler(Random.Range(-spread, spread), Random.Range(-spread, spread), 0) * ray.direction;
 
-            var muzzle = owner.transform.position + owner.transform.rotation * new Vector3(0.28f, 1.3f, 0.9f);
+            var muzzle = owner.rig != null && owner.rig.rifle != null ? owner.rig.Muzzle : owner.transform.position + owner.transform.rotation * new Vector3(0.28f, 1.3f, 0.9f);
             Vector3 end = ray.origin + ray.direction * 150f;
             if (Physics.Raycast(ray, out var hit, 150f, EnvMask, QueryTriggerInteraction.Ignore))
             {

@@ -152,6 +152,8 @@ namespace Manyworld
             {
                 rig.Aim = cam.aiming || weapon.RecentlyFired;
                 rig.AimDir = cam.transform.forward;
+                rig.ReloadT = weapon.ReloadProgress;
+                rig.FireAge = weapon.FireAge;
             }
 
             Vector2 input = Vector2.zero;
@@ -161,7 +163,8 @@ namespace Manyworld
             if (kb.aKey.isPressed) input.x -= 1;
             input = Vector2.ClampMagnitude(input, 1f);
 
-            IsSprinting = kb.leftShiftKey.isPressed && input.y > 0.1f && !cam.aiming;
+            // Shift 질주 (앞으로 갈 때만). 조준하거나 쏘면 질주가 끊긴다 (배틀그라운드처럼)
+            IsSprinting = kb.leftShiftKey.isPressed && input.y > 0.1f && !cam.aiming && !weapon.RecentlyFired && !(mouse != null && mouse.leftButton.isPressed);
             float speed = cam.aiming ? 2.4f : IsSprinting ? 6.5f : 4f;
             speed *= moveMultiplier;
 

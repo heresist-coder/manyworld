@@ -18,6 +18,9 @@ namespace Manyworld
         Transform idxR, midR, idxL, midL;
         Transform[] triggerFinger;
         Vector3 supportLocal; // 총 기준 왼손 받침 자리 (+Z 총구, +Y 위)
+        Vector3 muzzleLocal;  // 총 기준 총구 끝
+        int upperLayer = -1;
+        float upperW;
         Vector3 lastPos;
         Vector2 smoothed;
         float aimW;
@@ -26,6 +29,9 @@ namespace Manyworld
         static readonly int MoveZ = Animator.StringToHash("MoveZ");
         static readonly int AimHash = Animator.StringToHash("Aim");
         static readonly int DownHash = Animator.StringToHash("Down");
+        static readonly int UpperStateHash = Animator.StringToHash("UpperState");
+        static readonly int ReloadTHash = Animator.StringToHash("ReloadT");
+        static readonly int FireTHash = Animator.StringToHash("FireT");
 
         public bool Aim { get; set; }
         public bool Down { get; set; }
@@ -34,6 +40,13 @@ namespace Manyworld
         bool Aiming => QaAim ?? Aim;
         /// <summary>조준 방향 (월드). 0이면 몸 정면.</summary>
         public Vector3 AimDir { get; set; }
+        /// <summary>재장전 진행도 0~1 (안 하면 음수). 상체 레이어가 재장전 클립을 이 시간으로 재생한다.</summary>
+        public float ReloadT { get; set; } = -1f;
+        /// <summary>마지막 사격 뒤 지난 시간(초). 0.35초 동안 사격 클립.</summary>
+        public float FireAge { get; set; } = 99f;
+        /// <summary>총구 끝 (총알 궤적·총구 화염이 여기서 나간다).</summary>
+        public Vector3 Muzzle => rifle != null ? rifle.TransformPoint(muzzleLocal) : transform.position + Vector3.up * 1.3f + transform.forward * 0.6f;
+        const float FireWindow = 0.35f;
 
         /// <summary>QA: 마지막 프레임의 왼손 받침 오차(m)와 조준 중 총열-조준 방향 각도.</summary>
         public float SupportError { get; private set; }
@@ -70,6 +83,7 @@ namespace Manyworld
             rig.animator = anim;
             rig.model = model.transform;
             rig.lastPos = visual.root.position;
+            rig.upperLayer = anim.GetLayerIndex("Upper");
             if (anim.isHuman)
             {
                 rig.rightHand = anim.GetBoneTransform(HumanBodyBones.RightHand);
@@ -122,6 +136,9 @@ namespace Manyworld
             Vector3 trigF = toFrame * (trig * scale);
             Vector3 gripF = trigF + new Vector3(0f, -0.035f, -0.075f);
             supportLocal = trigF + new Vector3(0f, -0.015f, 0.21f) - gripF;
+            var tip = alongX ? new Vector3(gb.center.x + sign * gb.extents.x, trig.y + gb.extents.y * 0.25f, gb.center.z)
+                             : new Vector3(gb.center.x, trig.y + gb.extents.y * 0.25f, gb.center.z + sign * gb.extents.z);
+            muzzleLocal = toFrame * (tip * scale) - gripF;
 
             var frame = new GameObject("Rifle").transform;
             frame.SetParent(visual, false);
@@ -176,8 +193,13 @@ namespace Manyworld
             rifle.gameObject.SetActive(true);
             if (animator == null || !animator.isActiveAndEnabled) return;
 
+            // 재장전 중엔 클립이 총을 기울이고 왼손이 탄창으로 간다: 조준 보정은 약하게, 왼손 받침은 풀었다가 끝에 다시 (CUBE 125 창)
+            float r = ReloadT;
+            float reloading = r >= 0f ? 1f : 0f;
+            float leftW = r < 0f ? 1f : 1f - Mathf.SmoothStep(0, 1, Mathf.Clamp01((r - 0.02f) / 0.10f)) * (1f - Mathf.SmoothStep(0, 1, Mathf.Clamp01((r - 0.85f) / 0.12f)));
+
             // 조준: 가슴을 돌려 총열을 조준 방향에 (총은 손에, 손은 팔에, 팔은 가슴에 달려 있으니 같이 돈다)
-            aimW = Mathf.MoveTowards(aimW, Aiming ? 1f : 0f, Time.deltaTime * 6f);
+            aimW = Mathf.MoveTowards(aimW, Aiming ? (reloading > 0f ? 0.25f : 1f) : 0f, Time.deltaTime * 6f);
             var want = !QaAim.HasValue && AimDir.sqrMagnitude > 0.01f ? AimDir.normalized : transform.forward;
             if (chest != null && aimW > 0.001f)
                 for (int i = 0; i < 2; i++)
@@ -185,7 +207,7 @@ namespace Manyworld
             AimErrorDeg = Vector3.Angle(rifle.forward, want);
 
             // 서 있기·걷기(로우 레디): 클립은 총구를 40° 가까이 떨군다. 손목을 들어 18° 아래로 (방향은 클립 그대로)
-            if (aimW < 0.999f)
+            if (aimW < 0.999f && reloading <= 0f)
             {
                 var cur = rifle.forward;
                 var flat = Vector3.ProjectOnPlane(cur, Vector3.up);
@@ -197,7 +219,7 @@ namespace Manyworld
             }
 
             // 방아쇠에 검지를 건다 (Mixamo 클립은 검지를 곧게 편다)
-            if (Aiming && triggerFinger != null && idxR != null && midR != null)
+            if (Aiming && reloading <= 0f && triggerFinger != null && idxR != null && midR != null)
             {
                 var axis = Vector3.Cross(rifle.forward, Vector3.up).sqrMagnitude > 0.01f ? -rifle.right : transform.right;
                 float[] bend = { 20f, 30f, 15f };
@@ -205,8 +227,9 @@ namespace Manyworld
             }
 
             // 왼손: 받침 자리로. 손 회전은 클립 그대로 (Mixamo 소총 클립의 왼손은 이미 총열을 받치는 모양)
-            if (leftHand != null && armLU != null && armLL != null)
+            if (leftHand != null && armLU != null && armLL != null && leftW > 0.001f)
             {
+                Quaternion lu0 = armLU.localRotation, ll0 = armLL.localRotation;
                 var target = rifle.TransformPoint(supportLocal); // 총 틀의 월드 축척은 1
                 // 지금 자세에서 팔이 닿지 않으면 받침을 총열을 따라 뒤로 (최대 15cm, 뼈는 늘리지 않는다)
                 float arm = Vector3.Distance(armLU.position, armLL.position) + Vector3.Distance(armLL.position, leftHand.position);
@@ -223,6 +246,11 @@ namespace Manyworld
                     TwoBonePole(armLU, armLL, leftHand, wrist, pole, model);
                 }
                 SupportError = Vector3.Distance(PalmL(), target);
+                if (leftW < 0.999f)
+                {
+                    armLU.localRotation = Quaternion.Slerp(lu0, armLU.localRotation, leftW);
+                    armLL.localRotation = Quaternion.Slerp(ll0, armLL.localRotation, leftW);
+                }
             }
         }
 
@@ -270,6 +298,15 @@ namespace Manyworld
             animator.SetFloat(MoveZ, smoothed.y);
             animator.SetBool(AimHash, Aiming);
             animator.SetBool(DownHash, Down);
+            if (upperLayer >= 0)
+            {
+                int state = Down ? 0 : ReloadT >= 0f ? 1 : FireAge < FireWindow ? 2 : 0;
+                animator.SetInteger(UpperStateHash, state);
+                animator.SetFloat(ReloadTHash, Mathf.Clamp01(ReloadT));
+                animator.SetFloat(FireTHash, Mathf.Clamp01(FireAge / FireWindow));
+                upperW = Mathf.MoveTowards(upperW, state != 0 ? 1f : 0f, Time.deltaTime * 8f);
+                animator.SetLayerWeight(upperLayer, upperW);
+            }
         }
     }
 }

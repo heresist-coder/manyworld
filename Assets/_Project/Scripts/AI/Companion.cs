@@ -27,6 +27,7 @@ namespace Manyworld
         bool goAheadPhaseReturn;
         float focusUntil;
         CharacterRig rig;
+        float lastShotTime = -99f;
 
         /// <summary>출동 전 차 안에서 곡을 끝까지 들으면 집중 상태 (cha-eunju.md 워크맨).</summary>
         public bool Focused => Time.time < focusUntil;
@@ -176,6 +177,7 @@ namespace Manyworld
             if (rig != null)
             {
                 rig.Aim = aimTarget != null;
+                rig.FireAge = Time.time - lastShotTime;
                 rig.AimDir = aimTarget != null ? aimTarget.transform.position + Vector3.up * 0.8f - (transform.position + Vector3.up * 1.4f) : Vector3.zero;
             }
         }
@@ -326,7 +328,8 @@ namespace Manyworld
             mc.Ledger.companionShots++;
             mc.Ledger.Charge("은주 경기탄", CallLedger.CompanionShotCost);
 
-            var muzzle = transform.position + Vector3.up * 1.3f + transform.forward * 0.6f;
+            var muzzle = rig != null && rig.rifle != null ? rig.Muzzle : transform.position + Vector3.up * 1.3f + transform.forward * 0.6f;
+            if (rig != null) { rig.FireAge = 0f; lastShotTime = Time.time; }
             var head = m.transform.Find("Head");
             bool aimHead = head != null;
             // 정밀 사수. 그래도 겁먹으면(가까우면) 흔들린다
