@@ -35,6 +35,15 @@ namespace Manyworld
         public static float LakeWaterY { get; private set; } = -10f;
         /// <summary>목표 샷 04: 흙길 끝 오른쪽 숲 비탈의 철제 나무 (길에서 약 28m).</summary>
         public static readonly Vector2 IronTree = new Vector2(421, 322);
+        /// <summary>목표 샷 04 전망 자리: 흙길 위 (흙길 (382,290)→(397,340)에서 철제 나무에 가장 가까운 곳 근처).</summary>
+        public static Vector2 IronView
+        {
+            get
+            {
+                var toRoad = (new Vector2(394f, 330f) - IronTree).normalized;
+                return IronTree + toRoad * 31f + new Vector2(toRoad.y, -toRoad.x) * 6f;
+            }
+        }
 
         /// <summary>방의 앞(열린 면 → 안쪽) 방향. 열린 면이 숲길(주차 공터)을 본다.</summary>
         public static Vector2 RoomForward => (RoomCenter - Trailhead).normalized;
@@ -238,6 +247,7 @@ namespace Manyworld
             float edge = Mathf.Min(Mathf.Min(x, Size - x), Mathf.Min(z, Size - z));
             m += Mathf.InverseLerp(240f, 130f, edge) * 0.8f; // 가장자리 산은 숲으로 덮인다
             m -= Mathf.InverseLerp(30f, 14f, LeaningBandDistance(x, z)) * 0.75f; // 기운 숲은 볕 드는 성긴 숲
+            m += Mathf.InverseLerp(110f, 45f, Vector2.Distance(new Vector2(x, z), IronTree)) * 0.9f; // 철제 나무 비탈은 빽빽한 숲 (목표 샷 04)
             return Mathf.Clamp01(m);
         }
 
@@ -451,7 +461,7 @@ namespace Manyworld
                     lightmapColor = Color.white,
                 };
                 // 호수·철제 나무·호수 전망 자리는 비운다 (rng를 다 뽑은 뒤에 걸러 다른 배치가 그대로)
-                if (LakeT(px, pz) < 1.12f || Vector2.Distance(p2, IronTree) < 22f || InLakeSight(p2)) continue; // 철제 나무 둘레는 PlaceIronTree가 소나무로 채운다
+                if (LakeT(px, pz) < 1.12f || Vector2.Distance(p2, IronTree) < 22f || Vector2.Distance(p2, IronView) < 8f || InLakeSight(p2)) continue; // 철제 나무 둘레는 PlaceIronTree가 소나무로 채운다
                 list.Add(inst);
             }
             td.SetTreeInstances(list.ToArray(), true);
@@ -1163,7 +1173,7 @@ namespace Manyworld
         {
             var a = LakeView; var ab = LakeCenter - a;
             float t = Vector2.Dot(p - a, ab) / ab.sqrMagnitude;
-            if (t < -0.08f || t > 1f) return false;
+            if (t < -0.22f || t > 1f) return false; // 전망 뒤 언덕(카메라 자리)까지
             return Vector2.Distance(p, a + ab * Mathf.Clamp01(t)) < 6f + Mathf.Clamp01(t) * 40f;
         }
 
@@ -1272,13 +1282,13 @@ namespace Manyworld
             var floatMat = NatureKit.RockMat(new Color(0.38f, 0.37f, 0.35f));
             for (int tries = 0; tries < 200 && floats < 5; tries++)
             {
-                float ang = (float)rng.NextDouble() * Mathf.PI * 2f, rr = 0.12f + (float)rng.NextDouble() * 0.5f;
+                float ang = (float)rng.NextDouble() * Mathf.PI * 2f, rr = 0.05f + (float)rng.NextDouble() * 0.33f; // 호수 가운데 (0.5 넘으면 건너편 물가 바위처럼 읽혔다)
                 var p = LakeCenter + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * LakeShoreRadius(ang, rr);
-                if (Vector2.Distance(p, housePos) < 14f || Vector2.Dot(p - LakeCenter, toView) > LakeRadius * 0.15f) continue; // 집 위와 전망 쪽 물가는 피한다
+                if (Vector2.Distance(p, housePos) < 12f || Vector2.Dot(p - LakeCenter, toView) > LakeRadius * 0.3f) continue; // 집 위와 전망 바로 앞 물가는 피한다
                 bool clash = false;
                 foreach (var q in floated) if (Vector2.Distance(q, p) < 13f) clash = true;
                 if (clash) continue;
-                var rock = NatureKit.Boulder(go.transform, new Vector3(p.x, LakeWaterY, p.y), 2.6f + (float)rng.NextDouble() * 2.4f, rng, false, "FloatingRock");
+                var rock = NatureKit.Boulder(go.transform, new Vector3(p.x, LakeWaterY, p.y), 3.2f + (float)rng.NextDouble() * 2.8f, rng, false, "FloatingRock");
                 rock.AddComponent<FloatingBob>().amplitude = 0.08f;
                 rock.GetComponent<Renderer>().sharedMaterial = floatMat; // 물 위 볕에서 베이지로 떠서 한 단 어둡게 (목표 샷 05의 회갈색)
                 floated.Add(p);
@@ -1383,7 +1393,7 @@ namespace Manyworld
             Part(PrimitiveType.Cube, "Box", new Vector3(-0.34f, 13.6f, 0.15f), new Vector3(0.3f, 0.7f, 0.3f), paint);
             Part(PrimitiveType.Cube, "Box", new Vector3(0f, 24.6f, 0f), new Vector3(0.62f, 0.55f, 0.62f), paint);
             // 가로대 셋: 높이마다 방향이 돌아간다 (마른 가지처럼)
-            var arms = new (float y, float len, float yaw)[] { (16f, 4.4f, 0f), (20f, 3.4f, 70f), (23f, 2.4f, 25f) };
+            var arms = new (float y, float len, float yaw)[] { (15f, 5.2f, 0f), (19.5f, 4.2f, 70f), (23f, 3f, 25f) };
             var ends = new List<Vector3>();
             foreach (var (y, len, yaw) in arms)
             {
@@ -1394,9 +1404,10 @@ namespace Manyworld
                     var end = rot * new Vector3(sgn * len * 0.47f, 0, 0) + Vector3.up * y;
                     ends.Add(end);
                     // 안테나봉, 가끔 판 안테나
-                    Part(PrimitiveType.Cylinder, "Antenna", end + Vector3.up * 1.2f, new Vector3(0.07f, 1.3f, 0.07f), dark);
-                    if (rng.NextDouble() < 0.6)
-                        Part(PrimitiveType.Cube, "Panel", end + Vector3.up * 0.9f + rot * new Vector3(0, 0, 0.12f), new Vector3(0.3f, 1.3f, 0.1f), paint, rot);
+                    // (멀리서도 읽히게 굵고 길게: 0.07·1.3m 봉은 화면에서 사라졌다)
+                    Part(PrimitiveType.Cylinder, "Antenna", end + Vector3.up * 1.6f, new Vector3(0.12f, 1.8f, 0.12f), dark);
+                    if (rng.NextDouble() < 0.75)
+                        Part(PrimitiveType.Cube, "Panel", end + Vector3.up * 1.1f + rot * new Vector3(0, 0, 0.18f), new Vector3(0.45f, 1.9f, 0.16f), paint, rot);
                 }
                 // 받침 사선
                 Part(PrimitiveType.Cube, "Brace", rot * new Vector3(len * 0.18f, 0, 0) + Vector3.up * (y - 0.6f), new Vector3(0.08f, 1.5f, 0.08f), steel, rot * Quaternion.Euler(0, 0, 50f));

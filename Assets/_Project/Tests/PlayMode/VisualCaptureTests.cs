@@ -224,13 +224,21 @@ namespace Manyworld.Tests
             // 목표 샷 02 구도: 터널 어귀(주차 공터 끝)에서 조금 높게, 기운 숲 속으로
             var onTrail = Vector2.Lerp(th, bend, 0.2f);
             var ent = ForestSiteBuilder.RoomEntrance;
+            // 두 사람이 카메라 앞 숲길을 걸어 들어간다 (목표 샷 02)
+            var walk = Vector2.Lerp(th, bend, 0.46f);
+            var trailDir = (bend - th).normalized;
+            float trailYaw = Mathf.Atan2(trailDir.x, trailDir.y) * Mathf.Rad2Deg;
+            var trailRight = new Vector2(trailDir.y, -trailDir.x);
+            mc.WarpParty(Ground(new Vector3(walk.x, 0, walk.y) - new Vector3(trailRight.x, 0, trailRight.y) * 0.7f, 0.1f), trailYaw,
+                Ground(new Vector3(walk.x, 0, walk.y) + new Vector3(trailRight.x + trailDir.x * 0.8f, 0, trailRight.y + trailDir.y * 0.8f) * 1f, 0.1f));
+            yield return new WaitForSeconds(0.5f);
             yield return Shot("t02_path.png", Ground(new Vector3(onTrail.x, 0, onTrail.y), 3.2f), Ground(new Vector3(ent.x, 0, ent.y), 2.5f));
 
-            // 목표 샷 04 구도: 흙길 끝(차를 세울 자리)에서 숲 비탈의 철제 나무를 올려다본다
+            // 목표 샷 04 구도: 흙길 건너편 어깨에서, 길가에 세운 차 너머 비탈 숲의 철제 나무를 거의 수평으로 본다
+            // (길 위에서 올려다보면 가까운 차·사람이 화면 아래로 빠졌다)
+            // (차·두 사람은 넣지 않는다: 비탈이 가팔라 차가 굴렀고 사람이 화면 밖으로 빠졌다. 풍경만 맞춘다)
             var iron = ForestSiteBuilder.IronTree;
-            var roadSpot = new Vector2(394f, 330f); // 흙길 (382,290)→(397,340) 위, 철제 나무에서 가장 가까운 곳
-            var toRoad = (roadSpot - iron).normalized;
-            var camIron = iron + toRoad * 31f + new Vector2(toRoad.y, -toRoad.x) * 6f;
+            var camIron = ForestSiteBuilder.IronView;
             var ironBase = Ground(new Vector3(iron.x, 0, iron.y), 0f);
             yield return Shot("t04_iron.png", Ground(new Vector3(camIron.x, 0, camIron.y), 3.8f), ironBase + Vector3.up * 14f);
 
