@@ -17,6 +17,10 @@ namespace Manyworld
             public float density, height, brightness, turbulence, wind, distant, ambient;
             public Color albedo;
             public bool lights; // 손전등 같은 URP 추가 조명이 안개 속 빛줄기를 만든다
+            public float shafts;                    // 해 그림자를 받는 세기 (0이면 끔): 나무 사이로 햇살 기둥이 선다
+            public float diffusion, diffusionPower; // 해 쪽을 볼 때 안개가 빛나는 세기·퍼짐 (0이면 기본값)
+            public float noise;                     // 얼룩 세기 (0이면 기본값): 연무는 고르게, 땅안개는 얼룩지게
+            public float maxDistance;               // 이 거리 너머는 안개를 그리지 않는다 (0이면 끝까지). 먼 산은 거리 안개가 맡는다
         }
 
         static Type fogType, profileType, managerType;
@@ -47,8 +51,8 @@ namespace Manyworld
             return null;
         }
 
-        /// <summary>size 크기의 상자 안개. 바닥(y=0)부터 height까지 깔린다.</summary>
-        public static GameObject Create(Transform parent, Vector3 center, float width, Look look, Light sun)
+        /// <summary>size 크기의 상자 안개. 바닥(baseY)부터 height까지 깔린다. 바닥보다 높은 언덕에는 안개가 없다 (낮은 곳에 고인다).</summary>
+        public static GameObject Create(Transform parent, Vector3 center, float width, Look look, Light sun, float baseY = 0f)
         {
             if (!Available) return null;
             try
@@ -57,7 +61,7 @@ namespace Manyworld
                 var go = create?.Invoke(null, new object[] { "VolumetricFog" }) as GameObject;
                 if (go == null) return null;
                 go.transform.SetParent(parent, false);
-                go.transform.position = new Vector3(center.x, look.height * 0.5f - 0.2f, center.z);
+                go.transform.position = new Vector3(center.x, baseY + look.height * 0.5f - 0.2f, center.z);
                 go.transform.localScale = new Vector3(width, look.height, width);
 
                 var fog = go.GetComponent(fogType);
@@ -78,6 +82,20 @@ namespace Manyworld
                 Set(profile, "distantFogStartDistance", 250f);
                 Set(profile, "distantFogDistanceDensity", look.distant);
                 Set(profile, "dithering", 0.2f);
+                if (look.shafts > 0f)
+                {
+                    Set(profile, "receiveShadows", true);
+                    Set(profile, "shadowIntensity", look.shafts);
+                    Set(profile, "shadowMaxDistance", 160f);
+                }
+                if (look.noise > 0f) Set(profile, "noiseStrength", look.noise);
+                if (look.maxDistance > 0f)
+                {
+                    Set(profile, "maxDistance", look.maxDistance);
+                    Set(profile, "maxDistanceFallOff", 0.5f);
+                }
+                if (look.diffusion > 0f) Set(profile, "lightDiffusionIntensity", look.diffusion);
+                if (look.diffusionPower > 0f) Set(profile, "lightDiffusionPower", look.diffusionPower);
                 profileType.GetMethod("ValidateSettings")?.Invoke(profile, null);
                 profileField.SetValue(fog, profile);
                 fogType.GetField("enableNativeLights")?.SetValue(fog, look.lights);

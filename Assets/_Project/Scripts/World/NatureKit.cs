@@ -205,23 +205,36 @@ namespace Manyworld
 
         const int TexSize = 256;
 
-        /// <summary>질감 하나: 바탕 노이즈 + 붓질(풀잎·솔잎) 또는 자갈 점.</summary>
-        static readonly Dictionary<(Ground, Color, int), Texture2D> texCache = new Dictionary<(Ground, Color, int), Texture2D>();
+        /// <summary>
+        /// 질감 하나: 바탕 노이즈 + 붓질(풀잎·솔잎) 또는 자갈 점. 색과 함께 높이를 그려서 법선 맵을 만든다 —
+        /// 낮게 깔린 오후 해(22°)에 자갈·바퀴 자국·솔잎이 그늘을 지어 평평한 색칠이 땅처럼 보인다.
+        /// </summary>
+        static readonly Dictionary<(Ground, Color, int), (Texture2D color, Texture2D normal)> texCache = new Dictionary<(Ground, Color, int), (Texture2D, Texture2D)>();
+
+        static TerrainLayer MakeLayer((Texture2D color, Texture2D normal) t, float tile, Ground kind) => new TerrainLayer
+        {
+            diffuseTexture = t.color, normalMapTexture = t.normal, normalScale = kind == Ground.Rock ? 1.2f : 1f,
+            tileSize = new Vector2(tile, tile), smoothness = 0f, metallic = 0f,
+        };
 
         public static TerrainLayer Layer(Ground kind, Color c, float tile, int seed)
         {
             // 질감은 한 번만 만든다 (다시 현장에 갈 때 생성 시간)
-            if (texCache.TryGetValue((kind, c, seed), out var cached) && cached != null)
-                return new TerrainLayer { diffuseTexture = cached, tileSize = new Vector2(tile, tile), smoothness = 0f, metallic = 0f };
+            if (texCache.TryGetValue((kind, c, seed), out var cached) && cached.color != null)
+                return MakeLayer(cached, tile, kind);
             var rng = new System.Random(seed);
             var px = new Color[TexSize * TexSize];
+            var ht = new float[TexSize * TexSize];
             float variation = kind == Ground.Rock ? 0.16f : kind == Ground.Dirt || kind == Ground.Rut ? 0.1f : 0.14f;
+            float relief = kind == Ground.Rock ? 1.2f : kind == Ground.Dirt || kind == Ground.Rut ? 0.9f : 0.5f;
             for (int y = 0; y < TexSize; y++)
             for (int x = 0; x < TexSize; x++)
             {
                 float u = x / (float)TexSize, v = y / (float)TexSize;
                 float n = PFbm(u, v, 4, 4, seed);
                 var col = Color.Lerp(c * (1f - variation), c * (1f + variation), n);
+                // 높이: 넓은 굴곡 + 잔 굴곡 (흙은 울퉁불퉁, 풀밭은 완만)
+                ht[y * TexSize + x] = (n - 0.5f) * relief + (PFbm(u, v, 16, 2, seed + 3) - 0.5f) * relief * 0.6f;
                 if (kind == Ground.Meadow || kind == Ground.Dry || kind == Ground.Lush)
                 {
                     // 햇볕에 바랜 노란 얼룩
@@ -231,29 +244,35 @@ namespace Manyworld
                 if (kind == Ground.Rock)
                 {
                     float crack = Mathf.Abs(PFbm(u, v, 8, 3, seed + 9) - 0.5f);
-                    if (crack < 0.025f) col *= 0.75f;
+                    if (crack < 0.025f) { col *= 0.75f; ht[y * TexSize + x] -= 0.8f; }
                 }
                 px[y * TexSize + x] = col;
             }
 
-            void Dot(int cx, int cy, int r, Color tint, float strength)
+            int Idx(int x, int y) => ((y % TexSize + TexSize) % TexSize) * TexSize + (x % TexSize + TexSize) % TexSize;
+
+            // bump: 점 가운데가 솟는 높이 (자갈은 둥글게, 0이면 색만)
+            void Dot(int cx, int cy, int r, Color tint, float strength, float bump = 0f)
             {
+                float rr = (r + 0.5f) * (r + 0.5f);
                 for (int dy = -r; dy <= r; dy++)
                 for (int dx = -r; dx <= r; dx++)
                 {
                     if (dx * dx + dy * dy > r * r) continue;
-                    int i = (((cy + dy) % TexSize + TexSize) % TexSize) * TexSize + ((cx + dx) % TexSize + TexSize) % TexSize;
+                    int i = Idx(cx + dx, cy + dy);
                     px[i] = Color.Lerp(px[i], tint, strength);
+                    if (bump != 0f) ht[i] += bump * Mathf.Sqrt(Mathf.Max(0f, 1f - (dx * dx + dy * dy) / rr));
                 }
             }
 
-            void Stroke(float x, float y, float ang, float len, Color tint, float strength)
+            void Stroke(float x, float y, float ang, float len, Color tint, float strength, float bump = 0f)
             {
                 for (float s = 0; s < len; s += 0.5f)
                 {
-                    int cx = Mathf.RoundToInt(x + Mathf.Cos(ang) * s), cy = Mathf.RoundToInt(y + Mathf.Sin(ang) * s);
-                    int i = ((cy % TexSize + TexSize) % TexSize) * TexSize + (cx % TexSize + TexSize) % TexSize;
-                    px[i] = Color.Lerp(px[i], tint, strength * (1f - s / len * 0.5f));
+                    int i = Idx(Mathf.RoundToInt(x + Mathf.Cos(ang) * s), Mathf.RoundToInt(y + Mathf.Sin(ang) * s));
+                    float k = 1f - s / len * 0.5f;
+                    px[i] = Color.Lerp(px[i], tint, strength * k);
+                    ht[i] += bump * k * 0.5f; // 한 픽셀에 두 번씩 지나간다
                 }
             }
 
@@ -262,38 +281,45 @@ namespace Manyworld
                 case Ground.Meadow:
                 case Ground.Lush:
                 case Ground.Dry:
-                    // 짧은 풀잎 붓질: 밝은 끝·어두운 그늘이 섞인다
+                    // 짧은 풀잎 붓질: 밝은 끝·어두운 그늘이 섞인다. 밝은 잎은 솟고 그늘은 패인다
                     for (int i = 0; i < 2600; i++)
                     {
                         bool light = rng.NextDouble() < 0.55;
                         var tint = light ? new Color(c.r * 1.35f, c.g * 1.3f, c.b * 1.05f) : new Color(c.r * 0.62f, c.g * 0.7f, c.b * 0.6f);
                         float ang = Mathf.PI * 0.5f + (float)(rng.NextDouble() - 0.5) * 1.4f;
-                        Stroke((float)rng.NextDouble() * TexSize, (float)rng.NextDouble() * TexSize, ang, 3f + (float)rng.NextDouble() * 6f, tint, 0.45f);
+                        Stroke((float)rng.NextDouble() * TexSize, (float)rng.NextDouble() * TexSize, ang, 3f + (float)rng.NextDouble() * 6f, tint, 0.45f, light ? 0.5f : -0.3f);
                     }
                     break;
                 case Ground.ForestFloor:
                     // 솔잎·마른 가지: 사방으로 흩어진 가는 갈색 선
                     for (int i = 0; i < 2200; i++)
                     {
-                        var tint = rng.NextDouble() < 0.5 ? new Color(0.36f, 0.27f, 0.17f) : new Color(c.r * 0.6f, c.g * 0.6f, c.b * 0.6f);
-                        Stroke((float)rng.NextDouble() * TexSize, (float)rng.NextDouble() * TexSize, (float)rng.NextDouble() * Mathf.PI * 2f, 3f + (float)rng.NextDouble() * 5f, tint, 0.5f);
+                        bool needle = rng.NextDouble() < 0.5;
+                        var tint = needle ? new Color(0.36f, 0.27f, 0.17f) : new Color(c.r * 0.6f, c.g * 0.6f, c.b * 0.6f);
+                        Stroke((float)rng.NextDouble() * TexSize, (float)rng.NextDouble() * TexSize, (float)rng.NextDouble() * Mathf.PI * 2f, 3f + (float)rng.NextDouble() * 5f, tint, 0.5f, needle ? 0.55f : -0.25f);
                     }
                     break;
                 case Ground.Dirt:
                 case Ground.Rut:
-                    // 자갈: 밝은 돌 위에 그늘 한 점
+                    // 자갈: 밝은 돌 위에 그늘 한 점. 돌은 둥글게 솟는다
                     for (int i = 0; i < 520; i++)
                     {
                         int x = rng.Next(TexSize), y = rng.Next(TexSize), r = rng.Next(1, 3);
                         Dot(x + 1, y - 1, r, c * 0.62f, 0.6f);
-                        Dot(x, y, r, rng.NextDouble() < 0.6 ? c * 1.22f : new Color(0.58f, 0.56f, 0.52f), 0.7f);
+                        Dot(x, y, r, rng.NextDouble() < 0.6 ? c * 1.22f : new Color(0.58f, 0.56f, 0.52f), 0.7f, 1.4f);
                     }
                     for (int i = 0; i < 900; i++)
-                        Dot(rng.Next(TexSize), rng.Next(TexSize), 0, rng.NextDouble() < 0.5 ? c * 0.8f : c * 1.12f, 0.5f);
+                    {
+                        bool up = rng.NextDouble() < 0.5;
+                        Dot(rng.Next(TexSize), rng.Next(TexSize), 0, up ? c * 1.12f : c * 0.8f, 0.5f, up ? 0.35f : -0.35f);
+                    }
                     break;
                 case Ground.Rock:
                     for (int i = 0; i < 400; i++)
-                        Dot(rng.Next(TexSize), rng.Next(TexSize), rng.Next(0, 2), rng.NextDouble() < 0.5 ? c * 0.78f : c * 1.15f, 0.5f);
+                    {
+                        bool up = rng.NextDouble() < 0.5;
+                        Dot(rng.Next(TexSize), rng.Next(TexSize), rng.Next(0, 2), up ? c * 1.15f : c * 0.78f, 0.5f, up ? 0.4f : -0.4f);
+                    }
                     break;
             }
 
@@ -301,8 +327,24 @@ namespace Manyworld
             var tex = new Texture2D(TexSize, TexSize, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear, anisoLevel = 4, name = "Ground_" + kind };
             tex.SetPixels(px);
             tex.Apply(true);
-            texCache[(kind, c, seed)] = tex;
-            return new TerrainLayer { diffuseTexture = tex, tileSize = new Vector2(tile, tile), smoothness = 0f, metallic = 0f };
+
+            // 법선 맵: 높이의 기울기. 데스크톱 URP는 (1, y, ·, x) 배치(DXT5nm)로 읽는다 — R=1이면 A가 x
+            var npx = new Color32[TexSize * TexSize];
+            for (int y = 0; y < TexSize; y++)
+            for (int x = 0; x < TexSize; x++)
+            {
+                float nx = ht[Idx(x - 1, y)] - ht[Idx(x + 1, y)];
+                float ny = ht[Idx(x, y - 1)] - ht[Idx(x, y + 1)];
+                var n = new Vector3(nx, ny, 1f).normalized;
+                npx[y * TexSize + x] = new Color32(255, (byte)Mathf.RoundToInt((n.y * 0.5f + 0.5f) * 255f), (byte)Mathf.RoundToInt((n.z * 0.5f + 0.5f) * 255f), (byte)Mathf.RoundToInt((n.x * 0.5f + 0.5f) * 255f));
+            }
+            var nrm = new Texture2D(TexSize, TexSize, TextureFormat.RGBA32, true, true) { wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear, anisoLevel = 4, name = "GroundN_" + kind };
+            nrm.SetPixels32(npx);
+            nrm.Apply(true);
+
+            var made = (tex, nrm);
+            texCache[(kind, c, seed)] = made;
+            return MakeLayer(made, tile, kind);
         }
     }
 }

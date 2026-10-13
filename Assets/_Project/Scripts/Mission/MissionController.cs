@@ -309,10 +309,22 @@ namespace Manyworld
             RenderSettings.fogStartDistance = 50f;
             RenderSettings.fogEndDistance = 1350f; // 원경 산은 안개색 실루엣으로 겹겹이
             cam.farClipPlane = 3000f;
+            // 볼류메트릭 연무: 길·숲길·방이 있는 낮은 땅부터 나무 꼭대기 위까지. 해 그림자를 받아 나무 사이로 햇살 기둥이 선다.
+            // 바닥보다 높은 언덕에는 연무가 없어서 낮은 곳에 고인다 (지형 높이 20~40m: 예전엔 y=0에 깔려 땅속에 묻혀 있었다)
             float s = Layout.worldSize;
-            VolumetricAtmosphere.Create(transform, new Vector3(s / 2, 0, s / 2), s + 80f,
-                new VolumetricAtmosphere.Look { density = 0.012f, height = 2.5f, brightness = 0.95f, turbulence = 0.5f, wind = 0.015f, distant = 0f, ambient = 0.4f, albedo = new Color(0.9f, 0.92f, 0.95f) }, sun);
+            var terrain = Layout.terrain;
+            float H(Vector3 p) => terrain != null ? terrain.SampleHeight(p) : p.y;
+            float floor = Mathf.Min(H(Layout.ticoPos), Mathf.Min(H(Layout.midpointPos), H(Layout.objectivePos))) - 6f;
+            VolumetricAtmosphere.Create(transform, new Vector3(s / 2, 0, s / 2), s + 80f, FieldMist, sun, floor);
         }
+
+        /// <summary>숲 현장 연무 (목표 샷 02·03의 볕 드는 숲 공기).</summary>
+        public static VolumetricAtmosphere.Look FieldMist = new VolumetricAtmosphere.Look
+        {
+            // 1차(it47): 밀도 0.012로 300m 너머가 하얗게 지워졌다. 160m 안쪽에만 옅게 (먼 산은 거리 안개)
+            density = 0.004f, height = 40f, brightness = 1f, turbulence = 0.4f, wind = 0.01f, distant = 0f, ambient = 0.45f, noise = 0.45f,
+            albedo = new Color(0.9f, 0.92f, 0.95f), shafts = 0.9f, diffusion = 0.35f, diffusionPower = 24f, maxDistance = 160f,
+        };
 
         void SpawnMonsters()
         {

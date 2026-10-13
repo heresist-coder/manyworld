@@ -180,6 +180,35 @@ MonoBehaviour:
   - {fileID: 4436040544436858620, guid: a16521c8aa35bf644afe6d3327e52ce4, type: 3}
   - {fileID: 3413295523483196663, guid: 3e3d0348b665f3f43bdd9dcedaf54e4c, type: 3}
   - {fileID: 7668701623488267201, guid: 7a4ab733336a1044092c564764141f96, type: 3}
+  clutterSmall:
+  - {fileID: 305176673228003762, guid: 76367a35439ddea4ab1bdce14f7df589, type: 3}
+  - {fileID: 2403493241316482311, guid: ddddc64f0c6bcde43abfa8e6a264eac1, type: 3}
+  - {fileID: 3653305716081345845, guid: 8540091d29a8fea4c844833489cdde1d, type: 3}
+  - {fileID: 7956564297462634136, guid: b7550af82cd646d4bb442582afac3ffd, type: 3}
+  clutterLeaves:
+  - {fileID: 8218668860590282075, guid: 7895ac78568aa1545aec170a1bfeff08, type: 3}
+  - {fileID: 2232023413814814216, guid: 7600e73504c109f4688a08b1b5f6ea31, type: 3}
+  - {fileID: 1323999730853715441, guid: 624362e866e1f194290ee499e4708972, type: 3}
+  clutterFerns:
+  - {fileID: 7424801524984937579, guid: a25dfe0a7afa444499605d59689b3287, type: 3}
+  - {fileID: 1290837552235159865, guid: 3354b9dcbee056449bf9844dc3ba2bc1, type: 3}
+  - {fileID: 3016793139068439016, guid: ca285bbe344593746ad838255e5fa0bf, type: 3}
+  clutterPebbles:
+  - {fileID: 8294394904559025366, guid: 259516b1bf743f84aba64a77847b9d06, type: 3}
+  - {fileID: 6873938577213127126, guid: a9a82dc7a09f37741916c33cc3483e7c, type: 3}
+  - {fileID: 906591600361499829, guid: 5216f6d56a7c6e041869f68471d4aaae, type: 3}
+  - {fileID: 6023436046305576043, guid: 04cbf97186e53974080d2abf877ed606, type: 3}
+  - {fileID: 315675889818940899, guid: 256212dab9cb9d040bdae30d4f256a44, type: 3}
+  clutterMushrooms:
+  - {fileID: 1060840157749525307, guid: 443b419ea1ffdb042be6ed8eac6f153c, type: 3}
+  - {fileID: 7526140038480319387, guid: 1bb7c04abb892e54e86a1e9b09a244a9, type: 3}
+  - {fileID: 7443722364286002489, guid: 3c6bb21a626820d41b35588998620340, type: 3}
+  clutterLogs:
+  - {fileID: 1480531524279832838, guid: 3e650bba3bae09541be841308573126d, type: 3}
+  - {fileID: 4123662889923936240, guid: 7f44ecdd42b82f645895aa5063db454c, type: 3}
+  - {fileID: 7170295694990207602, guid: 4425216ae0e345c43adc010abcdd90f1, type: 3}
+  - {fileID: 7196810933511123041, guid: 29cecbe5f22b8f248abca9b49e8fe3ef, type: 3}
+  - {fileID: 5329577460968038239, guid: 38d257c588f863747bd31ff57651e099, type: 3}
   driverModel: {fileID: 1018949230691400, guid: d461c345ada76d14f94fe72087cec0f9, type: 3}
   companionModel: {fileID: 1971421721505344, guid: 7726852b74327584980d2b8f88a12239, type: 3}
   humanoidController: {fileID: 9100000, guid: 14d8bd2cc3b89314bb631b2210616fe7, type: 2}

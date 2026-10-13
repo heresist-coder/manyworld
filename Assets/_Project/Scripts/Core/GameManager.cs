@@ -113,6 +113,7 @@ namespace Manyworld
                 PaintFilter = !PaintFilter; // 회화풍 후처리 켜고 끄기
                 ApplyPaint();
             }
+            if (keyboard?.f10Key.wasPressedThisFrame == true) ScreenSpaceGI.Toggle(); // 화면 공간 간접광 켜고 끄기
             if (keyboard?.f12Key.wasPressedThisFrame == true)
             {
                 if (InField) EnterHub();          // 개발용: 예전 흐름

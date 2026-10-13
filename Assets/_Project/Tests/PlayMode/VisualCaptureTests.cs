@@ -140,6 +140,11 @@ namespace Manyworld.Tests
             Directory.CreateDirectory(dir);
             var gm = GameManager.Instance;
             MissionHUD.ShowArrival = false;
+            // 비교용: MANYWORLD_CAPTURE_FX에 nogi / nofog가 있으면 간접광·연무를 끄고 찍는다
+            string fx = System.Environment.GetEnvironmentVariable("MANYWORLD_CAPTURE_FX") ?? "";
+            ScreenSpaceGI.Enabled = !fx.Contains("nogi");
+            var mist = MissionController.FieldMist;
+            if (fx.Contains("nofog")) MissionController.FieldMist.density = 0f;
             gm.StartField();
             yield return new WaitForSeconds(2f);
             var mc = MissionController.Instance;
@@ -148,9 +153,11 @@ namespace Manyworld.Tests
             var hud = mc.GetComponent<MissionHUD>();
             var terrain = mc.Layout.terrain;
             Vector3 Ground(Vector3 p, float up) { p.y = terrain.SampleHeight(p) + up; return p; }
-            void Shot(string name, Vector3 pos, Vector3 look)
+            // 간접광은 시간 누적이라 카메라를 옮긴 뒤 몇십 프레임 그려서 가라앉힌 다음 찍는다
+            IEnumerator Shot(string name, Vector3 pos, Vector3 look)
             {
                 cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(look - pos));
+                yield return Settle(cam, 24);
                 Capture(Path.Combine(dir, name));
             }
             var keep = pc.target;
@@ -171,14 +178,14 @@ namespace Manyworld.Tests
                 shadow.transform.position = Vector3.Lerp(ds.from, ds.to, 0.45f);
             }
             // 목표 샷 01 구도: 오른쪽 뒤 높은 곳에서 길을 따라. 차는 왼쪽, 바위 무더기는 오른쪽 앞
-            Shot("t01_road.png", Ground(car.position - car.forward * 6.5f + car.right * 3.8f, 3.3f), car.position + car.forward * 40f - car.right * 6f + Vector3.up * 1f);
-            Shot("t01_chase.png", Ground(car.position - car.forward * 7f + car.right * 1.4f, 2.1f), car.position + car.forward * 50f - car.right * 8f + Vector3.up * 6f);
-            Shot("t01_wide.png", Ground(car.position - car.forward * 12f - car.right * 3f, 3.5f), car.position + car.forward * 120f + Vector3.up * 20f);
-            Shot("aerial.png", new Vector3(170, 250, 120), new Vector3(430, 40, 470));
+            yield return Shot("t01_road.png", Ground(car.position - car.forward * 6.5f + car.right * 3.8f, 3.3f), car.position + car.forward * 40f - car.right * 6f + Vector3.up * 1f);
+            yield return Shot("t01_chase.png", Ground(car.position - car.forward * 7f + car.right * 1.4f, 2.1f), car.position + car.forward * 50f - car.right * 8f + Vector3.up * 6f);
+            yield return Shot("t01_wide.png", Ground(car.position - car.forward * 12f - car.right * 3f, 3.5f), car.position + car.forward * 120f + Vector3.up * 20f);
+            yield return Shot("aerial.png", new Vector3(170, 250, 120), new Vector3(430, 40, 470));
             var fence = GameObject.Find("Fence");
-            if (fence != null) Shot("fence.png", fence.transform.position + new Vector3(6f, 1.2f, -4f), fence.transform.position);
-            Shot("car.png", car.position + car.right * 5f + Vector3.up * 1.2f, car.position + Vector3.up * 0.6f);
-            Shot("grass.png", Ground(car.position - car.right * 9f, 0.9f), Ground(car.position - car.right * 30f + car.forward * 10f, 0f));
+            if (fence != null) yield return Shot("fence.png", fence.transform.position + new Vector3(6f, 1.2f, -4f), fence.transform.position);
+            yield return Shot("car.png", car.position + car.right * 5f + Vector3.up * 1.2f, car.position + Vector3.up * 0.6f);
+            yield return Shot("grass.png", Ground(car.position - car.right * 9f, 0.9f), Ground(car.position - car.right * 30f + car.forward * 10f, 0f));
             foreach (var probeName in new[] { "RoadRock", "SM_Plant_Bush" })
             {
                 Transform probe = null;
@@ -187,16 +194,16 @@ namespace Manyworld.Tests
                 if (probe == null) { Debug.Log($"[Diag] {probeName} 없음"); continue; }
                 foreach (var r in probe.GetComponentsInChildren<Renderer>())
                     Debug.Log($"[Diag] {probeName} {r.name} enabled={r.enabled} mats={string.Join(",", System.Array.ConvertAll(r.sharedMaterials, m => m == null ? "null" : m.name + "/" + m.shader.name + "/" + (m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor").ToString() : "-")))}");
-                Shot($"diag_{probeName}.png", probe.position + new Vector3(3f, 1.5f, -3f), probe.position + Vector3.up * 0.5f);
+                yield return Shot($"diag_{probeName}.png", probe.position + new Vector3(3f, 1.5f, -3f), probe.position + Vector3.up * 0.5f);
             }
             // 진단: 먼 숲 망원 (잎 밉맵이 하얗게 번지지 않는지)
             float fov0 = cam.fieldOfView;
             cam.fieldOfView = 7f;
-            Shot("diag_far.png", Ground(car.position - car.forward * 7f, 2.1f), car.position + car.forward * 430f - car.right * 110f + Vector3.up * 25f);
+            yield return Shot("diag_far.png", Ground(car.position - car.forward * 7f, 2.1f), car.position + car.forward * 430f - car.right * 110f + Vector3.up * 25f);
             cam.fieldOfView = fov0;
             var leanRoom = mc.Room.transform;
             var mid = Vector3.Lerp(mc.Layout.midpointPos, leanRoom.position, 0.45f);
-            Shot("lean.png", Ground(mid - leanRoom.right * 30f, 2f), mid + Vector3.up * 6f);
+            yield return Shot("lean.png", Ground(mid - leanRoom.right * 30f, 2f), mid + Vector3.up * 6f);
 
             // t03: 두 사람이 방 입구에 서서 안을 본다
             pc.target = keep;
@@ -209,13 +216,83 @@ namespace Manyworld.Tests
             yield return new WaitForSeconds(1f);
             pc.target = null;
             hud.enabled = false;
-            Shot("t03_room.png", Ground(stand - room.forward * 4.5f + room.right * 1.6f, 2.3f), room.position + Vector3.up * 1.4f);
+            yield return Shot("t03_room.png", Ground(stand - room.forward * 4.5f + room.right * 1.6f, 2.3f), room.position + Vector3.up * 1.4f);
             // t02: 숲길 위에서 방 쪽으로 (길은 가운데서 살짝 꺾인다)
             var th = ForestSiteBuilder.Trailhead;
             var bend = Vector2.Lerp(th, ForestSiteBuilder.RoomEntrance, 0.5f) + new Vector2(-6f, 2f);
             var onTrail = Vector2.Lerp(th, bend, 0.45f);
             var ent = ForestSiteBuilder.RoomEntrance;
-            Shot("t02_path.png", Ground(new Vector3(onTrail.x, 0, onTrail.y), 2.4f), Ground(new Vector3(ent.x, 0, ent.y), 1.5f));
+            yield return Shot("t02_path.png", Ground(new Vector3(onTrail.x, 0, onTrail.y), 2.4f), Ground(new Vector3(ent.x, 0, ent.y), 1.5f));
+            hud.enabled = true;
+            pc.target = keep;
+            gm.EnterHub();
+            ScreenSpaceGI.Enabled = true;
+            MissionController.FieldMist = mist;
+            yield return null;
+        }
+
+        /// <summary>
+        /// 3인칭 총 들기 (gun-pose-unity): 기사·은주를 숲길 입구에 세우고 서 있기·조준 자세를 앞·옆·뒤에서 가까이 찍는다.
+        /// [GUN-POSE] 로그: 총열과 몸 정면의 각도, 왼손 받침 오차.
+        /// </summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator CaptureGunPose()
+        {
+            string dir = System.Environment.GetEnvironmentVariable("MANYWORLD_CAPTURE_DIR");
+            if (string.IsNullOrEmpty(dir)) { Assert.Ignore("캡처 경로 없음"); yield break; }
+            Directory.CreateDirectory(dir);
+            var gm = GameManager.Instance;
+            MissionHUD.ShowArrival = false;
+            gm.StartField();
+            yield return new WaitForSeconds(2f);
+            var mc = MissionController.Instance;
+            var cam = Camera.main;
+            var pc = cam.GetComponent<PlayerCamera>();
+            var hud = mc.GetComponent<MissionHUD>();
+            var terrain = mc.Layout.terrain;
+            Vector3 Ground(Vector3 p, float up) { p.y = terrain.SampleHeight(p) + up; return p; }
+            var th = ForestSiteBuilder.Trailhead;
+            var fwd2 = ForestSiteBuilder.RoomForward;
+            var fwd = new Vector3(fwd2.x, 0, fwd2.y);
+            var right = Vector3.Cross(Vector3.up, fwd);
+            var stand = Ground(new Vector3(th.x, 0, th.y) - fwd * 6f, 0.1f);
+            float yaw = Quaternion.LookRotation(fwd).eulerAngles.y;
+            mc.WarpParty(stand, yaw, Ground(stand + right * 4f, 0.1f));
+            mc.Companion.order = CompanionOrder.Hold;
+            yield return new WaitForSeconds(1f);
+            var keep = pc.target;
+            pc.target = null;
+            hud.enabled = false;
+            var people = new (string name, Transform t)[] { ("driver", mc.Player.transform), ("companion", mc.Companion.transform) };
+            foreach (var state in new[] { "idle", "aim" })
+            {
+                CharacterRig.QaAim = state == "aim";
+                foreach (var (name, t) in people) t.rotation = Quaternion.LookRotation(fwd);
+                yield return new WaitForSeconds(0.8f);
+                foreach (var (name, t) in people)
+                {
+                    var rig = t.GetComponent<CharacterRig>();
+                    if (rig != null && rig.rifle != null)
+                    {
+                        var se = rig.GetType().GetProperty("SupportError")?.GetValue(rig);
+                        Debug.Log($"[GUN-POSE] {name} {state} barrelVsBody={Vector3.Angle(rig.rifle.forward, t.forward):F1} barrelPitch={Vector3.SignedAngle(Vector3.ProjectOnPlane(rig.rifle.forward, t.right), t.forward, t.right):F1} support={se}");
+                    }
+                    var p = t.position;
+                    var tf = t.forward; var tr = t.right;
+                    foreach (var (view, pos, look) in new[]
+                    {
+                        ("front", p + tf * 2.1f + tr * 0.9f + Vector3.up * 1.45f, p + Vector3.up * 1.2f),
+                        ("side", p + tr * 2.3f + tf * 0.2f + Vector3.up * 1.35f, p + Vector3.up * 1.2f + tf * 0.2f),
+                        ("back", p - tf * 2f + tr * 0.9f + Vector3.up * 1.7f, p + Vector3.up * 1.2f + tf * 1.5f),
+                    })
+                    {
+                        cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(look - pos));
+                        yield return Settle(cam, 8);
+                        Capture(Path.Combine(dir, $"gun_{name}_{state}_{view}.png"));
+                    }
+                }
+            }
+            CharacterRig.QaAim = null;
             hud.enabled = true;
             pc.target = keep;
             gm.EnterHub();
@@ -266,6 +343,19 @@ namespace Manyworld.Tests
             yield return null;
             Shot("field_room_closed.png", Ground(room.position + room.forward * 3f, 1.7f), mc.Room.Entrance + Vector3.up * 2.5f);
             pc.target = keep;
+        }
+
+        static IEnumerator Settle(Camera cam, int frames)
+        {
+            var rt = new RenderTexture(1280, 720, 24);
+            cam.targetTexture = rt;
+            for (int i = 0; i < frames; i++)
+            {
+                cam.Render();
+                yield return null;
+            }
+            cam.targetTexture = null;
+            Object.Destroy(rt);
         }
 
         static void Capture(string path)

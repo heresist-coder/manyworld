@@ -148,7 +148,11 @@ namespace Manyworld
 
             var mouse = Mouse.current;
             cam.aiming = mouse != null && mouse.rightButton.isPressed;
-            if (rig != null) rig.Aim = cam.aiming || weapon.RecentlyFired;
+            if (rig != null)
+            {
+                rig.Aim = cam.aiming || weapon.RecentlyFired;
+                rig.AimDir = cam.transform.forward;
+            }
 
             Vector2 input = Vector2.zero;
             if (kb.wKey.isPressed) input.y += 1;

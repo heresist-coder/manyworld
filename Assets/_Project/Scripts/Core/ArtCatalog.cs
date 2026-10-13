@@ -46,6 +46,7 @@ namespace Manyworld
         public Material[] sgsMaterials;
         public float[] sgsWeights;
         public GameObject[] fieldBushes;   // 숲 현장 덤불 (무광 사본)
+        public GameObject[] clutterSmall, clutterLeaves, clutterFerns, clutterPebbles, clutterMushrooms, clutterLogs; // 숲 바닥 잔것
 
         [Header("인물 (Tripo, Mixamo 뼈대)")]
         public GameObject driverModel;

@@ -173,7 +173,11 @@ namespace Manyworld
             else ReviveProgress = 0f;
 
             UpdateShooting(mc);
-            if (rig != null) rig.Aim = aimTarget != null;
+            if (rig != null)
+            {
+                rig.Aim = aimTarget != null;
+                rig.AimDir = aimTarget != null ? aimTarget.transform.position + Vector3.up * 0.8f - (transform.position + Vector3.up * 1.4f) : Vector3.zero;
+            }
         }
 
         void Move(MissionController mc)

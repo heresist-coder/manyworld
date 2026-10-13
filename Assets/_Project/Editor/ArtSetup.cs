@@ -480,7 +480,11 @@ namespace Manyworld.EditorTools
         {
             FixFoliageMips();
             EnsureSsaoFeature();
+            EnsureRadiantFeature();
             EnsurePainterlyFeature();
+            // 지형: 숲 현장 질감은 법선 맵을 쓴다 (_NORMALMAP 변형이 빌드에 들어가게 머티리얼에 켜 둔다)
+            var terrainMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Resources/Materials/Terrain.mat");
+            if (terrainMat != null && !terrainMat.IsKeywordEnabled("_NORMALMAP")) { terrainMat.EnableKeyword("_NORMALMAP"); EditorUtility.SetDirty(terrainMat); }
             // 그레이박스 베이스 머티리얼에 인스턴싱 변형을 넣어 둔다 (빌드에서 풀 인스턴싱이 빠지지 않게)
             var baseOpaque = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Resources/Materials/GrayboxOpaque.mat");
             if (baseOpaque != null && !baseOpaque.enableInstancing) { baseOpaque.enableInstancing = true; EditorUtility.SetDirty(baseOpaque); }
@@ -555,6 +559,13 @@ namespace Manyworld.EditorTools
             cat.plushies = Prefabs("SM_Prop_Toy_Bear_01", "SM_Prop_Plushie_04", "SM_Prop_Plushie_03", "SM_Prop_Plushie_07");
             cat.siteChair = Prefab("SM_Prop_DiningChair_01");
             cat.mountains = Prefabs("SM_Gen_Env_Background_Mountain_01", "SM_Gen_Env_Background_Mountain_02", "SM_Gen_Env_Background_Mountain_03");
+            // 숲 바닥 잔것 (ScatterClutter)
+            cat.clutterSmall = Prefabs("SM_Gen_Env_Twig_01", "SM_Gen_Env_Twig_02", "SM_Gen_Env_Twig_03", "SM_Gen_Env_Twig_04");
+            cat.clutterLeaves = Prefabs("SM_Gen_Env_Leaves_01", "SM_Gen_Env_Leaves_02", "SM_Gen_Env_Leaves_03"); // 낙엽 무더기(Pile)는 볕에서 모래 둔덕처럼 보여 뺐다
+            cat.clutterFerns = Prefabs("SM_Gen_Env_Fern_01", "SM_Gen_Env_Fern_02", "SM_Gen_Env_Fern_03");
+            cat.clutterPebbles = Prefabs("SM_Gen_Env_Rock_Pebbles_01", "SM_Gen_Env_Rock_Pebbles_02", "SM_Gen_Env_Rock_Pebbles_03", "SM_Gen_Env_Rock_Pebbles_04", "SM_Gen_Env_Rock_Pebbles_05");
+            cat.clutterMushrooms = Prefabs("SM_Gen_Env_Mushroom_01", "SM_Gen_Env_Mushroom_02", "SM_Gen_Env_Mushroom_03");
+            cat.clutterLogs = Prefabs("SM_Gen_Env_Log_01", "SM_Gen_Env_Log_02", "SM_Gen_Env_Stump_01", "SM_Gen_Env_Stump_02", "SM_Gen_Env_Stump_03");
 
             const string fx = "Assets/118 sprite effects bundle";
             cat.muzzleFlash = FirstPrefabIn(fx + "/MuzzleFlashes/_prefabs");
@@ -601,6 +612,45 @@ namespace Manyworld.EditorTools
                 EditorUtility.SetDirty(data);
                 Debug.Log($"[Manyworld] Volumetric Fog 렌더 피처 추가: {path}");
             }
+            AssetDatabase.SaveAssets();
+        }
+
+        /// <summary>
+        /// Radiant GI(화면 공간 간접광) 렌더 피처를 PC 렌더러에 한 번만 붙인다 (D27). 유료 에셋이라 리플렉션으로 찾고, 없으면 건너뛴다.
+        /// 패키지 없는 체크아웃에선 이 항목이 빈 스크립트 참조로 남지만 URP는 빈 피처를 건너뛴다 (Volumetric Fog 2와 같음).
+        /// </summary>
+        [MenuItem("Manyworld/Art/Ensure Radiant GI Feature")]
+        public static void EnsureRadiantFeature()
+        {
+            System.Type type = null;
+            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                if ((type = asm.GetType("RadiantGI.Universal.RadiantRenderFeature")) != null) break;
+            var data = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.Universal.ScriptableRendererData>("Assets/Settings/PC_Renderer.asset");
+            if (type == null || data == null)
+            {
+                Debug.Log("[Manyworld] Radiant GI 없음 — 렌더 피처 생략");
+                return;
+            }
+            var feature = data.rendererFeatures.FirstOrDefault(f => f != null && f.GetType() == type);
+            if (feature == null)
+            {
+                feature = (UnityEngine.Rendering.Universal.ScriptableRendererFeature)ScriptableObject.CreateInstance(type);
+                feature.name = "RadiantGI";
+                AssetDatabase.AddObjectToAsset(feature, data);
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out _, out long localId);
+                var so = new SerializedObject(data);
+                var list = so.FindProperty("m_RendererFeatures");
+                var map = so.FindProperty("m_RendererFeatureMap");
+                list.arraySize++; list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = feature;
+                map.arraySize++; map.GetArrayElementAtIndex(map.arraySize - 1).longValue = localId;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                Debug.Log("[Manyworld] Radiant GI 렌더 피처 추가");
+            }
+            // 렌더러가 Forward+라 Forward 경로
+            var path = type.GetField("renderingPath");
+            if (path != null) path.SetValue(feature, System.Enum.ToObject(path.FieldType, 0));
+            EditorUtility.SetDirty(feature);
+            EditorUtility.SetDirty(data);
             AssetDatabase.SaveAssets();
         }
 

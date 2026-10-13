@@ -90,7 +90,11 @@ namespace Manyworld
             terrainGo.transform.SetParent(root, false);
             var terrain = terrainGo.GetComponent<Terrain>();
             var terrainMat = Resources.Load<Material>("Materials/Terrain");
-            if (terrainMat != null) terrain.materialTemplate = terrainMat;
+            if (terrainMat != null)
+            {
+                terrainMat.EnableKeyword("_NORMALMAP"); // 질감 법선 맵 (NatureKit.Layer)
+                terrain.materialTemplate = terrainMat;
+            }
             terrain.drawInstanced = true;
             terrain.heightmapPixelError = 5f;
             terrain.basemapDistance = 400f;
@@ -115,6 +119,7 @@ namespace Manyworld
             // 6) 빈 방 (목표)
             room = BuildRoom(root, terrain, rng);
             Lap("방");
+            ScatterClutter(root, terrain, roadDist, trailDist, seed); Lap("ScatterClutter"); // 따로 된 rng라 다른 배치는 그대로. 통나무 자리를 풀이 피하게 풀보다 먼저
             ScatterGrass(root, h, roadDist, trailDist, rng); Lap("ScatterGrass"); // 바위를 다 놓은 뒤 (바위 속에 풀이 나지 않게)
 
             // 7) 배치
@@ -437,6 +442,80 @@ namespace Manyworld
             var field = root.gameObject.AddComponent<GrassField>();
             for (int i = 0; i < kinds.Count; i++) field.Add(kinds[i].mesh, kinds[i].mat, lists[i]);
             Debug.Log($"[Manyworld] 풀 {field.InstanceCount}포기");
+        }
+
+        /// <summary>
+        /// 땅 위 잔것: 잔가지·낙엽·자갈 무더기·고사리·버섯·그루터기·쓰러진 통나무 (목표 샷 02·03의 숲 바닥).
+        /// 방 둘레·숲길 가·기운 숲·주차 공터 주변에만 (보이는 곳). 다른 배치와 rng를 나누지 않는다 (고정 세계가 그대로).
+        /// 작은 것은 그림자를 끄고 정적 배칭으로 묶는다.
+        /// </summary>
+        static void ScatterClutter(Transform root, Terrain terrain, float[,] roadDist, float[,] trailDist, int seed)
+        {
+            var art = ArtCatalog.Instance;
+            if (art == null || art.clutterSmall == null || art.clutterSmall.Length == 0) return;
+            var rng = new System.Random(seed * 131 + 5);
+            var group = new GameObject("GroundClutter").transform;
+            group.SetParent(root, false);
+            int count = 0;
+            GameObject Put(GameObject prefab, float x, float z, float scale, bool shadows)
+            {
+                if (prefab == null) return null;
+                var p = new Vector3(x, 0, z);
+                p.y = terrain.SampleHeight(p) - 0.02f;
+                var n = terrain.terrainData.GetInterpolatedNormal(x / Size, z / Size);
+                var go = Object.Instantiate(prefab, p, Quaternion.FromToRotation(Vector3.up, n) * Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0), group);
+                go.transform.localScale *= scale;
+                foreach (var c in go.GetComponentsInChildren<Collider>()) Kill(c);
+                foreach (var r in go.GetComponentsInChildren<Renderer>())
+                    r.shadowCastingMode = shadows ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
+                count++;
+                return go;
+            }
+            GameObject PickOf(GameObject[] a) => a != null && a.Length > 0 ? a[rng.Next(a.Length)] : null;
+            bool Blocked(float x, float z) => Sample(roadDist, x, z) < 4.2f || Sample(trailDist, x, z) < 1.1f || NatureKit.UnderRock(x, z);
+
+            // 1) 방: 벽(나무) 밑 띠에 낙엽·잔가지가 쌓이고 가운데는 드문드문 (목표 샷 03)
+            for (int i = 0; i < 260; i++)
+            {
+                float lx = ((float)rng.NextDouble() * 2f - 1f) * (RoomHalf + 1.2f), lz = ((float)rng.NextDouble() * 2f - 1f) * (RoomHalf + 1.2f);
+                float edge = Mathf.Max(Mathf.Abs(lx), Mathf.Abs(lz));
+                if (edge < RoomHalf - 2.5f && rng.NextDouble() > 0.18) continue;
+                var w = RoomCenter + RoomForward * lz + new Vector2(RoomForward.y, -RoomForward.x) * lx;
+                if (Vector2.Distance(w, RoomEntrance) < 2.2f || NatureKit.UnderRock(w.x, w.y)) continue;
+                Put(PickOf(edge > RoomHalf - 1.2f && rng.NextDouble() < 0.4 ? art.clutterLeaves : art.clutterSmall), w.x, w.y, 0.6f + (float)rng.NextDouble() * 0.4f, false);
+            }
+
+            // 2) 숲길·기운 숲·방 둘레의 숲 바닥, 주차 공터 길가
+            for (int i = 0; i < 9000 && count < 1600; i++)
+            {
+                float x = 150f + (float)rng.NextDouble() * (Size - 300f), z = 150f + (float)rng.NextDouble() * (Size - 300f);
+                var p2 = new Vector2(x, z);
+                float td = Sample(trailDist, x, z), rd = Sample(roadDist, x, z);
+                float room = Vector2.Distance(p2, RoomCenter);
+                bool nearTrail = td < 9f, lean = LeaningBandDistance(x, z) < 26f, nearRoom = room < 32f, nearCar = Vector2.Distance(p2, CarStart) < 40f && rd < 12f;
+                if (!(nearTrail || lean || nearRoom || nearCar) || InRoom(x, z, 0.5f) || Blocked(x, z)) continue;
+                float forest = ForestMask(x, z);
+                double r = rng.NextDouble();
+                if (nearCar && forest < 0.3f)
+                {
+                    // 초원 길가: 자갈 무더기와 잔가지만
+                    if (r < 0.5) Put(PickOf(art.clutterPebbles), x, z, 0.8f + (float)rng.NextDouble() * 0.6f, false);
+                    continue;
+                }
+                if (r < 0.42) Put(PickOf(art.clutterSmall), x, z, 0.8f + (float)rng.NextDouble() * 0.6f, false);
+                else if (r < 0.62) Put(PickOf(art.clutterLeaves), x, z, 0.6f + (float)rng.NextDouble() * 0.4f, false);
+                else if (r < 0.86 && td > 2f) Put(PickOf(art.clutterFerns), x, z, 0.7f + (float)rng.NextDouble() * 0.7f, true);
+                else if (r < 0.93) Put(PickOf(art.clutterPebbles), x, z, 0.8f + (float)rng.NextDouble() * 0.6f, false);
+                else if (r < 0.965 && td > 2.5f) Put(PickOf(art.clutterMushrooms), x, z, 0.8f + (float)rng.NextDouble() * 0.5f, false);
+                else if (td > 3.5f && room > RoomHalf + 3f)
+                {
+                    // 그루터기·쓰러진 통나무: 드물게, 그림자를 드리운다
+                    var big = Put(PickOf(art.clutterLogs), x, z, 0.9f + (float)rng.NextDouble() * 0.4f, true);
+                    if (big != null) NatureKit.Footprints.Add(x, z, 1.2f);
+                }
+            }
+            if (Application.isPlaying) StaticBatchingUtility.Combine(group.gameObject); // 에디터 굽기(APV)는 정적 배칭을 받지 않는다
+            Debug.Log($"[Manyworld] 땅 잔것 {count}개");
         }
 
         static void PlantGrass(TerrainData td, float[,] roadDist, float[,] trailDist)

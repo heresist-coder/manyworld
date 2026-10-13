@@ -58,3 +58,6 @@ Assets/_Project/Scenes/ForestLighting.meta
 
 # Stylized Grass Shader (Staggart Creations, 유료 에셋: 공개 레포에 올리면 DMCA)
 Packages/xyz.staggart-creations.stylized-grass/
+# Radiant Global Illumination (Kronnect, paid asset)
+/Assets/RadiantGI/
+/Assets/RadiantGI.meta

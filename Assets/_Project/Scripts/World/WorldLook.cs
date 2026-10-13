@@ -18,6 +18,7 @@ namespace Manyworld
             public float postExposure, contrast, saturation, grain, vignette, bloom;
             public Color filter, shadowsTint, highlightsTint;
             public float lift; // 그늘을 살짝 들어 올린다 (0이면 그대로)
+            public float gi;   // 화면 공간 간접광 세기 (Radiant GI, 0이면 끈다)
         }
 
         /// <summary>우리 동네: 노을 진 겨울 오후. 따뜻하고 바랬다.</summary>
@@ -41,7 +42,7 @@ namespace Manyworld
             atmosphere = 1.05f, skyExposure = 1.3f,
             postExposure = 0.62f, contrast = 9f, saturation = 4f, grain = 0.06f, vignette = 0.18f, bloom = 0.22f,
             filter = new Color(1f, 0.98f, 0.95f), shadowsTint = new Color(0.4f, 0.48f, 0.62f), highlightsTint = new Color(1f, 0.92f, 0.8f),
-            lift = 0.07f,
+            lift = 0.07f, gi = 1f,
         };
 
         /// <summary>멀티버스: 규칙에 따라. 같은 구도인데 차갑다.</summary>
@@ -183,6 +184,8 @@ namespace Manyworld
             bloom.intensity.Override(p.bloom);
             bloom.threshold.Override(1.05f);
             bloom.scatter.Override(0.6f);
+
+            ScreenSpaceGI.Add(profile, p.gi);
         }
     }
 }
