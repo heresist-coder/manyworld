@@ -435,7 +435,7 @@ namespace Manyworld
                     for (; kind < kinds.Count - 1; kind++) { pick -= kinds[kind].weight; if (pick <= 0) break; }
                     float qx = px + (float)(rng.NextDouble() - 0.5) * 0.9f, qz = pz + (float)(rng.NextDouble() - 0.5) * 0.9f;
                     float y = Sample(h, qx, qz);
-                    float s = kinds[kind].scale * (0.65f + (float)rng.NextDouble() * 0.75f) * (1f + verge * 0.5f) * (rng.NextDouble() < 0.06 ? 1.7f : 1f); // 가끔 키 큰 덤불
+                    float s = kinds[kind].scale * (0.65f + (float)rng.NextDouble() * 0.75f) * (1f + verge * 0.15f) * (rng.NextDouble() < 0.06 ? 1.6f : 1f); // 가끔 키 큰 덤불. 목표 샷 01의 길가는 낮은 풀 (예전 ×1.5는 길을 가렸다)
                     lists[kind].Add(Matrix4x4.TRS(new Vector3(qx, y - 0.05f, qz), Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0), Vector3.one * s));
                 }
             }

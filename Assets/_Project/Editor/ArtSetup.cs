@@ -481,6 +481,7 @@ namespace Manyworld.EditorTools
             FixFoliageMips();
             EnsureSsaoFeature();
             EnsureRadiantFeature();
+            EnsureFogBorder();
             EnsurePainterlyFeature();
             // 지형: 숲 현장 질감은 법선 맵을 쓴다 (_NORMALMAP 변형이 빌드에 들어가게 머티리얼에 켜 둔다)
             var terrainMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Resources/Materials/Terrain.mat");
@@ -616,6 +617,22 @@ namespace Manyworld.EditorTools
         }
 
         /// <summary>
+        /// Volumetric Fog 2의 상자 경계 흐림(FOG_BORDER)을 켠다. 에셋 설정 파일(CommonsURP.hlsl)의 컴파일 옵션이라 기본은 꺼져 있다.
+        /// 숲 현장 연무는 숲 위에만 깔리는 상자라 경계가 없으면 초원에서 세로 벽처럼 보인다. 에셋은 깃에 없으므로 여기서 매번 맞춘다.
+        /// </summary>
+        [MenuItem("Manyworld/Art/Ensure Fog Border")]
+        public static void EnsureFogBorder()
+        {
+            const string path = "Assets/VolumetricFog2/Resources/Shaders/CommonsURP.hlsl";
+            if (!File.Exists(path)) return;
+            var text = File.ReadAllText(path);
+            if (!text.Contains("//#define FOG_BORDER")) return;
+            File.WriteAllText(path, text.Replace("//#define FOG_BORDER", "#define FOG_BORDER"));
+            AssetDatabase.ImportAsset(path);
+            Debug.Log("[Manyworld] Volumetric Fog 경계 흐림 켬");
+        }
+
+        /// <summary>
         /// Radiant GI(화면 공간 간접광) 렌더 피처를 PC 렌더러에 한 번만 붙인다 (D27). 유료 에셋이라 리플렉션으로 찾고, 없으면 건너뛴다.
         /// 패키지 없는 체크아웃에선 이 항목이 빈 스크립트 참조로 남지만 URP는 빈 피처를 건너뛴다 (Volumetric Fog 2와 같음).
         /// </summary>
@@ -699,10 +716,11 @@ namespace Manyworld.EditorTools
             // (프리팹, 비율, 잎끝 색). 패키지 기본 라임색은 볕에서 형광처럼 떠서 목표 샷 01의 노란빛 올리브로
             var picks = new[]
             {
-                ("GrassPatch", 1f, new Color(0.64f, 0.68f, 0.33f)),
-                ("GrassThick", 0.8f, new Color(0.56f, 0.63f, 0.29f)),
-                ("GrassTall", 0.35f, new Color(0.72f, 0.69f, 0.38f)),
-                ("GrassThin", 0.5f, new Color(0.6f, 0.65f, 0.31f)),
+                // 목표 샷 01 초원 중간 (134,119,71): 노란 연두보다 황토 쪽 (it52 샘플 155,152,77)
+                ("GrassPatch", 1f, new Color(0.64f, 0.63f, 0.32f)),
+                ("GrassThick", 0.8f, new Color(0.55f, 0.58f, 0.28f)),
+                ("GrassTall", 0.35f, new Color(0.72f, 0.64f, 0.36f)),
+                ("GrassThin", 0.5f, new Color(0.6f, 0.6f, 0.3f)),
                 ("Flowers/Groundcover_Clovers", 0.25f, new Color(0.42f, 0.52f, 0.24f)),
                 ("Flowers/Flower_Chamomile", 0.02f, Color.clear),
             };

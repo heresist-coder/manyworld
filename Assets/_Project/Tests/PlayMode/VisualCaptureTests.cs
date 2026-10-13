@@ -274,7 +274,7 @@ namespace Manyworld.Tests
                     var rig = t.GetComponent<CharacterRig>();
                     if (rig != null && rig.rifle != null)
                     {
-                        var se = rig.GetType().GetProperty("SupportError")?.GetValue(rig);
+                        var se = $"{rig.GetType().GetProperty("SupportError")?.GetValue(rig)} reach={rig.GetType().GetProperty("SupportReach")?.GetValue(rig)}";
                         Debug.Log($"[GUN-POSE] {name} {state} barrelVsBody={Vector3.Angle(rig.rifle.forward, t.forward):F1} barrelPitch={Vector3.SignedAngle(Vector3.ProjectOnPlane(rig.rifle.forward, t.right), t.forward, t.right):F1} support={se}");
                     }
                     var p = t.position;
@@ -292,6 +292,35 @@ namespace Manyworld.Tests
                     }
                 }
             }
+            // 걷기: 둘을 앞으로 1.4m/s로 1.2초 옮기며 옆에서 (이동 부품은 잠시 끈다)
+            CharacterRig.QaAim = false;
+            var cc = mc.Player.GetComponent<CharacterController>();
+            var agent = mc.Companion.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (cc != null) cc.enabled = false;
+            if (agent != null) agent.enabled = false;
+            for (float tt = 0; tt < 1.2f; tt += Time.deltaTime)
+            {
+                foreach (var (name, t) in people)
+                {
+                    t.rotation = Quaternion.LookRotation(fwd);
+                    t.position = Ground(t.position + fwd * 1.4f * Time.deltaTime, 0.05f);
+                }
+                yield return null;
+            }
+            foreach (var (name, t) in people)
+            {
+                var p = t.position;
+                var pos = p + t.right * 2.4f + t.forward * 0.6f + Vector3.up * 1.3f;
+                cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(p + Vector3.up * 1.1f - pos));
+                for (int f = 0; f < 3; f++)
+                {
+                    t.position = Ground(t.position + fwd * 0.03f, 0.05f); // 배치 모드는 프레임이 길어 고정 보폭
+                    yield return null;
+                }
+                Capture(Path.Combine(dir, $"gun_{name}_walk_side.png"));
+            }
+            if (cc != null) cc.enabled = true;
+            if (agent != null) agent.enabled = true;
             CharacterRig.QaAim = null;
             hud.enabled = true;
             pc.target = keep;

@@ -305,17 +305,21 @@ namespace Manyworld
             // 공기 원근: 먼 숲과 산이 푸르게 물러난다
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.58f, 0.67f, 0.79f);
-            RenderSettings.fogStartDistance = 50f;
-            RenderSettings.fogEndDistance = 1350f; // 원경 산은 안개색 실루엣으로 겹겹이
+            // 목표 샷 01의 먼 산은 진한 파랑 (110,132,168), 분지 가장자리 숲 능선은 어두운 초록 회색 (88,92,91).
+            // 1350m에서 끝나는 안개는 능선까지 하얗게 바랬다 (185,179,179) — 더 멀리, 더 푸르게
+            RenderSettings.fogColor = new Color(0.47f, 0.57f, 0.74f);
+            RenderSettings.fogStartDistance = 80f;
+            RenderSettings.fogEndDistance = 3400f;
             cam.farClipPlane = 3000f;
-            // 볼류메트릭 연무: 길·숲길·방이 있는 낮은 땅부터 나무 꼭대기 위까지. 해 그림자를 받아 나무 사이로 햇살 기둥이 선다.
-            // 바닥보다 높은 언덕에는 연무가 없어서 낮은 곳에 고인다 (지형 높이 20~40m: 예전엔 y=0에 깔려 땅속에 묻혀 있었다)
-            float s = Layout.worldSize;
+            // 볼류메트릭 연무: 숲(숲길·기운 숲·방) 위에만, 낮은 땅부터 나무 꼭대기 위까지. 해 그림자를 받아 나무 사이로 햇살 기둥이 선다.
+            // 바닥보다 높은 언덕에는 연무가 없어서 낮은 곳에 고인다 (지형 높이 20~40m: 예전엔 y=0에 깔려 땅속에 묻혀 있었다).
+            // 초원(출발점)까지 덮으면 해 쪽으로 우윳빛 띠가 져 목표 샷 01의 맑은 공기가 바랬다
             var terrain = Layout.terrain;
             float H(Vector3 p) => terrain != null ? terrain.SampleHeight(p) : p.y;
-            float floor = Mathf.Min(H(Layout.ticoPos), Mathf.Min(H(Layout.midpointPos), H(Layout.objectivePos))) - 6f;
-            VolumetricAtmosphere.Create(transform, new Vector3(s / 2, 0, s / 2), s + 80f, FieldMist, sun, floor);
+            float floor = Mathf.Min(H(Layout.midpointPos), H(Layout.objectivePos)) - 6f;
+            var forest = (Layout.midpointPos + Layout.objectivePos) * 0.5f;
+            // 220m: 차 출발점에서 상자 면까지 약 175m로 그리는 거리(160m) 밖이라 초원에선 상자 벽이 보이지 않는다
+            VolumetricAtmosphere.Create(transform, forest, 220f, FieldMist, sun, floor);
         }
 
         /// <summary>숲 현장 연무 (목표 샷 02·03의 볕 드는 숲 공기).</summary>
@@ -323,7 +327,7 @@ namespace Manyworld
         {
             // 1차(it47): 밀도 0.012로 300m 너머가 하얗게 지워졌다. 160m 안쪽에만 옅게 (먼 산은 거리 안개)
             density = 0.004f, height = 40f, brightness = 1f, turbulence = 0.4f, wind = 0.01f, distant = 0f, ambient = 0.45f, noise = 0.45f,
-            albedo = new Color(0.9f, 0.92f, 0.95f), shafts = 0.9f, diffusion = 0.35f, diffusionPower = 24f, maxDistance = 160f,
+            albedo = new Color(0.9f, 0.92f, 0.95f), shafts = 0.9f, diffusion = 0.35f, diffusionPower = 24f, maxDistance = 160f, border = 0.45f,
         };
 
         void SpawnMonsters()

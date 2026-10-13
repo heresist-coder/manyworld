@@ -38,6 +38,8 @@ namespace Manyworld
         /// <summary>QA: 마지막 프레임의 왼손 받침 오차(m)와 조준 중 총열-조준 방향 각도.</summary>
         public float SupportError { get; private set; }
         public float AimErrorDeg { get; private set; }
+        /// <summary>QA: 어깨→손목 목표 거리 / 팔 길이 (1 넘으면 닿지 않는다).</summary>
+        public float SupportReach { get; private set; }
 
         /// <summary>visual 아래에 모델을 붙인다. 성공하면 기존 도형 렌더러를 숨긴다.</summary>
         public static CharacterRig Attach(Transform visual, GameObject modelPrefab, float height, GameObject riflePrefab = null)
@@ -145,6 +147,15 @@ namespace Manyworld
             rifle.localScale = new Vector3(1f / rightHand.lossyScale.x, 1f / rightHand.lossyScale.y, 1f / rightHand.lossyScale.z);
             rifle.rotation = want;
             rifle.position = PalmR();
+            // 받침이 왼팔 길이 밖이면 총열을 따라 뒤로 당긴다 (뼈를 늘리지 않는다, CUBE 125 FitWeaponReach와 같은 생각).
+            // 신티 남자(기사)는 팔이 짧아 27cm 앞 받침에서 6cm 모자라 팔이 X자로 꼬였다
+            if (leftHand != null && armLU != null && armLL != null)
+            {
+                float reach = (Vector3.Distance(armLU.position, armLL.position) + Vector3.Distance(armLL.position, leftHand.position)) * 0.94f
+                              + Vector3.Distance(leftHand.position, PalmL());
+                while (supportLocal.z > 0.1f && Vector3.Distance(armLU.position, rifle.TransformPoint(supportLocal)) > reach)
+                    supportLocal.z -= 0.01f;
+            }
             animator.SetBool(AimHash, Aiming);
             animator.Play("Move", 0, 0f);
             animator.Update(0f);
@@ -197,9 +208,15 @@ namespace Manyworld
             if (leftHand != null && armLU != null && armLL != null)
             {
                 var target = rifle.TransformPoint(supportLocal); // 총 틀의 월드 축척은 1
+                // 지금 자세에서 팔이 닿지 않으면 받침을 총열을 따라 뒤로 (최대 15cm, 뼈는 늘리지 않는다)
+                float arm = Vector3.Distance(armLU.position, armLL.position) + Vector3.Distance(armLL.position, leftHand.position);
+                var palmOffset = PalmL() - leftHand.position;
+                for (int k = 0; k < 15 && Vector3.Distance(armLU.position, target - palmOffset) > arm * 0.97f; k++)
+                    target -= rifle.forward * 0.01f;
                 for (int i = 0; i < 2; i++)
                 {
                     var wrist = target - (PalmL() - leftHand.position);
+                    SupportReach = Vector3.Distance(armLU.position, wrist) / (Vector3.Distance(armLU.position, armLL.position) + Vector3.Distance(armLL.position, leftHand.position));
                     // 팔꿈치: 몸 바깥(오른 어깨→왼 어깨)과 아래로. 클립이 몸을 비틀어 서므로 몸통 기준이 아니라 어깨 기준
                     var outward = armRU != null ? (armLU.position - armRU.position).normalized : -transform.right;
                     var pole = outward * 0.92f + Vector3.down * 0.6f;

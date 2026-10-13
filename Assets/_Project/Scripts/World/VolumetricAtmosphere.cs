@@ -21,6 +21,7 @@ namespace Manyworld
             public float diffusion, diffusionPower; // 해 쪽을 볼 때 안개가 빛나는 세기·퍼짐 (0이면 기본값)
             public float noise;                     // 얼룩 세기 (0이면 기본값): 연무는 고르게, 땅안개는 얼룩지게
             public float maxDistance;               // 이 거리 너머는 안개를 그리지 않는다 (0이면 끝까지). 먼 산은 거리 안개가 맡는다
+            public float border;                    // 상자 가장자리 흐림 (반폭 비율, 0이면 기본). FOG_BORDER가 켜져 있어야 한다 (ArtSetup.EnsureFogBorder)
         }
 
         static Type fogType, profileType, managerType;
@@ -89,6 +90,7 @@ namespace Manyworld
                     Set(profile, "shadowMaxDistance", 160f);
                 }
                 if (look.noise > 0f) Set(profile, "noiseStrength", look.noise);
+                if (look.border > 0f) Set(profile, "border", look.border);
                 if (look.maxDistance > 0f)
                 {
                     Set(profile, "maxDistance", look.maxDistance);

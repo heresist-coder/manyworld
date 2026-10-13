@@ -127,9 +127,10 @@ namespace Manyworld
                 for (int i = 0; i < boulders.Length; i++) boulders[i] = BoulderMesh(101 + i * 37);
                 rockMats = new[]
                 {
-                    RockMat(new Color(0.48f, 0.48f, 0.5f)),
-                    RockMat(new Color(0.43f, 0.43f, 0.45f)),
-                    RockMat(new Color(0.5f, 0.48f, 0.46f)),
+                    // 목표 샷 01의 바위는 따뜻한 회갈색 (그늘 98,90,70). 차가운 회색은 푸른 그늘에서 슬레이트처럼 떴다
+                    RockMat(new Color(0.53f, 0.5f, 0.44f)),
+                    RockMat(new Color(0.47f, 0.45f, 0.4f)),
+                    RockMat(new Color(0.56f, 0.52f, 0.45f)),
                 };
             }
             var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
@@ -305,13 +306,13 @@ namespace Manyworld
                     for (int i = 0; i < 520; i++)
                     {
                         int x = rng.Next(TexSize), y = rng.Next(TexSize), r = rng.Next(1, 3);
-                        Dot(x + 1, y - 1, r, c * 0.62f, 0.6f);
+                        Dot(x + 1, y - 1, r, c * 0.72f, 0.35f); // 그늘은 법선 맵이 지으니 칠은 옅게
                         Dot(x, y, r, rng.NextDouble() < 0.6 ? c * 1.22f : new Color(0.58f, 0.56f, 0.52f), 0.7f, 1.4f);
                     }
                     for (int i = 0; i < 900; i++)
                     {
                         bool up = rng.NextDouble() < 0.5;
-                        Dot(rng.Next(TexSize), rng.Next(TexSize), 0, up ? c * 1.12f : c * 0.8f, 0.5f, up ? 0.35f : -0.35f);
+                        Dot(rng.Next(TexSize), rng.Next(TexSize), 0, up ? c * 1.1f : c * 0.86f, 0.4f, up ? 0.3f : -0.3f);
                     }
                     break;
                 case Ground.Rock:
