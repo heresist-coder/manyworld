@@ -230,9 +230,9 @@ namespace Manyworld.Tests
             var iron = ForestSiteBuilder.IronTree;
             var roadSpot = new Vector2(394f, 330f); // 흙길 (382,290)→(397,340) 위, 철제 나무에서 가장 가까운 곳
             var toRoad = (roadSpot - iron).normalized;
-            var camIron = iron + toRoad * 36f + new Vector2(toRoad.y, -toRoad.x) * 7f;
+            var camIron = iron + toRoad * 31f + new Vector2(toRoad.y, -toRoad.x) * 6f;
             var ironBase = Ground(new Vector3(iron.x, 0, iron.y), 0f);
-            yield return Shot("t04_iron.png", Ground(new Vector3(camIron.x, 0, camIron.y), 3.4f), ironBase + Vector3.up * 11f);
+            yield return Shot("t04_iron.png", Ground(new Vector3(camIron.x, 0, camIron.y), 3.8f), ironBase + Vector3.up * 14f);
 
             // 목표 샷 05 구도: 남동쪽 물가 언덕에서 호수 너머 북서쪽 산. 물속 집이 앞쪽에 보인다
             var lv = ForestSiteBuilder.LakeView;

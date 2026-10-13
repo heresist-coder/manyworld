@@ -272,7 +272,8 @@ namespace Manyworld
             return go;
         }
 
-        static Material RockMat(Color c)
+        /// <summary>무광 바위 재질 (호수의 뜬 바위처럼 따로 색을 줄 때).</summary>
+        public static Material RockMat(Color c)
         {
             var m = new Material(Graybox.Mat(c)) { name = "Boulder" };
             m.SetFloat("_Smoothness", 0f);

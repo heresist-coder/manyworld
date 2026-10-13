@@ -9,7 +9,7 @@ Shader "Manyworld/Water"
         _SkyColor ("비친 하늘 (위)", Color) = (0.45, 0.6, 0.82, 1)
         _HorizonColor ("비친 하늘 (지평)", Color) = (0.7, 0.76, 0.82, 1)
         _Clarity ("맑기 (m당 흡수)", Float) = 0.06
-        _Reflect ("반사 세기", Range(0, 1)) = 0.6
+        _Reflect ("반사 세기", Range(0, 1)) = 0.85
         _WaveScale ("물결 크기 (m)", Float) = 9
         _WaveStrength ("물결 기울기", Float) = 0.022
         _Refraction ("굴절", Float) = 0.03
@@ -94,11 +94,34 @@ Shader "Manyworld/Water"
                 half absorb = exp(-depth * _Clarity);
                 half3 body = lerp(_DeepColor.rgb, under * _ShallowColor.rgb * 1.3, absorb);
 
-                // 하늘 반사 (프레넬)
-                float3 r = reflect(-v, n);
+                // 반사 (프레넬): 반사 광선을 월드에서 걸어가며 화면에 투영해 장면 깊이보다 뒤로 들어가는 첫 점의 색
+                // (화면 공간 반사. 물가 숲·먼 산·하늘이 비친다. 화면 밖으로 나가면 하늘색)
+                // 반사 광선은 물결을 절반만 탄다 (다 타면 맞음·빗나감이 얼룩덜룩 섞였다)
+                float3 r = reflect(-v, normalize(lerp(float3(0, 1, 0), n, 0.45)));
+                r.y = abs(r.y);
                 half3 sky = lerp(_HorizonColor.rgb, _SkyColor.rgb, saturate(r.y * 2.5));
+                half3 refl = sky;
+                float dist = 1.5;
+                float2 lastUv = uv;
+                bool hit = false;
+                [loop] for (int k = 0; k < 40; k++)
+                {
+                    float3 p = i.positionWS + r * dist;
+                    float4 cp = TransformWorldToHClip(p);
+                    float4 sp = ComputeScreenPos(cp);
+                    float2 puv = sp.xy / sp.w;
+                    if (cp.w <= 0 || any(puv < 0) || any(puv > 1)) break;
+                    lastUv = puv;
+                    float sEye = LinearEyeDepth(SampleSceneDepth(puv), _ZBufferParams);
+                    if (sEye < cp.w - 0.5 && sEye > waterEye) { hit = true; break; }
+                    dist *= 1.2;
+                }
+                // 맞으면 그 색, 끝까지 안 맞으면 마지막 점(대개 하늘·먼 산)의 색. 화면 가장자리는 하늘로 녹인다
+                half3 scene = SampleSceneColor(lastUv);
+                float edge = saturate(min(min(lastUv.x, 1 - lastUv.x), min(lastUv.y, 1 - lastUv.y)) * 12);
+                refl = lerp(sky, scene, hit ? edge : edge * 0.85);
                 half fres = 0.02 + 0.98 * pow(1 - saturate(dot(n, v)), 5);
-                half3 col = lerp(body, sky, saturate(fres * _Reflect));
+                half3 col = lerp(body, refl, saturate(fres * _Reflect + 0.06));
 
                 // 해 반짝임
                 Light sun = GetMainLight();
