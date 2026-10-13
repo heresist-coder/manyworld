@@ -47,7 +47,7 @@ namespace Manyworld.EditorTools
             foreach (var t in root.GetComponentsInChildren<Transform>(true).ToArray())
             {
                 if (t == null) continue;
-                if (t.name == "FarMountain" || t.name == "OuterGround" || t.name == "CloudDome" || t.name == "Cloud")
+                if (t.name == "FarMountain" || t.name == "OuterGround" || t.name == "CloudDome" || t.name == "Cloud" || t.name == "LakeWater") // 물은 빛을 튕기지 않는다 (투명)
                     Object.DestroyImmediate(t.gameObject);
             }
             int contributors = 0;

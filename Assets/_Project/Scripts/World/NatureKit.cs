@@ -223,13 +223,13 @@ namespace Manyworld
                 }
             }
             // 꼭대기 뾰족
-            var topBase = 0.9f + 0.1f;
+            var topBase = 0.95f; // 맨 위 층 안에서 시작 (1.0은 끝이 떠 보였다)
             for (int i = 0; i < 5; i++)
             {
                 float a0 = i * 72f * Mathf.Deg2Rad, a1 = (i + 1) * 72f * Mathf.Deg2Rad;
-                var p0 = new Vector3(Mathf.Cos(a0) * 0.025f, topBase, Mathf.Sin(a0) * 0.025f);
-                var p1 = new Vector3(Mathf.Cos(a1) * 0.025f, topBase, Mathf.Sin(a1) * 0.025f);
-                Tri(leaves, p0, new Vector3(0, topBase + 0.07f, 0), p1, (p0 + p1) * 0.5f - Vector3.up * topBase);
+                var p0 = new Vector3(Mathf.Cos(a0) * 0.03f, topBase, Mathf.Sin(a0) * 0.03f);
+                var p1 = new Vector3(Mathf.Cos(a1) * 0.03f, topBase, Mathf.Sin(a1) * 0.03f);
+                Tri(leaves, p0, new Vector3(0, topBase + 0.09f, 0), p1, (p0 + p1) * 0.5f - Vector3.up * topBase);
             }
             var mesh = new Mesh { name = "TallPine" };
             mesh.SetVertices(verts);
@@ -254,8 +254,9 @@ namespace Manyworld
                 // 목표 샷 02: 붉은 갈색 줄기, 올리브 초록 잎 (볕 든 쪽 75,95,55)
                 tallPineMats = new[]
                 {
-                    RockMat(new Color(0.34f, 0.24f, 0.18f)), RockMat(new Color(0.3f, 0.22f, 0.17f)), // 볕에 붉게 떠서 채도를 낮췄다
-                    RockMat(new Color(0.24f, 0.32f, 0.17f)), RockMat(new Color(0.21f, 0.3f, 0.17f)), RockMat(new Color(0.27f, 0.34f, 0.18f)),
+                    RockMat(new Color(0.3f, 0.22f, 0.17f)), RockMat(new Color(0.26f, 0.2f, 0.16f)), // 볕에 붉게 떠서 채도를 낮췄다
+                    // 잎: 올리브 짙은 초록 (목표 샷 04·05). 0.3대 초록은 초원 볕에서 장난감처럼 떴다
+                    RockMat(new Color(0.18f, 0.24f, 0.14f)), RockMat(new Color(0.16f, 0.22f, 0.14f)), RockMat(new Color(0.21f, 0.26f, 0.15f)),
                 };
                 foreach (var m in tallPineMats) m.name = "TallPine";
             }

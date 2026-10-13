@@ -225,6 +225,21 @@ namespace Manyworld.Tests
             var onTrail = Vector2.Lerp(th, bend, 0.2f);
             var ent = ForestSiteBuilder.RoomEntrance;
             yield return Shot("t02_path.png", Ground(new Vector3(onTrail.x, 0, onTrail.y), 3.2f), Ground(new Vector3(ent.x, 0, ent.y), 2.5f));
+
+            // 목표 샷 04 구도: 흙길 끝(차를 세울 자리)에서 숲 비탈의 철제 나무를 올려다본다
+            var iron = ForestSiteBuilder.IronTree;
+            var roadSpot = new Vector2(394f, 330f); // 흙길 (382,290)→(397,340) 위, 철제 나무에서 가장 가까운 곳
+            var toRoad = (roadSpot - iron).normalized;
+            var camIron = iron + toRoad * 36f + new Vector2(toRoad.y, -toRoad.x) * 7f;
+            var ironBase = Ground(new Vector3(iron.x, 0, iron.y), 0f);
+            yield return Shot("t04_iron.png", Ground(new Vector3(camIron.x, 0, camIron.y), 3.4f), ironBase + Vector3.up * 11f);
+
+            // 목표 샷 05 구도: 남동쪽 물가 언덕에서 호수 너머 북서쪽 산. 물속 집이 앞쪽에 보인다
+            var lv = ForestSiteBuilder.LakeView;
+            var lc = ForestSiteBuilder.LakeCenter;
+            // (물가 언덕 위 높이 4m에선 수면 반사가 물속 집을 가렸다 → 목표처럼 높이 내려다본다)
+            var across = lc + (lc - lv) * 0.25f;
+            yield return Shot("t05_lake.png", Ground(new Vector3(lv.x, 0, lv.y), 8f), new Vector3(across.x, ForestSiteBuilder.LakeWaterY + 1f, across.y));
             hud.enabled = true;
             pc.target = keep;
             gm.EnterHub();
