@@ -304,6 +304,26 @@ namespace Manyworld
                 a[z, x, 0] = open * (1f - dry) * (1f - lush);
             }
             td.SetAlphamaps(0, 0, a);
+
+            // 풀 컬러맵: 칠한 지형 색을 위에서 내려다본 텍스처 (풀 밑동이 바로 아래 땅 색을 따른다, Stylized Grass Shader)
+            var layerColors = new[] { new Color(0.55f, 0.54f, 0.32f), new Color(0.17f, 0.17f, 0.1f), new Color(0.74f, 0.58f, 0.42f), new Color(0.42f, 0.43f, 0.4f), new Color(0.62f, 0.57f, 0.34f), new Color(0.42f, 0.46f, 0.26f), new Color(0.6f, 0.46f, 0.33f) };
+            const int cm = 512;
+            var cpx = new Color[cm * cm];
+            for (int z = 0; z < cm; z++)
+            for (int x = 0; x < cm; x++)
+            {
+                int az = z * (ar - 1) / (cm - 1), ax = x * (ar - 1) / (cm - 1);
+                var c = Color.black;
+                for (int k = 0; k < layerColors.Length; k++) c += layerColors[k] * a[az, ax, k];
+                c.a = 1f;
+                cpx[z * cm + x] = c;
+            }
+            var colorMap = new Texture2D(cm, cm, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Clamp, name = "ForestColorMap" };
+            colorMap.SetPixels(cpx);
+            colorMap.Apply(true);
+            Shader.SetGlobalTexture("_ColorMap", colorMap);
+            Shader.SetGlobalVector("_ColorMapUV", new Vector4(0f, 0f, 1f / Size, 0f));
+            Shader.SetGlobalVector("_ColorMapParams", new Vector4(1f, 0f, 0f, 0f));
         }
 
         // ---------------- 자연물 ----------------
@@ -380,12 +400,8 @@ namespace Manyworld
         /// <summary>풀: 초원은 빽빽하게, 숲 속은 성기게, 길·숲길·방 바닥은 비운다. GrassField가 인스턴싱으로 그린다.</summary>
         static void ScatterGrass(Transform root, float[,] h, float[,] roadDist, float[,] trailDist, System.Random rng)
         {
-            // 뾰족한 로우폴리 풀 덤불 (GrassField가 만든 메시 3종 × 색 3종)
-            GrassField.Clumps(out var meshes, out var mats);
-            var kinds = new List<(Mesh mesh, Material mat, float weight, float scale)>();
-            for (int i = 0; i < meshes.Length; i++)
-            for (int c = 0; c < mats.Length; c++)
-                kinds.Add((meshes[i], mats[c], c == 2 ? 0.6f : 1f, 1f));
+            // 풀 종류: Stylized Grass Shader가 있으면 그 풀, 없으면 직접 만든 덤불
+            var kinds = GrassField.Kinds();
             float total = 0f;
             foreach (var k in kinds) total += k.weight;
             var lists = new List<Matrix4x4>[kinds.Count];

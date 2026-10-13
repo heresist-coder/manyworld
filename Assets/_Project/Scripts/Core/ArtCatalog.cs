@@ -41,6 +41,10 @@ namespace Manyworld
         public GameObject[] clouds;        // 하늘의 뭉게구름 (메시)
         public GameObject[] fieldProps;    // 길가 키 큰 풀 덤불
         public GameObject[] fieldGrass;    // 숲 현장 터레인 풀 (무광 사본)
+        // Stylized Grass Shader (Staggart, 유료·깃 제외): 풀 메시와 머티리얼 사본, 섞는 비율. 없으면 직접 만든 풀
+        public Mesh[] sgsMeshes;
+        public Material[] sgsMaterials;
+        public float[] sgsWeights;
         public GameObject[] fieldBushes;   // 숲 현장 덤불 (무광 사본)
 
         [Header("인물 (Tripo, Mixamo 뼈대)")]

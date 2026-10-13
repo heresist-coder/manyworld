@@ -97,6 +97,7 @@ namespace Manyworld
             if (mission == null) return;
             if (mission.Field) ForestLighting.Unload();
             Shader.SetGlobalFloat("_ManyworldPaint", 0f);
+            Shader.SetGlobalVector("_ColorMapParams", Vector4.zero); // 풀 컬러맵 끄기
             mission.gameObject.SetActive(false);
             Destroy(mission.gameObject);
             mission = null;

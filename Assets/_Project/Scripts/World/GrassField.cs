@@ -136,17 +136,43 @@ namespace Manyworld
             materials = clumpMaterials;
         }
 
+        /// <summary>
+        /// 심을 풀 종류 (메시, 머티리얼, 비율, 크기). Stylized Grass Shader 패키지가 카탈로그에 있으면 그 풀(지형 색 섞기·바람·역광),
+        /// 없으면 직접 만든 덤불 3종 × 색 3종.
+        /// </summary>
+        public static List<(Mesh mesh, Material mat, float weight, float scale)> Kinds()
+        {
+            var kinds = new List<(Mesh, Material, float, float)>();
+            var art = ArtCatalog.Instance;
+            if (art != null && art.sgsMeshes != null && art.sgsMeshes.Length > 0)
+            {
+                for (int i = 0; i < art.sgsMeshes.Length; i++)
+                    if (art.sgsMeshes[i] != null && art.sgsMaterials[i] != null)
+                        kinds.Add((art.sgsMeshes[i], art.sgsMaterials[i], art.sgsWeights[i], 1f));
+                if (kinds.Count > 0) return kinds;
+            }
+            Clumps(out var meshes, out var mats);
+            for (int i = 0; i < meshes.Length; i++)
+            for (int c = 0; c < mats.Length; c++)
+                kinds.Add((meshes[i], mats[c], c == 2 ? 0.6f : 1f, 1f));
+            return kinds;
+        }
+
+        static List<(Mesh mesh, Material mat, float weight, float scale)> objectKinds;
+
         /// <summary>낱개 덤불 오브젝트 (길가·방 입구처럼 몇 개만 놓을 때).</summary>
         public static GameObject ClumpObject(Transform parent, Vector3 pos, float scale, System.Random rng)
         {
-            Clumps(out var meshes, out var mats);
+            objectKinds ??= Kinds();
+            // 낱개는 키 큰 풀 위주 (꽃·토끼풀 제외: 비율이 높은 앞쪽 종류만)
+            var kind = objectKinds[rng.Next(Mathf.Min(objectKinds.Count, 4))];
             var go = new GameObject("GrassClump", typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(parent, false);
             go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0));
-            go.transform.localScale = Vector3.one * scale;
-            go.GetComponent<MeshFilter>().sharedMesh = meshes[rng.Next(meshes.Length)];
+            go.transform.localScale = Vector3.one * scale * kind.scale;
+            go.GetComponent<MeshFilter>().sharedMesh = kind.mesh;
             var r = go.GetComponent<MeshRenderer>();
-            r.sharedMaterial = mats[rng.Next(mats.Length)];
+            r.sharedMaterial = kind.mat;
             r.shadowCastingMode = ShadowCastingMode.Off;
             return go;
         }

@@ -530,6 +530,7 @@ namespace Manyworld.EditorTools
             cat.clouds = Prefabs("SM_Gen_Env_Cloud_01", "SM_Gen_Env_Cloud_02", "SM_Gen_Env_Cloud_03");
             cat.fieldProps = MatteCopies(Prefabs("SM_Env_Grass_Tall_Clump_01", "SM_Env_Grass_Tall_Clump_02"));
             cat.fieldGrass = MatteCopies(Prefabs("SM_Env_Grass_Tall_Clump_01", "SM_Env_Grass_Tall_Clump_02", "SM_Env_Wildflowers_Patch_01"));
+            StylizedGrass(cat);
             cat.fieldBushes = MatteCopies(Prefabs("SM_Plant_Bush_01", "SM_Plant_Bush_02", "SM_Plant_Bush_03"));
 
             // 큰 월드 자연물
@@ -636,6 +637,59 @@ namespace Manyworld.EditorTools
             EditorUtility.SetDirty(data);
             AssetDatabase.SaveAssets();
             Debug.Log("[Manyworld] SSAO 피처 준비");
+        }
+
+        /// <summary>
+        /// Stylized Grass Shader 패키지(있으면)의 풀 LOD0 메시와 머티리얼 사본을 카탈로그에 넣는다.
+        /// 머티리얼은 ThirdParty/Generated에 복사해 인스턴싱을 켜고 지형 색(컬러맵) 섞기를 쓴다.
+        /// </summary>
+        static void StylizedGrass(ArtCatalog cat)
+        {
+            const string pkg = "Packages/xyz.staggart-creations.stylized-grass/Prefabs/";
+            // (프리팹, 비율, 잎끝 색). 패키지 기본 라임색은 볕에서 형광처럼 떠서 목표 샷 01의 노란빛 올리브로
+            var picks = new[]
+            {
+                ("GrassPatch", 1f, new Color(0.64f, 0.68f, 0.33f)),
+                ("GrassThick", 0.8f, new Color(0.56f, 0.63f, 0.29f)),
+                ("GrassTall", 0.35f, new Color(0.72f, 0.69f, 0.38f)),
+                ("GrassThin", 0.5f, new Color(0.6f, 0.65f, 0.31f)),
+                ("Flowers/Groundcover_Clovers", 0.25f, new Color(0.42f, 0.52f, 0.24f)),
+                ("Flowers/Flower_Chamomile", 0.02f, Color.clear),
+            };
+            var meshes = new List<Mesh>();
+            var mats = new List<Material>();
+            var weights = new List<float>();
+            const string dir = GeneratedDir + "/StylizedGrass";
+            if (!AssetDatabase.IsValidFolder(dir)) AssetDatabase.CreateFolder(GeneratedDir, "StylizedGrass");
+            foreach (var (name, weight, tip) in picks)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(pkg + name + ".prefab");
+                if (prefab == null) continue;
+                var filters = prefab.GetComponentsInChildren<MeshFilter>(true);
+                var mf = filters.FirstOrDefault(f => f.name.EndsWith("LOD0")) ?? filters.FirstOrDefault();
+                var mr = mf != null ? mf.GetComponent<MeshRenderer>() : null;
+                if (mf == null || mf.sharedMesh == null || mr == null || mr.sharedMaterial == null) continue;
+                var copyPath = $"{dir}/{mr.sharedMaterial.name}_Field.mat";
+                var copy = AssetDatabase.LoadAssetAtPath<Material>(copyPath);
+                if (copy == null)
+                {
+                    copy = new Material(mr.sharedMaterial);
+                    AssetDatabase.CreateAsset(copy, copyPath);
+                }
+                copy.enableInstancing = true;
+                if (copy.HasProperty("_ColorMapStrength")) copy.SetFloat("_ColorMapStrength", 1f);
+                if (copy.HasProperty("_ColorMapHeight")) copy.SetFloat("_ColorMapHeight", 0.2f); // 땅 색이 잎 중간까지 올라온다
+                if (tip.a > 0f && copy.HasProperty("_BaseColor")) copy.SetColor("_BaseColor", tip);
+                if (copy.HasProperty("_Translucency")) copy.SetFloat("_Translucency", 0.45f);
+                EditorUtility.SetDirty(copy);
+                meshes.Add(mf.sharedMesh);
+                mats.Add(copy);
+                weights.Add(weight);
+            }
+            cat.sgsMeshes = meshes.ToArray();
+            cat.sgsMaterials = mats.ToArray();
+            cat.sgsWeights = weights.ToArray();
+            Debug.Log($"[Manyworld] Stylized Grass {meshes.Count}종: {string.Join(", ", meshes.Select(m => m.name))}");
         }
 
         /// <summary>회화풍 후처리 (쿠와하라) 전체 화면 패스를 PC 렌더러에 붙인다. 켜고 끄는 건 전역 _ManyworldPaint.</summary>

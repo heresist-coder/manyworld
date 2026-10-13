@@ -55,3 +55,6 @@ Thumbs.db
 # 숲 현장의 구운 간접광 데이터 (Manyworld > Field > Bake Forest Lighting으로 다시 만든다, 약 70MB)
 Assets/_Project/Scenes/ForestLighting/
 Assets/_Project/Scenes/ForestLighting.meta
+
+# Stylized Grass Shader (Staggart Creations, 유료 에셋: 공개 레포에 올리면 DMCA)
+Packages/xyz.staggart-creations.stylized-grass/
