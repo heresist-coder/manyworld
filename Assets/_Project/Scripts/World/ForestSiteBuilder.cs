@@ -119,6 +119,7 @@ namespace Manyworld
             // 6) 빈 방 (목표)
             room = BuildRoom(root, terrain, rng);
             Lap("방");
+            PlaceMeadowAccents(root, terrain, roadPts, roadDist, seed); Lap("PlaceMeadowAccents");
             ScatterClutter(root, terrain, roadDist, trailDist, seed); Lap("ScatterClutter"); // 따로 된 rng라 다른 배치는 그대로. 통나무 자리를 풀이 피하게 풀보다 먼저
             ScatterGrass(root, h, roadDist, trailDist, rng); Lap("ScatterGrass"); // 바위를 다 놓은 뒤 (바위 속에 풀이 나지 않게)
 
@@ -245,7 +246,7 @@ namespace Manyworld
             // 바랜 세이지·올리브 초원, 짙은 숲 바닥, 황토색 길, 회색 바위, 마른 풀
             td.terrainLayers = new[]
             {
-                NatureKit.Layer(NatureKit.Ground.Meadow, new Color(0.55f, 0.54f, 0.32f), 5f, 1),       // 0 초원 (햇빛 받은 올리브)
+                NatureKit.Layer(NatureKit.Ground.Meadow, new Color(0.54f, 0.5f, 0.3f), 5f, 1),         // 0 초원 (햇빛 받은 올리브, 목표 샷 01은 황토 쪽 134,119,71)
                 NatureKit.Layer(NatureKit.Ground.ForestFloor, new Color(0.17f, 0.17f, 0.1f), 4f, 2),  // 1 숲 바닥 (먼 산비탈 나무 사이가 밝게 비치지 않게 어둡게)
                 NatureKit.Layer(NatureKit.Ground.Dirt, new Color(0.74f, 0.58f, 0.42f), 4f, 3),        // 2 흙길·방 바닥 (밝은 황토, 자갈)
                 NatureKit.Layer(NatureKit.Ground.Rock, new Color(0.42f, 0.43f, 0.4f), 8f, 4),         // 3 바위
@@ -311,7 +312,7 @@ namespace Manyworld
             td.SetAlphamaps(0, 0, a);
 
             // 풀 컬러맵: 칠한 지형 색을 위에서 내려다본 텍스처 (풀 밑동이 바로 아래 땅 색을 따른다, Stylized Grass Shader)
-            var layerColors = new[] { new Color(0.55f, 0.54f, 0.32f), new Color(0.17f, 0.17f, 0.1f), new Color(0.74f, 0.58f, 0.42f), new Color(0.42f, 0.43f, 0.4f), new Color(0.62f, 0.57f, 0.34f), new Color(0.42f, 0.46f, 0.26f), new Color(0.6f, 0.46f, 0.33f) };
+            var layerColors = new[] { new Color(0.54f, 0.5f, 0.3f), new Color(0.17f, 0.17f, 0.1f), new Color(0.74f, 0.58f, 0.42f), new Color(0.42f, 0.43f, 0.4f), new Color(0.62f, 0.57f, 0.34f), new Color(0.42f, 0.46f, 0.26f), new Color(0.6f, 0.46f, 0.33f) };
             const int cm = 512;
             var cpx = new Color[cm * cm];
             for (int z = 0; z < cm; z++)
@@ -516,6 +517,47 @@ namespace Manyworld
             }
             if (Application.isPlaying) StaticBatchingUtility.Combine(group.gameObject); // 에디터 굽기(APV)는 정적 배칭을 받지 않는다
             Debug.Log($"[Manyworld] 땅 잔것 {count}개");
+        }
+
+        /// <summary>
+        /// 목표 샷 01의 초원: 출발점에서 길 왼쪽 앞 30~170m에 둥근 활엽수가 서너 그루씩 서고, 회색 바위가 무리 지어 박혀 있다.
+        /// 지형 나무(드문 확률)만으로는 그 구도에 나무가 하나밖에 없었다. 따로 된 rng라 다른 배치는 그대로.
+        /// </summary>
+        static void PlaceMeadowAccents(Transform root, Terrain terrain, List<Vector2> road, float[,] roadDist, int seed)
+        {
+            var art = ArtCatalog.Instance;
+            var rng = new System.Random(seed * 977 + 31);
+            Vector3 G(Vector2 p) => new Vector3(p.x, terrain.SampleHeight(new Vector3(p.x, 0, p.y)), p.y);
+            var dir = (Road[2] - Road[1]).normalized;
+            var left = new Vector2(-dir.y, dir.x);
+            bool Free(Vector2 p) => Sample(roadDist, p.x, p.y) > 9f && ForestMask(p.x, p.y) < 0.35f && !NatureKit.UnderRock(p.x, p.y);
+            int trees = 0;
+            for (int i = 0; i < 40 && trees < 11; i++)
+            {
+                // 길이 앞에서 왼쪽으로 휘므로 멀리 갈수록 더 왼쪽으로 (길 위 먼 곳에 몰리지 않게)
+                float ahead = 25f + (float)rng.NextDouble() * 85f;
+                var p = CarStart + dir * ahead + left * (22f + ahead * 0.35f + (float)rng.NextDouble() * 55f);
+                if (!Free(p) || Sample(roadDist, p.x, p.y) < 18f || art == null || art.meadowTrees == null || art.meadowTrees.Length == 0) continue;
+                var prefab = ArtCatalog.Pick(art.meadowTrees, rng.Next(100));
+                if (prefab == null) continue;
+                var t = Object.Instantiate(prefab, root);
+                t.name = "MeadowTree";
+                t.transform.SetPositionAndRotation(G(p) - Vector3.up * 0.2f, Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0));
+                t.transform.localScale = Vector3.one * (0.85f + (float)rng.NextDouble() * 0.5f);
+                NatureKit.Footprints.Add(p.x, p.y, 2.5f);
+                trees++;
+            }
+            for (int g = 0; g < 9; g++)
+            {
+                var c = CarStart + dir * (20f + (float)rng.NextDouble() * 120f) + left * (12f + (float)rng.NextDouble() * 50f);
+                if (!Free(c)) continue;
+                int n = 2 + rng.Next(3);
+                for (int k = 0; k < n; k++)
+                {
+                    var p = c + new Vector2((float)(rng.NextDouble() - 0.5) * 5f, (float)(rng.NextDouble() - 0.5) * 5f);
+                    NatureKit.Boulder(root, G(p), (k == 0 ? 0.9f : 0.4f) + (float)rng.NextDouble() * 0.8f, rng, k == 0, "MeadowRock");
+                }
+            }
         }
 
         static void PlantGrass(TerrainData td, float[,] roadDist, float[,] trailDist)

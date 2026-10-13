@@ -309,14 +309,17 @@ namespace Manyworld.Tests
             }
             foreach (var (name, t) in people)
             {
-                var p = t.position;
-                var pos = p + t.right * 2.4f + t.forward * 0.6f + Vector3.up * 1.3f;
-                cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(p + Vector3.up * 1.1f - pos));
+                // 뿌리가 아니라 보이는 모델 위치를 겨눈다 (기사 컷이 화면 가장자리로 밀렸다)
+                var rigW = t.GetComponent<CharacterRig>();
                 for (int f = 0; f < 3; f++)
                 {
                     t.position = Ground(t.position + fwd * 0.03f, 0.05f); // 배치 모드는 프레임이 길어 고정 보폭
                     yield return null;
                 }
+                // 프레임을 넘기는 동안 카메라 스크립트가 카메라를 옮기므로 찍기 직전에 놓는다
+                var p = rigW != null && rigW.animator != null ? rigW.animator.transform.position : t.position;
+                var pos = p + t.right * 2.4f + t.forward * 0.6f + Vector3.up * 1.3f;
+                cam.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(p + Vector3.up * 1.1f - pos));
                 Capture(Path.Combine(dir, $"gun_{name}_walk_side.png"));
             }
             if (cc != null) cc.enabled = true;

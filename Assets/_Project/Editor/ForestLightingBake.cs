@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -58,6 +59,9 @@ namespace Manyworld.EditorTools
                 contributors++;
             }
             var terrain = layout.terrain;
+            // 지형 나무는 굽기에서 하늘을 가리지 않는다 — 숲 바닥이 하늘 아래 맨땅처럼 밝게 구워졌다 (목표 샷 02·03보다 1.5~2배).
+            // 숲길·방 주변 나무만 굽는 동안 실제 물체로 꺼내 하늘과 해를 가리게 한다 (굽고 나면 지운다)
+            contributors += TreesAsObjects(terrain, root.transform, 320f);
             GameObjectUtility.SetStaticEditorFlags(terrain.gameObject, StaticEditorFlags.ContributeGI);
             var so = new SerializedObject(terrain);
             var scale = so.FindProperty("m_ScaleInLightmap");
@@ -137,6 +141,74 @@ namespace Manyworld.EditorTools
             AssetDatabase.SaveAssets();
             Debug.Log($"[Manyworld] 숲 조명 씬 저장: {ScenePath}");
             if (Application.isBatchMode) EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// 숲길·방 반경 안의 지형 나무를 굽기용 대역(나무마다 8각 원뿔 하나, 하나의 메시로 합침)으로 세운다.
+        /// 원래 나무 메시 1만 그루는 GPU 레이 트레이서(RadeonRays)가 메시를 올리다 죽었다 (6000.3.22f1, 접근 위반).
+        /// 하늘·해를 가리는 덩어리만 있으면 되므로 짙은 잎 색 원뿔이면 충분하다.
+        /// </summary>
+        static int TreesAsObjects(Terrain terrain, Transform parent, float radius)
+        {
+            var td = terrain.terrainData;
+            var center = (ForestSiteBuilder.Trailhead + ForestSiteBuilder.RoomCenter) * 0.5f;
+            // 원형마다 크기 (원점·크기 1로 세워 잰다)
+            var sizes = new Vector2[td.treePrototypes.Length]; // x 잎 반지름, y 높이
+            for (int i = 0; i < sizes.Length; i++)
+            {
+                var prefab = td.treePrototypes[i].prefab;
+                if (prefab == null) continue;
+                var probe = Object.Instantiate(prefab);
+                probe.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                var b = ArtCatalog.RendererBounds(probe);
+                sizes[i] = new Vector2(Mathf.Max(b.extents.x, b.extents.z), b.max.y);
+                Object.DestroyImmediate(probe);
+            }
+            const int sides = 8;
+            var verts = new List<Vector3>();
+            var tris = new List<int>();
+            int n = 0;
+            foreach (var ti in td.treeInstances)
+            {
+                var wp = Vector3.Scale(ti.position, td.size) + terrain.transform.position;
+                if (Vector2.Distance(new Vector2(wp.x, wp.z), center) > radius) continue;
+                var sz = sizes[ti.prototypeIndex];
+                if (sz.y <= 0f) continue;
+                float h = sz.y * ti.heightScale, r = sz.x * ti.widthScale * 0.85f;
+                float baseY = wp.y + h * 0.28f; // 잎은 줄기 위 1/4쯤부터
+                int apex = verts.Count;
+                verts.Add(wp + Vector3.up * h);
+                int ring = verts.Count;
+                for (int k = 0; k < sides; k++)
+                {
+                    float a = k * Mathf.PI * 2f / sides + ti.rotation;
+                    verts.Add(new Vector3(wp.x + Mathf.Cos(a) * r, baseY, wp.z + Mathf.Sin(a) * r));
+                }
+                int bottom = verts.Count;
+                verts.Add(new Vector3(wp.x, baseY, wp.z));
+                for (int k = 0; k < sides; k++)
+                {
+                    int a0 = ring + k, a1 = ring + (k + 1) % sides;
+                    tris.Add(apex); tris.Add(a1); tris.Add(a0);
+                    tris.Add(bottom); tris.Add(a0); tris.Add(a1);
+                }
+                n++;
+            }
+            var mesh = new Mesh { name = "BakeCanopy", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            mesh.SetVertices(verts);
+            mesh.SetTriangles(tris, 0);
+            mesh.SetUVs(0, new List<Vector2>(new Vector2[verts.Count])); // 굽기는 UV가 있어야 받는다
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            var go = new GameObject("BakeCanopy");
+            go.transform.SetParent(parent, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = Graybox.Mat(new Color(0.15f, 0.19f, 0.11f)); // 짙은 솔잎
+            mr.receiveGI = ReceiveGI.LightProbes;
+            GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.ContributeGI);
+            Debug.Log($"[Manyworld] 굽기용 나무 대역 {n}그루 (반경 {radius}m, 삼각형 {tris.Count / 3})");
+            return 1;
         }
 
         /// <summary>URP 에셋의 라이트 프로브 방식을 APV로 (L1).</summary>

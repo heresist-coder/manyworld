@@ -1,0 +1,36 @@
+using UnityEngine;
+using UnityEngine.Rendering.Universal;
+
+namespace Manyworld
+{
+    /// <summary>
+    /// 숲 현장 색보정: 카메라가 숲(숲길·기운 숲·방) 안에 들어가면 노출과 채도를 내린다.
+    /// 목표 샷 02·03은 01(볕 든 초원)보다 한 단 가까이 어둡고 차분하다 — 같은 노출이면 숲 바닥이 1.4~2배 밝았다
+    /// (it58 샘플: 03 바닥 143,113,82 / 목표 103,83,72, 02 숲길 153,130,90 / 목표 99,84,65).
+    /// 숲길·방을 잇는 축에서 60m 안이 최대, 140m 밖(초원·출발점)은 그대로.
+    /// </summary>
+    public class ForestGrade : MonoBehaviour
+    {
+        public ColorAdjustments color;
+        public float baseExposure, baseSaturation;
+        public float exposureDrop = 0.7f, saturationDrop = 12f;
+        float w = -1f;
+
+        void LateUpdate()
+        {
+            var cam = Camera.main;
+            if (color == null || cam == null) return;
+            var p = new Vector2(cam.transform.position.x, cam.transform.position.z);
+            var a = ForestSiteBuilder.Trailhead;
+            var b = ForestSiteBuilder.RoomCenter;
+            var ab = b - a;
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+            float d = Vector2.Distance(p, a + ab * t);
+            float target = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(140f, 60f, d));
+            // 순간이동(캡처·워프)에는 바로, 걸을 땐 천천히
+            w = w < 0f || Mathf.Abs(target - w) > 0.5f ? target : Mathf.MoveTowards(w, target, Time.deltaTime * 0.5f);
+            color.postExposure.Override(baseExposure - exposureDrop * w);
+            color.saturation.Override(baseSaturation - saturationDrop * w);
+        }
+    }
+}

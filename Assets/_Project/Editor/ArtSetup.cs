@@ -717,10 +717,10 @@ namespace Manyworld.EditorTools
             var picks = new[]
             {
                 // 목표 샷 01 초원 중간 (134,119,71): 노란 연두보다 황토 쪽 (it52 샘플 155,152,77)
-                ("GrassPatch", 1f, new Color(0.64f, 0.63f, 0.32f)),
-                ("GrassThick", 0.8f, new Color(0.55f, 0.58f, 0.28f)),
-                ("GrassTall", 0.35f, new Color(0.72f, 0.64f, 0.36f)),
-                ("GrassThin", 0.5f, new Color(0.6f, 0.6f, 0.3f)),
+                ("GrassPatch", 1f, new Color(0.62f, 0.58f, 0.31f)),
+                ("GrassThick", 0.8f, new Color(0.53f, 0.53f, 0.27f)),
+                ("GrassTall", 0.35f, new Color(0.7f, 0.6f, 0.35f)),
+                ("GrassThin", 0.5f, new Color(0.58f, 0.55f, 0.29f)),
                 ("Flowers/Groundcover_Clovers", 0.25f, new Color(0.42f, 0.52f, 0.24f)),
                 ("Flowers/Flower_Chamomile", 0.02f, Color.clear),
             };

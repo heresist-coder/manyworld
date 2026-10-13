@@ -22,6 +22,9 @@ namespace Manyworld
         }
 
         /// <summary>우리 동네: 노을 진 겨울 오후. 따뜻하고 바랬다.</summary>
+        /// <summary>마지막으로 만든 후처리의 색 조정 (숲 현장 색보정 ForestGrade가 노출을 움직인다).</summary>
+        public static ColorAdjustments LastColor { get; private set; }
+
         public static Palette Home => new Palette
         {
             // 하늘 위는 푸르고, 낮게 깔린 해가 지평선만 노을빛으로 물들인다
@@ -159,6 +162,7 @@ namespace Manyworld
             color.contrast.Override(p.contrast);
             color.saturation.Override(p.saturation);
             color.colorFilter.Override(p.filter);
+            LastColor = color;
 
             var split = profile.Add<SplitToning>(true);
             split.shadows.Override(p.shadowsTint);

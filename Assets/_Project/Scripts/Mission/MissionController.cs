@@ -302,6 +302,10 @@ namespace Manyworld
         {
             Weather = new WeatherState { kind = WeatherKind.Clear, time = TimeOfDay.Afternoon };
             WorldLook.Apply(WorldLook.Field, sun, transform, cam);
+            var grade = gameObject.AddComponent<ForestGrade>();
+            grade.color = WorldLook.LastColor;
+            grade.baseExposure = WorldLook.Field.postExposure;
+            grade.baseSaturation = WorldLook.Field.saturation;
             // 공기 원근: 먼 숲과 산이 푸르게 물러난다
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
