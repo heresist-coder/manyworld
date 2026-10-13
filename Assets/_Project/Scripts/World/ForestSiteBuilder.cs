@@ -770,8 +770,10 @@ namespace Manyworld
                 // 목표 샷 01은 세 겹: 숲 덮인 가까운 언덕(푸른 초록) → 짙은 푸른 산 → 하늘에 묻히는 먼 봉우리.
                 // (비탈 명암은 띠가 세로 기둥이라 커튼 줄무늬로 보여서 끈다: shade 0)
                 RidgeRing(root, backdrop, 2050f, 560f, 1000f, new Color(0.46f, 0.53f, 0.65f), new Color(0.62f, 0.67f, 0.75f), 5);
-                RidgeRing(root, backdrop, 1500f, 380f, 700f, new Color(0.3f, 0.37f, 0.5f), new Color(0.55f, 0.6f, 0.7f), 9);
-                RidgeRing(root, backdrop, 1020f, 190f, 360f, new Color(0.17f, 0.25f, 0.24f), new Color(0.36f, 0.44f, 0.5f), 13);
+                RidgeRing(root, backdrop, 1600f, 480f, 800f, new Color(0.3f, 0.37f, 0.5f), new Color(0.55f, 0.6f, 0.7f), 9);
+                // 가까운 두 겹: 해를 받는 입체 능선 (볕 든 비탈·그늘 골짜기). 앞은 숲 덮인 짙은 초록, 뒤는 푸른 회색
+                SolidRidge(root, 820f, 1150f, 180f, 400f, new Color(0.16f, 0.23f, 0.19f), 3.7f);
+                SolidRidge(root, 1150f, 1420f, 290f, 530f, new Color(0.25f, 0.31f, 0.37f), 11.2f);
                 return;
             }
             int n = 16;
@@ -892,6 +894,74 @@ namespace Manyworld
             mr.receiveShadows = false;
         }
 
+        /// <summary>
+        /// 분지를 둘러싼 입체 능선 (안쪽 반지름 inner → 바깥 outer). 띠 모양 지형 메시를 각지게(면마다 법선) 만들어
+        /// 해를 받는 무광 재질로 그린다: 비탈 방향대로 볕 든 면·그늘 면이 갈려 목표 샷 01의 겹산이 나온다.
+        /// 산마루는 능선 노이즈(1-|2n-1|)로 뾰족한 봉우리와 골짜기. 거리 안개가 푸르게 물린다.
+        /// (신티 입체 산은 바위 탁자산처럼 읽혔고, 정점색 띠에 명암을 넣으면 세로 줄무늬가 졌다)
+        /// </summary>
+        static void SolidRidge(Transform root, float inner, float outer, float minH, float maxH, Color color, float seed)
+        {
+            var center = new Vector3(Size / 2, 0, Size / 2);
+            const int seg = 300, rows = 9;
+            const float baseY = 60f;
+            float HeightAt(float a, float t)
+            {
+                var dir = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                var p = dir * Mathf.Lerp(inner, outer, t);
+                float n = WorldTerrainBuilder.Fbm(p.x * 0.0022f + seed, p.y * 0.0022f + seed * 0.7f, 4);
+                float ridged = 1f - Mathf.Abs(2f * n - 1f);
+                ridged *= ridged;
+                float big = WorldTerrainBuilder.Fbm(a * 1.3f + seed, seed * 0.3f, 2); // 산줄기 전체 높낮이
+                float peak = Mathf.Lerp(minH, maxH, Mathf.Clamp01(ridged * 0.75f + big * 0.5f));
+                // 앞(안쪽)은 낮은 기슭, 뒤로 갈수록 산마루
+                return baseY + (peak - baseY) * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t * 1.25f));
+            }
+            var grid = new Vector3[seg + 1, rows];
+            for (int i = 0; i <= seg; i++)
+            {
+                float a = i / (float)seg * Mathf.PI * 2f;
+                var dir = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a));
+                for (int r = 0; r < rows; r++)
+                {
+                    float t = r / (rows - 1f);
+                    grid[i, r] = center + dir * Mathf.Lerp(inner, outer, t) + Vector3.up * HeightAt(a, t);
+                }
+            }
+            var verts = new List<Vector3>();
+            var norms = new List<Vector3>();
+            var tris = new List<int>();
+            void Tri(Vector3 a, Vector3 b, Vector3 c)
+            {
+                var n = Vector3.Cross(b - a, c - a).normalized;
+                if (Vector3.Dot(n, Vector3.up) < 0f) { (b, c) = (c, b); n = -n; } // 위(하늘)를 보게
+                int k = verts.Count;
+                verts.Add(a); verts.Add(b); verts.Add(c);
+                norms.Add(n); norms.Add(n); norms.Add(n);
+                tris.Add(k); tris.Add(k + 1); tris.Add(k + 2);
+            }
+            for (int i = 0; i < seg; i++)
+            for (int r = 0; r < rows - 1; r++)
+            {
+                Tri(grid[i, r], grid[i + 1, r], grid[i + 1, r + 1]);
+                Tri(grid[i, r], grid[i + 1, r + 1], grid[i, r + 1]);
+            }
+            var mesh = new Mesh { name = "SolidRidge", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            mesh.SetVertices(verts);
+            mesh.SetNormals(norms);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            var go = new GameObject("FarMountain", typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(root, false);
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.GetComponent<MeshRenderer>();
+            var mat = NatureKit.RockMat(color);
+            mat.name = "SolidRidge";
+            mr.sharedMaterial = mat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+        }
+
         /// <summary>뭉게구름: 분지 위와 먼 하늘에 낮게 (목표 샷 01).</summary>
         static void PlaceClouds(Transform root, System.Random rng)
         {
@@ -911,6 +981,10 @@ namespace Manyworld
                 mat.SetFloat("_Cover", 0.46f);    // 뭉게구름이 하늘 절반쯤
                 mat.SetFloat("_Softness", 0.07f); // 가장자리가 또렷하게
                 mat.SetFloat("_Scale", 1.6f);
+                // 볕 받은 윗면은 따뜻한 흰색, 밑면은 회보라 (목표 샷 01 구름 201,193,197)
+                mat.SetColor("_LitColor", new Color(1f, 0.95f, 0.89f));
+                mat.SetColor("_ShadeColor", new Color(0.6f, 0.62f, 0.72f));
+                mat.SetColor("_HorizonColor", new Color(0.78f, 0.81f, 0.85f));
                 var r = dome.GetComponent<MeshRenderer>();
                 r.sharedMaterial = mat;
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

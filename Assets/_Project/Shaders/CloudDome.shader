@@ -93,16 +93,25 @@ Shader "Manyworld/CloudDome"
                 float2 drift = float2(_Time.y * _Speed, _Time.y * _Speed * 0.4);
                 float2 uv = d.xz / (d.y + 0.22) * _Scale + drift;
                 float n = Density(uv);
-                float dens = smoothstep(_Cover, _Cover + _Softness, n);
-                // 해 쪽으로 조금 옮긴 곳이 더 짙으면 이 점은 그늘 (구름 아래쪽이 어둡다)
+                // 뭉게구름은 지평 가까이 몰리고 천정은 맑다 (목표 샷 01: 구름 띠가 산 위에 떠 있다)
+                float cover = _Cover + smoothstep(0.18, 0.75, d.y) * 0.14;
+                float dens = smoothstep(cover, cover + _Softness, n);
+                // 위아래: 하늘 평면에서 고도가 높아지는 쪽은 투영 중심 쪽(-d.xz). 위가 비면 볕 받는 윗면, 아래가 비면 그늘진 밑면
+                float2 up = -normalize(d.xz + 1e-4) * 0.07;
+                float nUp = Density(uv + up);
+                float nDown = Density(uv - up);
+                float top = saturate((n - nUp) * 6.0 + 0.45);
+                float bottom = saturate((n - nDown) * 6.0);
+                // 해 쪽으로 조금 옮긴 곳이 더 짙으면 이 점은 그늘
                 float2 toSun = normalize(_SunDir.xz + 1e-4) * 0.09;
-                float n2 = Density(uv + toSun);
-                float lit = saturate(0.7 + (n - n2) * 7.0 - (n - _Cover) * 0.6); // 가장자리는 밝고 두꺼운 속은 살짝 그늘
+                float sunLit = saturate((n - Density(uv + toSun)) * 5.0 + 0.5);
+                // 두꺼운 속은 살짝 그늘, 밑면은 회보라
+                float lit = saturate(0.3 + top * 0.55 + sunLit * 0.3 - bottom * 0.5 - saturate(n - cover - 0.12) * 0.7);
                 half3 col = lerp(_ShadeColor.rgb, _LitColor.rgb, lit);
                 // 지평선 근처는 대기에 묻힌다
                 float low = smoothstep(0.0, 0.16, d.y);
-                col = lerp(_HorizonColor.rgb, col, 0.35 + 0.65 * low);
-                float alpha = dens * smoothstep(0.0, 0.05, d.y) * 0.96;
+                col = lerp(_HorizonColor.rgb, col, 0.45 + 0.55 * low);
+                float alpha = dens * smoothstep(0.0, 0.05, d.y) * 0.97;
                 return half4(col, alpha);
             }
             ENDHLSL
