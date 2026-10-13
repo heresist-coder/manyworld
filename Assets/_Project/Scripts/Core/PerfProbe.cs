@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Manyworld
 {
     /// <summary>
-    /// 성능 측정 모드 (빌드 실행 인자 -mw-perf). 숲 현장의 목표 샷 세 구도(01 흙길, 02 숲길, 03 방)에서
+    /// 성능 측정 모드 (빌드 실행 인자 -mw-perf). 숲 현장의 목표 샷 다섯 구도(01 흙길, 02 숲길, 03 방, 04 철제 나무, 05 호수)에서
     /// 모두 켬 → 간접광 끔 → 연무 끔 → 회화풍 필터 끔 → 풀 끔 순서로 각 4초씩 프레임 시간을 재고
     /// 실행 파일 옆 mw-perf.txt에 평균·1% 최악 프레임(ms)을 적은 뒤 종료한다.
     /// </summary>
@@ -16,11 +16,11 @@ namespace Manyworld
     {
         public static bool Requested => System.Environment.GetCommandLineArgs().Contains("-mw-perf");
 
-        // 안전장치: 무엇에 막히든 4분 남짓 뒤에는 지금까지의 기록을 남기고 끝낸다
+        // 안전장치: 무엇에 막히든 6분 남짓 뒤에는 지금까지의 기록을 남기고 끝낸다
         readonly StringBuilder report = new StringBuilder();
         void Update()
         {
-            if (Time.realtimeSinceStartup > 260f) { Write(report.AppendLine("시간 초과로 중단")); Application.Quit(); enabled = false; }
+            if (Time.realtimeSinceStartup > 400f) { Write(report.AppendLine("시간 초과로 중단")); Application.Quit(); enabled = false; }
             var mc = MissionController.Instance;
             if (mc != null && mc.Paused) mc.SetPaused(false);
         }
@@ -47,11 +47,15 @@ namespace Manyworld
             var th = ForestSiteBuilder.Trailhead;
             var onTrail = Vector2.Lerp(th, Vector2.Lerp(th, ForestSiteBuilder.RoomEntrance, 0.5f) + new Vector2(-6f, 2f), 0.45f);
             var ent = ForestSiteBuilder.RoomEntrance;
+            Vector3 V3(Vector2 v) => new Vector3(v.x, 0, v.y);
+            var lakeAcross = ForestSiteBuilder.LakeCenter + (ForestSiteBuilder.LakeCenter - ForestSiteBuilder.LakeView) * 0.25f;
             var shots = new (string name, Vector3 pos, Vector3 look)[]
             {
                 ("t01_road", Ground(car.position - car.forward * 6.5f + car.right * 3.8f, 3.3f), car.position + car.forward * 40f - car.right * 6f + Vector3.up),
                 ("t02_path", Ground(new Vector3(onTrail.x, 0, onTrail.y), 2.4f), Ground(new Vector3(ent.x, 0, ent.y), 1.5f)),
                 ("t03_room", Ground(room.position - room.forward * (ForestSiteBuilder.RoomHalf + 7f) + room.right * 1.6f, 2.3f), room.position + Vector3.up * 1.4f),
+                ("t04_iron", Ground(V3(ForestSiteBuilder.IronView), 3.8f), Ground(V3(ForestSiteBuilder.IronTree), 14f)),
+                ("t05_lake", Ground(V3(ForestSiteBuilder.LakeView), 8f), new Vector3(lakeAcross.x, ForestSiteBuilder.LakeWaterY + 1f, lakeAcross.y)),
             };
             var fog = mc.transform.Find("VolumetricFog");
             var grass = FindObjectsByType<GrassField>(FindObjectsSortMode.None);
