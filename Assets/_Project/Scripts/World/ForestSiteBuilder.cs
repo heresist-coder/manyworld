@@ -774,8 +774,8 @@ namespace Manyworld
                 RidgeRing(root, backdrop, 2050f, 560f, 1000f, new Color(0.46f, 0.53f, 0.65f), new Color(0.62f, 0.67f, 0.75f), 5);
                 RidgeRing(root, backdrop, 1600f, 480f, 800f, new Color(0.3f, 0.37f, 0.5f), new Color(0.55f, 0.6f, 0.7f), 9);
                 // 가까운 두 겹: 해를 받는 입체 능선 (볕 든 비탈·그늘 골짜기). 앞은 숲 덮인 짙은 초록, 뒤는 푸른 회색
-                SolidRidge(root, 820f, 1150f, 180f, 400f, new Color(0.16f, 0.23f, 0.19f), 3.7f);
-                SolidRidge(root, 1150f, 1420f, 290f, 530f, new Color(0.25f, 0.31f, 0.37f), 11.2f);
+                SolidRidge(root, 820f, 1150f, 170f, 340f, new Color(0.16f, 0.23f, 0.19f), 3.7f);
+                SolidRidge(root, 1150f, 1420f, 270f, 470f, new Color(0.25f, 0.31f, 0.37f), 11.2f);
                 return;
             }
             int n = 16;

@@ -13,8 +13,10 @@ namespace Manyworld
     {
         public ColorAdjustments color;
         public float baseExposure, baseSaturation;
-        public float exposureDrop = 0.15f, saturationDrop = 7f; // 12는 02 하늘 틈·줄기가 회색으로 죽었다 (it70). 노출 −0.7은 신티 숲 때 값: 각진 소나무 숲은 이미 어두워 03 바닥이 목표의 절반(62 vs 122)이었다 (it97)
-        float w = -1f;
+        public float exposureDrop = 0.45f, saturationDrop = 7f; // 12는 02 하늘 틈·줄기가 회색으로 죽었다 (it70). 노출 −0.7은 신티 숲 때 값: 각진 소나무 숲은 이미 어두워 03 바닥이 목표의 절반(62 vs 122)이었다 (it97)
+        // 빈 방 둘레만 다시 밝힌다: 세 면 나무 벽의 그늘로 바닥이 목표 샷 03의 70%였다 (85 vs 122, 숲길은 오히려 밝았다 134 vs 100)
+        public float roomLift = 0.8f;
+        float w = -1f, rw = -1f;
 
         void LateUpdate()
         {
@@ -29,7 +31,9 @@ namespace Manyworld
             float target = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(140f, 60f, d));
             // 순간이동(캡처·워프)에는 바로, 걸을 땐 천천히
             w = w < 0f || Mathf.Abs(target - w) > 0.5f ? target : Mathf.MoveTowards(w, target, Time.deltaTime * 0.5f);
-            color.postExposure.Override(baseExposure - exposureDrop * w);
+            float roomTarget = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(45f, 22f, Vector2.Distance(p, b)));
+            rw = rw < 0f || Mathf.Abs(roomTarget - rw) > 0.5f ? roomTarget : Mathf.MoveTowards(rw, roomTarget, Time.deltaTime * 0.5f);
+            color.postExposure.Override(baseExposure - exposureDrop * w + roomLift * rw);
             color.saturation.Override(baseSaturation - saturationDrop * w);
         }
     }
