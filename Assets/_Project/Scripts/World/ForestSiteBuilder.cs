@@ -1602,6 +1602,18 @@ namespace Manyworld
             }
             Cable(new Vector3(0.2f, 8.4f, 0), new Vector3(1.3f, 1.6f, 0.2f), 0.5f);
             Cable(ends[1], ends[3], 0.6f);
+
+            // 목표 샷 04 전경: 길 어깨의 각진 바위 (전망 자리 앞 비탈 쪽)
+            var view = IronView;
+            var toIron = (IronTree - view).normalized;
+            var across = new Vector2(toIron.y, -toIron.x);
+            for (int k = 0; k < 6; k++)
+            {
+                var q = view + toIron * (6f + (float)rng.NextDouble() * 9f) + across * ((k % 2 == 0 ? 1f : -1f) * (3f + (float)rng.NextDouble() * 5f));
+                var qg = new Vector3(q.x, 0, q.y);
+                qg.y = terrain.SampleHeight(qg);
+                NatureKit.Boulder(root, qg, 0.6f + (float)rng.NextDouble() * 1.1f, rng, true, "IronRock");
+            }
         }
 
         // ---------------- 기운 숲 (목표 샷 02) ----------------
@@ -1720,6 +1732,8 @@ namespace Manyworld
                 t.name = "WallPine";
                 t.transform.position = p - Vector3.up * 0.15f;
                 t.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);
+                var ls = t.transform.localScale;
+                t.transform.localScale = new Vector3(ls.x * 1.4f, ls.y, ls.z * 1.4f); // 목표 샷 03의 벽 줄기는 굵은 기둥
                 return t;
             }
             const float spacing = 1.85f;
