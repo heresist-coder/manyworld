@@ -515,7 +515,7 @@ namespace Manyworld
             {
                 float px = x + (float)(rng.NextDouble() - 0.5) * step, pz = z + (float)(rng.NextDouble() - 0.5) * step;
                 float rd = Sample(roadDist, px, pz);
-                // 방 안은 비우되 벽 밑 1.5m에는 풀이 붙는다
+                // 방 안은 비우되 벽 밑에는 풀이 붙는다 (아래에서 0.6m 띠로 더 좁힌다)
                 if (rd < 4.6f || Sample(trailDist, px, pz) < 2f || InRoom(px, pz, -1.5f) || NatureKit.UnderRock(px, pz) || LakeT(px, pz) < 1.05f || LakeTrackDistance(px, pz) < 2.4f || (InLakeSight(new Vector2(px, pz)) && LakeT(px, pz) < 1.35f)) continue; // 전망대 앞 물가 풀은 비운다 (물속 집을 가렸다)
                 float forest = ForestMask(px, pz);
                 // 풀은 고르게 심긴 밭이 아니라 무더기로 뭉친다. 길가 어깨는 빽빽하고 키가 크다
@@ -538,7 +538,10 @@ namespace Manyworld
                     float qx = px + (float)(rng.NextDouble() - 0.5) * 0.9f, qz = pz + (float)(rng.NextDouble() - 0.5) * 0.9f;
                     float y = Sample(h, qx, qz);
                     float s = kinds[kind].scale * (0.65f + (float)rng.NextDouble() * 0.75f) * (1f + verge * 0.15f) * (rng.NextDouble() < 0.06 ? 1.6f : 1f); // 가끔 키 큰 덤불. 목표 샷 01의 길가는 낮은 풀 (예전 ×1.5는 길을 가렸다)
-                    lists[kind].Add(Matrix4x4.TRS(new Vector3(qx, y - 0.05f, qz), Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0), Vector3.one * s));
+                    var rotY = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);
+                    // 벽 밑 풀 띠는 0.6m만 (1.5m는 목표 샷 03의 맨 흙바닥 안으로 덤불이 번졌다). 난수는 그대로 뽑고 심지만 않는다 (뒤의 스폰 자리가 그대로)
+                    if (InRoom(qx, qz, -0.6f)) continue;
+                    lists[kind].Add(Matrix4x4.TRS(new Vector3(qx, y - 0.05f, qz), rotY, Vector3.one * s));
                 }
             }
             var field = root.gameObject.AddComponent<GrassField>();
