@@ -1393,7 +1393,7 @@ namespace Manyworld
             var prefab = farms != null && farms.Length > 1 ? farms[1] : farms != null && farms.Length > 0 ? farms[0] : null;
             GameObject house = prefab != null ? Object.Instantiate(prefab, go.transform) : Graybox.Box(go.transform, "House", Vector3.zero, new Vector3(9f, 7f, 7f), new Color(0.5f, 0.55f, 0.5f), true);
             house.name = "SubmergedHouse";
-            house.transform.rotation = Quaternion.LookRotation(new Vector3(toView.x, 0, toView.y)) * Quaternion.Euler(0, -12f, 0); // 창 난 앞면이 전망대를 본다 (−30°는 옆면만 보였다)
+            house.transform.rotation = Quaternion.LookRotation(new Vector3(toView.x, 0, toView.y)) * Quaternion.Euler(0, 72f, 0); // 긴 벽과 지붕 비탈이 전망대를 본다 (목표 샷 05). 박공 끝이 전망대를 보면 위에서 용마루가 시선과 나란해 평평한 상자로 읽혔다
             house.transform.localScale = Vector3.one * 1.75f; // 목표 샷 05의 물속 집은 화면에서 크다 (원래 크기는 전망대에서 장난감처럼 작았다. 1.45도 작았다)
             var bed = G(housePos);
             var hb = ArtCatalog.RendererBounds(house);
@@ -1411,7 +1411,7 @@ namespace Manyworld
             // 물을 그린 뒤에 반투명으로 덧그린다: 물이 먹어 버리지 않고 수면 너머로 불빛이 비친다 (불투명 발광 창은 물 흡수에 묻혔다)
             var glass = new Material(Graybox.Mat(new Color(0.95f, 0.36f, 0.07f, 0.68f))) { name = "WindowGlow" };
             glass.EnableKeyword("_EMISSION");
-            glass.SetColor("_EmissionColor", new Color(1f, 0.42f, 0.1f) * 1.6f); // (2.2는 하얗게, 연한 주황은 노랗게 떴다)
+            glass.SetColor("_EmissionColor", new Color(1f, 0.38f, 0.08f) * 0.85f); // (1.3은 톤 매핑 뒤 크림색 판으로 하얗게 떴다) // (2.2는 하얗게, 연한 주황은 노랗게 떴다)
             glass.renderQueue = 3010;
             int windows = 0;
             var faceRight = Vector3.Cross(Vector3.up, house.transform.forward);
@@ -1433,7 +1433,7 @@ namespace Manyworld
                     Kill(pane.GetComponent<Collider>());
                     pane.GetComponent<Renderer>().sharedMaterial = glass;
                     pane.transform.SetPositionAndRotation(best.point + best.normal * 0.04f, Quaternion.LookRotation(-best.normal));
-                    pane.transform.localScale = new Vector3(1.9f, 2.1f, 1f); // (1.4×1.6은 언덕에서 내려다보면 점처럼 작았다)
+                    pane.transform.localScale = new Vector3(1.1f, 1.4f, 1f); // (1.9×2.1은 긴 벽이 전망대를 보니 노란 포스터 판처럼 떴다)
                     windows++;
                 }
             }
@@ -1544,9 +1544,10 @@ namespace Manyworld
             var g = new Vector3(IronTree.x, 0, IronTree.y);
             g.y = terrain.SampleHeight(g) - 0.3f;
             go.transform.SetPositionAndRotation(g, Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0));
-            var steel = new Color(0.21f, 0.22f, 0.24f); // (0.52·0.4·0.3은 볕에서 밝은 막대로 떴다. 목표 샷 04의 기둥은 숲 그늘 속 짙은 회색)
-            var dark = new Color(0.17f, 0.18f, 0.19f);
-            var paint = new Color(0.44f, 0.45f, 0.43f);
+            // 목표 샷 04의 철제 나무는 짙은 숲 앞에 선 밝은 은회색 기둥 (0.21 짙은 회색은 숲에 묻혀 가는 막대로만 읽혔다, it164)
+            var steel = new Color(0.42f, 0.43f, 0.45f);
+            var dark = new Color(0.25f, 0.26f, 0.27f);
+            var paint = new Color(0.6f, 0.61f, 0.6f);
             // 둘레 소나무 숲 (목표 샷 04: 철제 나무가 곧은 소나무들 사이에 섞여 있다). 길과 길에서 보는 시선은 비운다
             var roadSpot = new Vector2(394f, 330f);
             for (int i = 0, placed = 0; i < 600 && placed < 60; i++)
@@ -1581,6 +1582,14 @@ namespace Manyworld
             Part(PrimitiveType.Cube, "Box", new Vector3(0.38f, 8.8f, 0f), new Vector3(0.36f, 0.95f, 0.32f), paint);
             Part(PrimitiveType.Cube, "Box", new Vector3(-0.34f, 13.6f, 0.15f), new Vector3(0.3f, 0.7f, 0.3f), paint);
             Part(PrimitiveType.Cube, "Box", new Vector3(0f, 24.6f, 0f), new Vector3(0.62f, 0.55f, 0.62f), paint);
+            // 꼭대기 안테나 다발: 둥근 받침에 판 안테나 여섯 장 (목표 샷 04: 위쪽에 판이 빽빽하게 모여 있다)
+            Part(PrimitiveType.Cylinder, "Platform", new Vector3(0, 25.2f, 0), new Vector3(2.1f, 0.06f, 2.1f), steel);
+            for (int k = 0; k < 6; k++)
+            {
+                var rk = Quaternion.Euler(0, k * 60f + 15f, 0);
+                Part(PrimitiveType.Cube, "TopPanel", rk * new Vector3(0, 0, 0.95f) + Vector3.up * 26.2f, new Vector3(0.42f, 1.7f, 0.14f), paint, rk);
+                Part(PrimitiveType.Cube, "TopPanelArm", rk * new Vector3(0, 0, 0.5f) + Vector3.up * 25.9f, new Vector3(0.06f, 0.06f, 0.9f), steel, rk);
+            }
             // 가로대 셋: 높이마다 방향이 돌아간다 (마른 가지처럼)
             var arms = new (float y, float len, float yaw)[] { (15f, 5.2f, 0f), (19.5f, 4.2f, 70f), (23f, 3f, 25f) };
             var ends = new List<Vector3>();
