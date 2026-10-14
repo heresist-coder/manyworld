@@ -18,13 +18,18 @@ namespace Manyworld
         float sky0GlowSize, sky0GlowStrength;
         Color cloud0Lit, cloud0Shade, cloud0Horizon;
         Vector4 cloud0Sun;
-        float w = -1f;
+        float w = -1f, rw = -1f;
+        Quaternion roomSun;
 
         static readonly Quaternion DuskSun = Quaternion.Euler(8f, 290f, 0f); // 동남동에서 낮게 (서쪽 물가에서 동쪽을 보면 오른쪽 앞)
 
         void Start()
         {
             if (sun != null) { sunRot0 = sun.transform.rotation; sunColor0 = sun.color; sunIntensity0 = sun.intensity; }
+            // 빈 방 둘레는 해를 높인다 (같은 방위, 고도 40°): 22° 해는 세 면 벽 소나무 수관에 막혀 방 바닥이 거의 그늘이었다.
+            // 목표 샷 03은 바닥에 햇빛 조각과 긴 나무 그림자가 선명하다
+            var e = sunRot0.eulerAngles;
+            roomSun = Quaternion.Euler(40f, e.y, e.z);
             fog0 = RenderSettings.fogColor;
             amb0Sky = RenderSettings.ambientSkyColor; amb0Eq = RenderSettings.ambientEquatorColor; amb0Ground = RenderSettings.ambientGroundColor;
             sky = RenderSettings.skybox != null && RenderSettings.skybox.HasProperty("_ZenithColor") ? RenderSettings.skybox : null;
@@ -49,12 +54,15 @@ namespace Manyworld
             var lc = ForestSiteBuilder.LakeCenter;
             float d = Vector2.Distance(new Vector2(cam.transform.position.x, cam.transform.position.z), lc);
             float target = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(170f, 105f, d));
-            if (Mathf.Abs(target - w) < 0.002f) return;
+            float dr = Vector2.Distance(new Vector2(cam.transform.position.x, cam.transform.position.z), ForestSiteBuilder.RoomCenter);
+            float roomTarget = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(70f, 35f, dr));
+            if (Mathf.Abs(target - w) < 0.002f && Mathf.Abs(roomTarget - rw) < 0.002f) return;
             w = target;
+            rw = roomTarget;
 
             if (sun != null)
             {
-                sun.transform.rotation = Quaternion.Slerp(sunRot0, DuskSun, w);
+                sun.transform.rotation = Quaternion.Slerp(Quaternion.Slerp(sunRot0, roomSun, rw), DuskSun, w);
                 sun.color = Color.Lerp(sunColor0, new Color(1f, 0.62f, 0.4f), w);
                 sun.intensity = Mathf.Lerp(sunIntensity0, 0.8f, w); // 목표 샷 05는 해가 산 너머로 진 뒤: 굳은 그림자 없이 하늘빛이 주 (1.35는 전망대 흙 마당이 화면 아래를 밝게 채웠다 145~153 vs 66~102)
             }

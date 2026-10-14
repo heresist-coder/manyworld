@@ -15,7 +15,7 @@ namespace Manyworld
         public float baseExposure, baseSaturation, baseContrast;
         public float exposureDrop = 0f, saturationDrop = 20f; // (0.6은 잎을 밝힌 뒤에도 02 숲 그늘이 목표의 60~80%였다, it159) // 12는 02 하늘 틈·줄기가 회색으로 죽었다 (it70). 노출 −0.7은 신티 숲 때 값: 각진 소나무 숲은 이미 어두워 03 바닥이 목표의 절반(62 vs 122)이었다 (it97)
         // 빈 방 둘레만 다시 밝힌다: 세 면 나무 벽의 그늘로 바닥이 목표 샷 03의 70%였다 (85 vs 122, 숲길은 오히려 밝았다 134 vs 100)
-        public float roomLift = 0.4f; // 숲 노출 내림을 없앤 만큼 덜 (방 순노출 +0.4)
+        public float roomLift = 0.1f; // 방 둘레는 해를 높여(LakeDusk) 바닥에 볕이 들어 덜 밝힌다 (0.4는 밝기 92 vs 목표 76)
         // 철제 나무 길가: 차 세우는 어깨가 비탈 숲 그늘이라 목표 샷 04보다 한 단 어두웠다 (밝기 94 vs 112, it174)
         public float ironLift = 0.2f;
         // 숲길 대비: 목표 샷 02는 볕 든 길과 짙은 줄기의 명암차가 크다 (밝기 표준편차 30 vs 39, it178). 방은 이미 목표보다 대비가 커서 뺀다

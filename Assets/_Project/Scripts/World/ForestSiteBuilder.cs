@@ -483,6 +483,7 @@ namespace Manyworld
                 };
                 // 호수·철제 나무·호수 전망 자리는 비운다 (rng를 다 뽑은 뒤에 걸러 다른 배치가 그대로)
                 if (LakeT(px, pz) < 1.12f || Vector2.Distance(p2, IronTree) < 22f || Vector2.Distance(p2, IronView) < 8f || InLakeSight(p2) || LakeTrackDistance(px, pz) < 5f) continue; // 철제 나무 둘레는 PlaceIronTree가 소나무로 채운다
+                if (ThinnedBehindIronTree(p2)) continue;
                 list.Add(inst);
             }
             td.SetTreeInstances(list.ToArray(), true);
@@ -1728,6 +1729,23 @@ namespace Manyworld
             if (rock == null) return;
             var s = rock.transform.localScale;
             rock.transform.localScale = new Vector3(s.x * 0.72f, s.y * 1.18f, s.z * 0.72f);
+        }
+
+        /// <summary>
+        /// 길가 어깨에서 철제 나무 너머로 보이는 비탈 숲을 성기게 (약 60% 뺀다). 목표 샷 04는 철탑 뒤로 나무 사이 땅이 보이며 멀리 트이는데,
+        /// 빽빽한 숲 언덕이 벽처럼 막았다. 자리 해시로 고른다 (난수를 쓰지 않아 다른 배치가 그대로).
+        /// </summary>
+        static bool ThinnedBehindIronTree(Vector2 p)
+        {
+            var toIron = (IronTree - IronRoadSpot).normalized;
+            var seat = IronRoadSpot - toIron * 8f;
+            var rel = p - seat;
+            float along = Vector2.Dot(rel, toIron);
+            if (along < 45f || along > 280f) return false;
+            float lateral = Mathf.Abs(rel.x * toIron.y - rel.y * toIron.x);
+            if (lateral > 12f + along * 0.45f) return false;
+            uint h = (uint)(Mathf.RoundToInt(p.x * 10f) * 73856093) ^ (uint)(Mathf.RoundToInt(p.y * 10f) * 19349663);
+            return h % 10 < 6;
         }
 
         static float SegDist(Vector2 p, Vector2 a, Vector2 b)
