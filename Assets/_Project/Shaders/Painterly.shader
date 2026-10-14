@@ -7,6 +7,8 @@ Shader "Manyworld/Painterly"
         _Radius ("Radius (px)", Range(1, 8)) = 3
         _Amount ("Amount", Range(0, 1)) = 1
         _Sharpness ("Sharpness", Range(1, 16)) = 4
+        _Grain ("붓결 세기", Range(0, 0.4)) = 0.2
+        _StrokeLength ("붓결 길이 (px)", Range(2, 40)) = 18
     }
     SubShader
     {
@@ -25,6 +27,22 @@ Shader "Manyworld/Painterly"
             float _Amount;
             float _Sharpness;
             float _ManyworldPaint;
+            float _Grain;
+            float _StrokeLength;
+
+            float Hash21(float2 p)
+            {
+                p = frac(p * float2(233.34, 851.73));
+                p += dot(p, p + 23.45);
+                return frac(p.x * p.y);
+            }
+
+            float ValueNoise(float2 p)
+            {
+                float2 i = floor(p), f = frac(p);
+                f = f * f * (3 - 2 * f);
+                return lerp(lerp(Hash21(i), Hash21(i + float2(1, 0)), f.x), lerp(Hash21(i + float2(0, 1)), Hash21(i + float2(1, 1)), f.x), f.y);
+            }
 
             #define R 4
 
@@ -80,6 +98,21 @@ Shader "Manyworld/Painterly"
                     total += wt;
                 }
                 float3 paint = acc / max(total, 1e-6);
+
+                // 붓결: 화면 결(밝기 기울기에 수직)을 따라 길쭉한 무늬로 밝기를 흔든다 (목표 샷들의 칠한 면 질감.
+                // 쿠와하라만으로는 면이 고르게 뭉개져 단색 판처럼 보였다). 어두운 곳·하늘은 약하게
+                float2 px = _BlitTexture_TexelSize.xy;
+                float lx = dot(SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearClamp, uv + float2(px.x * 2, 0), 0).rgb - SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearClamp, uv - float2(px.x * 2, 0), 0).rgb, 0.333);
+                float ly = dot(SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearClamp, uv + float2(0, px.y * 2), 0).rgb - SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearClamp, uv - float2(0, px.y * 2), 0).rgb, 0.333);
+                float2 grad = float2(lx, ly);
+                float2 along = dot(grad, grad) > 1e-6 ? normalize(float2(-grad.y, grad.x)) : float2(0.70, 0.71); // 결이 없으면 비스듬히
+                float2 pix = uv / px;
+                float2 q = float2(dot(pix, along), dot(pix, float2(-along.y, along.x)));
+                float n = ValueNoise(float2(q.x / _StrokeLength, q.y / 3.6)) * 0.7 + ValueNoise(float2(q.x / (_StrokeLength * 0.5), q.y / 2.0) + 17.0) * 0.3;
+                float lum = dot(paint, float3(0.3, 0.59, 0.11));
+                float grainAmt = _Grain * smoothstep(0.02, 0.15, lum);
+                n = smoothstep(0.25, 0.75, n); // 붓자국 경계가 또렷하게
+                paint *= 1 + (n - 0.5) * 2 * grainAmt;
                 return half4(lerp(src.rgb, paint, amount), src.a);
             }
             ENDHLSL

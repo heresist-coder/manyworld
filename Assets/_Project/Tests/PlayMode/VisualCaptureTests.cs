@@ -234,13 +234,27 @@ namespace Manyworld.Tests
             yield return new WaitForSeconds(0.5f);
             yield return Shot("t02_path.png", Ground(new Vector3(onTrail.x, 0, onTrail.y), 3.2f), Ground(new Vector3(ent.x, 0, ent.y), 2.5f));
 
-            // 목표 샷 04 구도: 흙길 건너편 어깨에서, 길가에 세운 차 너머 비탈 숲의 철제 나무를 거의 수평으로 본다
-            // (길 위에서 올려다보면 가까운 차·사람이 화면 아래로 빠졌다)
-            // (차·두 사람은 넣지 않는다: 비탈이 가팔라 차가 굴렀고 사람이 화면 밖으로 빠졌다. 풍경만 맞춘다)
+            // 목표 샷 04 구도: 길가 평평한 어깨에 차를 세우고 두 사람이 내려 비탈 숲의 철제 나무를 본다. 카메라는 그 뒤 길 위
             var iron = ForestSiteBuilder.IronTree;
-            var camIron = ForestSiteBuilder.IronView;
+            var spot = ForestSiteBuilder.IronRoadSpot;
+            var roadDir = ForestSiteBuilder.IronRoadDir;
+            var toIron = (iron - spot).normalized;
+            {
+                var carAt = spot - roadDir * 2.5f + toIron * 0.8f;
+                var cr = Quaternion.LookRotation(new Vector3(roadDir.x, 0, roadDir.y));
+                var crb = mc.Car.GetComponent<Rigidbody>();
+                if (crb != null) crb.rotation = cr;
+                mc.Car.transform.rotation = cr;
+                mc.Car.Teleport(Ground(new Vector3(carAt.x, 0, carAt.y), 0.4f));
+                var partyAt = spot + toIron * 2.6f + roadDir * 1.4f;
+                mc.WarpParty(Ground(new Vector3(partyAt.x, 0, partyAt.y), 0.1f), Mathf.Atan2(toIron.x, toIron.y) * Mathf.Rad2Deg,
+                    Ground(new Vector3(partyAt.x + roadDir.x * 1.1f, 0, partyAt.y + roadDir.y * 1.1f), 0.1f));
+                yield return new WaitForSeconds(0.8f);
+            }
             var ironBase = Ground(new Vector3(iron.x, 0, iron.y), 0f);
-            yield return Shot("t04_iron.png", Ground(new Vector3(camIron.x, 0, camIron.y), 3.8f), ironBase + Vector3.up * 14f);
+            var camXZ = spot - toIron * 9f - roadDir * 5f;
+            var camIron = new Vector3(camXZ.x, Ground(new Vector3(spot.x, 0, spot.y), 0f).y + 3.2f, camXZ.y);
+            yield return Shot("t04_iron.png", camIron, Vector3.Lerp(Ground(new Vector3(spot.x, 0, spot.y), 1f), ironBase + Vector3.up * 13f, 0.7f));
 
             // 목표 샷 05 구도: 남동쪽 물가 언덕에서 호수 너머 북서쪽 산. 물속 집이 앞쪽에 보인다
             var lv = ForestSiteBuilder.LakeView;

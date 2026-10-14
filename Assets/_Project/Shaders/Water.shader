@@ -95,6 +95,9 @@ Shader "Manyworld/Water"
                 // 물속: 깊을수록 얕은 물 색 → 깊은 물 색으로 먹힌다. 시선 방향 두께를 수직 깊이로 근사
                 float depth = thick * saturate(v.y + 0.15);
                 half absorb = exp(-depth * _Clarity);
+                // 물속 발광(창 불빛 같은 HDR 픽셀)은 덜 먹힌다: 목표 샷 05의 물속 집 창이 또렷하다
+                half glow = saturate(max(under.r, max(under.g, under.b)) - 1.0);
+                absorb = max(absorb, glow);
                 half3 body = lerp(_DeepColor.rgb, under * _ShallowColor.rgb * 1.3, absorb);
 
                 // 반사 (프레넬): 반사 광선을 월드에서 걸어가며 화면에 투영해 장면 깊이보다 뒤로 들어가는 첫 점의 색

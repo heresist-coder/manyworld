@@ -35,6 +35,10 @@ namespace Manyworld
         public static float LakeWaterY { get; private set; } = -10f;
         /// <summary>목표 샷 04: 흙길 끝 오른쪽 숲 비탈의 철제 나무 (길에서 약 28m).</summary>
         public static readonly Vector2 IronTree = new Vector2(421, 322);
+        /// <summary>흙길 위 철제 나무에서 가장 가까운 곳 (흙길 (382,290)→(397,340)). 차를 세우는 평평한 어깨가 있다.</summary>
+        public static readonly Vector2 IronRoadSpot = new Vector2(394f, 330f);
+        public static Vector2 IronRoadDir => (new Vector2(397f, 340f) - new Vector2(382f, 290f)).normalized;
+
         /// <summary>목표 샷 04 전망 자리: 흙길 위 (흙길 (382,290)→(397,340)에서 철제 나무에 가장 가까운 곳 근처).</summary>
         public static Vector2 IronView
         {
@@ -120,6 +124,13 @@ namespace Manyworld
             {
                 float padY = Sample(h, LakeView.x, LakeView.y);
                 ForCells(LakeView, 14f, (x, z, d) => h[z, x] = Mathf.Lerp(h[z, x], padY, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(14f, 7f, d))));
+            }
+
+            // 3d) 철제 나무 앞 길가: 차를 세울 평평한 어깨 (목표 샷 04: 길가에 차를 세우고 두 사람이 숲을 본다)
+            {
+                var spot = IronRoadSpot;
+                float y = Sample(h, spot.x, spot.y);
+                ForCells(spot, 13f, (x, z, d) => h[z, x] = Mathf.Lerp(h[z, x], y, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(13f, 7f, d))));
             }
 
             // 4) 지형
@@ -1609,7 +1620,7 @@ namespace Manyworld
             var across = new Vector2(toIron.y, -toIron.x);
             for (int k = 0; k < 6; k++)
             {
-                var q = view + toIron * (6f + (float)rng.NextDouble() * 9f) + across * ((k % 2 == 0 ? 1f : -1f) * (3f + (float)rng.NextDouble() * 5f));
+                var q = view + toIron * (9f + (float)rng.NextDouble() * 8f) + across * ((k % 2 == 0 ? 1f : -1f) * (3f + (float)rng.NextDouble() * 5f));
                 var qg = new Vector3(q.x, 0, q.y);
                 qg.y = terrain.SampleHeight(qg);
                 NatureKit.Boulder(root, qg, 0.6f + (float)rng.NextDouble() * 1.1f, rng, true, "IronRock");
