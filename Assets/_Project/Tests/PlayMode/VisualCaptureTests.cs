@@ -301,11 +301,11 @@ namespace Manyworld.Tests
             yield return new WaitForSeconds(0.8f);
             // 목표 샷 05 구도: 물가 오른쪽 뒤 약간 높은 곳. 차·두 사람은 왼쪽 앞, 물속 집은 아래 가운데, 위는 노을 하늘과 산
             // (마당 뒤 8.5m에서 내려다보면 화면 아래 3분의 1이 밝은 흙 마당이었고 하늘이 안 보였다)
-            var lakeCamXZ = lv - toLake * 8f + side * 4.6f; // (물가 바로 위 1.5m 뒤는 차가 화면 밖, 두 사람이 왼쪽 아래 귀퉁이에 잘렸다)
-            var lakeCam = new Vector3(lakeCamXZ.x, Ground(new Vector3(lv.x, 0, lv.y), 0f).y + 5.5f, lakeCamXZ.y);
+            var lakeCamXZ = lv - toLake * 9f + side * 4.6f; // (물가 바로 위 1.5m 뒤는 차가 화면 밖, 두 사람이 왼쪽 아래 귀퉁이에 잘렸다)
+            var lakeCam = new Vector3(lakeCamXZ.x, Ground(new Vector3(lv.x, 0, lv.y), 0f).y + 5.8f, lakeCamXZ.y);
             var lakeLook = lc + (lv - lc) * 0.3f - side * 11f;
             float lakeDist = Vector2.Distance(lakeCamXZ, lakeLook);
-            yield return Shot("t05_lake.png", lakeCam, new Vector3(lakeLook.x, lakeCam.y - lakeDist * Mathf.Tan(5.5f * Mathf.Deg2Rad), lakeLook.y)); // 노을 하늘을 더 (목표 샷 05는 위가 밝은 하늘, 아래가 어두운 물가)
+            yield return Shot("t05_lake.png", lakeCam, new Vector3(lakeLook.x, lakeCam.y - lakeDist * Mathf.Tan(4.5f * Mathf.Deg2Rad), lakeLook.y)); // 노을 하늘을 더 (목표 샷 05는 위가 밝은 하늘, 아래가 어두운 물가)
             foreach (var mo in hiddenMonsters) mo.SetActive(true);
             hud.enabled = true;
             pc.target = keep;

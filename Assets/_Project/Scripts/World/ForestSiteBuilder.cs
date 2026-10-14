@@ -115,7 +115,7 @@ namespace Manyworld
                 float bed = t < 1f ? LakeWaterY - 0.7f - LakeDepth * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 1f, t)))
                                    : LakeWaterY - 0.7f + (t - 1f) * LakeRadius * 0.22f;
                 float mound = Vector2.Distance(new Vector2(x * Cell, z * Cell), LakeHousePos);
-                bed = Mathf.Max(bed, Mathf.Lerp(LakeWaterY - 9.4f, LakeWaterY - LakeDepth - 1f, Mathf.InverseLerp(10f, 24f, mound))); // 둔덕 위 집 (높이 약 8m) 지붕이 수면 1.2m 아래
+                bed = Mathf.Max(bed, Mathf.Lerp(LakeWaterY - 10.6f, LakeWaterY - LakeDepth - 1f, Mathf.InverseLerp(12f, 28f, mound))); // 둔덕 위 집 (높이 약 10m) 지붕이 수면 1.2m 아래
                 float w = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.6f, 1.25f, t));
                 h[z, x] = Mathf.Lerp(h[z, x], Mathf.Min(h[z, x], Mathf.Max(0.5f, bed)), w);
             });
@@ -573,7 +573,8 @@ namespace Manyworld
             {
                 float px = x + (float)(trng.NextDouble() - 0.5) * 2.5f, pz = z + (float)(trng.NextDouble() - 0.5) * 2.5f;
                 float rd = Sample(roadDist, px, pz), td = Sample(trailDist, px, pz);
-                bool verge = (rd > 4.4f && rd < 9f) || (td > 2.1f && td < 5.5f);
+                // 길·숲길 어깨와 기운 숲 바닥 전체 (목표 샷 02는 줄기 사이 바닥이 뾰족한 풀로 덮여 있다)
+                bool verge = (rd > 4.4f && rd < 9f) || (td > 2.1f && td < 5.5f) || (td > 2.1f && LeaningBandDistance(px, pz) < 22f && !InRoom(px, pz, 3f));
                 if (!verge) continue;
                 float clump = Mathf.PerlinNoise(px * 0.09f + 31f, pz * 0.09f + 17f);
                 if (trng.NextDouble() > 0.7f * Mathf.InverseLerp(0.32f, 0.65f, clump)) continue;
@@ -1365,7 +1366,7 @@ namespace Manyworld
         }
 
         /// <summary>물속 집 자리: 호수 가운데에서 전망 쪽으로 (가까워야 반사에 묻히지 않고 물속이 보인다).</summary>
-        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.52f; // 전망대 앞 (차·두 사람과 한 화면에, 목표 샷 05. 0.64는 낮은 카메라에서 가까운 물가 둑이 창 난 벽을 가렸다. 0.34는 호수 한가운데라 작았다)
+        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.5f; // (0.6은 가까운 둑이 집을 가렸다. 크기는 2.2배로 키웠다) 전망대 앞 (차·두 사람과 한 화면에, 목표 샷 05. 0.64는 낮은 카메라에서 가까운 물가 둑이 창 난 벽을 가렸다. 0.34는 호수 한가운데라 작았다)
 
         /// <summary>호수 전망대에서 숲으로 나가는 흙길 (전망대 → 바깥쪽 38m, 조금 북쪽으로 굽는다)까지의 거리.</summary>
         public static float LakeTrackDistance(float x, float z)
@@ -1435,7 +1436,7 @@ namespace Manyworld
             GameObject house = prefab != null ? Object.Instantiate(prefab, go.transform) : Graybox.Box(go.transform, "House", Vector3.zero, new Vector3(9f, 7f, 7f), new Color(0.5f, 0.55f, 0.5f), true);
             house.name = "SubmergedHouse";
             house.transform.rotation = Quaternion.LookRotation(new Vector3(toView.x, 0, toView.y)) * Quaternion.Euler(0, 72f, 0); // 긴 벽과 지붕 비탈이 전망대를 본다 (목표 샷 05). 박공 끝이 전망대를 보면 위에서 용마루가 시선과 나란해 평평한 상자로 읽혔다
-            house.transform.localScale = Vector3.one * 1.75f; // 목표 샷 05의 물속 집은 화면에서 크다 (원래 크기는 전망대에서 장난감처럼 작았다. 1.45도 작았다)
+            house.transform.localScale = Vector3.one * 2.2f; // (1.75는 목표 샷 05의 절반 크기였다) // 목표 샷 05의 물속 집은 화면에서 크다 (원래 크기는 전망대에서 장난감처럼 작았다. 1.45도 작았다)
             var bed = G(housePos);
             var hb = ArtCatalog.RendererBounds(house);
             // 지붕 끝을 수면 1.2m 아래에 맞춘다 (바닥에 맞추면 둔덕이 낮을 때 5m 넘게 잠겨 낮은 시선에선 보이지 않았다)
@@ -1545,7 +1546,7 @@ namespace Manyworld
                 {
                     var p = view + toLakeDir * (3f + (float)slopeRng.NextDouble() * 7f) + sideDir * (5f + (float)slopeRng.NextDouble() * 8f);
                     // 전망 자리(마당 뒤 오른쪽)에서 물속 집을 보는 시선 오른쪽으로만 (집 앞에 놓인 큰 바위가 창을 가렸다)
-                    var seat = view - toLakeDir * 8f + sideDir * 4.6f;
+                    var seat = view - toLakeDir * 9f + sideDir * 4.6f;
                     var sight = (housePos - seat).normalized;
                     float right = Vector2.Dot(p - seat, new Vector2(sight.y, -sight.x));
                     if (LakeT(p.x, p.y) < 1.02f || NatureKit.UnderRock(p.x, p.y) || right < 3.5f) continue;
@@ -1818,7 +1819,7 @@ namespace Manyworld
             // 따로 쓰는 난수: 기존 배치가 바뀌지 않게
             var rockRng = new System.Random(4021);
             int floorRocks = 0;
-            for (int tries = 0; tries < 400 && floorRocks < 46; tries++)
+            for (int tries = 0; tries < 900 && floorRocks < 90; tries++) // (46개는 목표 샷 02보다 성겼다)
             {
                 var a = Trailhead + (bendPt - Trailhead).normalized * 10f; var bEnd = RoomEntrance - RoomForward * 2f;
                 var q = Vector2.Lerp(a, bEnd, (float)rockRng.NextDouble());
