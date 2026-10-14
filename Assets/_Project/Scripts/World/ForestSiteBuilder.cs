@@ -1452,6 +1452,17 @@ namespace Manyworld
                 l.intensity = 2.5f; // 창 둘레만 은은하게 (9는 집 전체를 청록으로 밝혀 빛나는 창이 묻혔다)
                 l.shadows = LightShadows.None;
             }
+            {
+                // 지붕 위 물빛: 노을 그늘 속 짙은 지붕이 물에 묻혀 집 윤곽이 안 읽혔다 (목표 샷 05의 물속 집은 청록 윤곽이 또렷하다)
+                var l = new GameObject("RoofWaterLight").AddComponent<Light>();
+                l.transform.SetParent(house.transform, true);
+                l.transform.position = new Vector3(hb.center.x, hb.max.y + 1.5f, hb.center.z) + new Vector3(toView.x, 0, toView.y) * hb.extents.magnitude * 0.4f;
+                l.type = LightType.Point;
+                l.color = new Color(0.45f, 0.78f, 0.82f);
+                l.range = hb.extents.magnitude * 1.8f;
+                l.intensity = 1.6f;
+                l.shadows = LightShadows.None;
+            }
 
             // 가라앉지 않는 바위: 수면에 얹혀 떠 있다 (서로 떨어져, 다섯 개)
             int floats = 0;
