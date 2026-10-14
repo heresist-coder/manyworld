@@ -56,10 +56,10 @@ namespace Manyworld
             {
                 sun.transform.rotation = Quaternion.Slerp(sunRot0, DuskSun, w);
                 sun.color = Color.Lerp(sunColor0, new Color(1f, 0.62f, 0.4f), w);
-                sun.intensity = Mathf.Lerp(sunIntensity0, 1.35f, w);
+                sun.intensity = Mathf.Lerp(sunIntensity0, 0.8f, w); // 목표 샷 05는 해가 산 너머로 진 뒤: 굳은 그림자 없이 하늘빛이 주 (1.35는 전망대 흙 마당이 화면 아래를 밝게 채웠다 145~153 vs 66~102)
             }
             RenderSettings.fogColor = Color.Lerp(fog0, new Color(0.52f, 0.5f, 0.66f), w); // 먼 산이 보랏빛 파랑으로
-            RenderSettings.ambientSkyColor = Color.Lerp(amb0Sky, new Color(0.5f, 0.5f, 0.64f), w);
+            RenderSettings.ambientSkyColor = Color.Lerp(amb0Sky, new Color(0.56f, 0.56f, 0.72f), w);
             RenderSettings.ambientEquatorColor = Color.Lerp(amb0Eq, new Color(0.64f, 0.5f, 0.46f), w);
             RenderSettings.ambientGroundColor = Color.Lerp(amb0Ground, new Color(0.2f, 0.17f, 0.17f), w);
             if (sky != null)

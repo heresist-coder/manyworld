@@ -4,9 +4,9 @@ Shader "Manyworld/SkyGradient"
 {
     Properties
     {
-        _ZenithColor ("천정", Color) = (0.36, 0.53, 0.8, 1)
-        _MidColor ("중간 (고도 15°)", Color) = (0.62, 0.72, 0.86, 1)
-        _HorizonColor ("지평", Color) = (0.78, 0.81, 0.85, 1)
+        _ZenithColor ("천정", Color) = (0.3, 0.48, 0.78, 1)
+        _MidColor ("중간 (고도 15°)", Color) = (0.52, 0.65, 0.84, 1) // (0.62,0.72,0.86은 목표보다 희었다: 04 하늘 파랑 155 vs 175, 03 하늘이 희뿌옇다)
+        _HorizonColor ("지평", Color) = (0.72, 0.77, 0.84, 1)
         _GroundColor ("지평 아래", Color) = (0.45, 0.5, 0.55, 1)
         _SunGlow ("해 빛무리 색", Color) = (1, 0.88, 0.7, 1)
         _SunGlowSize ("빛무리 크기", Range(1, 64)) = 10
