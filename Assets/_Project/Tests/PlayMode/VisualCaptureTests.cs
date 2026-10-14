@@ -179,7 +179,8 @@ namespace Manyworld.Tests
             }
             // 목표 샷 01 구도: 오른쪽 뒤 높은 곳에서 길을 따라. 차는 왼쪽, 바위 무더기는 오른쪽 앞
             // (길이 차 앞 40m에서 오른쪽으로 휘므로 시선도 길을 따라 오른쪽으로: 차가 화면 왼쪽 아래에 온다)
-            yield return Shot("t01_road.png", Ground(car.position - car.forward * 6.5f + car.right * 3.8f, 3.8f), car.position + car.forward * 40f + car.right * 5f + Vector3.up * 1f);
+            // (11m 뒤 6.5m 높이는 차가 너무 작고 멀었다)
+            yield return Shot("t01_road.png", Ground(car.position - car.forward * 7.5f + car.right * 4f, 4.4f), car.position + car.forward * 50f + car.right * 4f + Vector3.up * 2.5f);
             yield return Shot("t01_chase.png", Ground(car.position - car.forward * 7f + car.right * 1.4f, 2.1f), car.position + car.forward * 50f - car.right * 8f + Vector3.up * 6f);
             yield return Shot("t01_wide.png", Ground(car.position - car.forward * 12f - car.right * 3f, 3.5f), car.position + car.forward * 120f + Vector3.up * 20f);
             yield return Shot("aerial.png", new Vector3(170, 250, 120), new Vector3(430, 40, 470));
@@ -284,9 +285,10 @@ namespace Manyworld.Tests
             yield return new WaitForSeconds(0.8f);
             var lakeCamXZ = lv - toLake * 8.5f - side * 0.8f;
             // 높이는 전망대 마당 기준 (뒤 언덕이 가팔라 카메라 발밑 기준이면 너무 높아졌다)
-            var lakeCam = new Vector3(lakeCamXZ.x, Ground(new Vector3(lv.x, 0, lv.y), 0f).y + 4.5f, lakeCamXZ.y);
+            // 목표 샷 05는 언덕 위에서 호수를 내려다본다 (4.5m·9도는 수면을 스치듯 봐서 반사가 물속 집을 덮었다)
+            var lakeCam = new Vector3(lakeCamXZ.x, Ground(new Vector3(lv.x, 0, lv.y), 0f).y + 6.5f, lakeCamXZ.y);
             float lakeDist = Vector2.Distance(lakeCamXZ, across);
-            yield return Shot("t05_lake.png", lakeCam, new Vector3(across.x, lakeCam.y - lakeDist * Mathf.Tan(9f * Mathf.Deg2Rad), across.y));
+            yield return Shot("t05_lake.png", lakeCam, new Vector3(across.x, lakeCam.y - lakeDist * Mathf.Tan(13f * Mathf.Deg2Rad), across.y));
             hud.enabled = true;
             pc.target = keep;
             gm.EnterHub();

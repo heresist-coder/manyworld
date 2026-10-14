@@ -115,7 +115,7 @@ namespace Manyworld
                 float bed = t < 1f ? LakeWaterY - 0.7f - LakeDepth * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 1f, t)))
                                    : LakeWaterY - 0.7f + (t - 1f) * LakeRadius * 0.22f;
                 float mound = Vector2.Distance(new Vector2(x * Cell, z * Cell), LakeHousePos);
-                bed = Mathf.Max(bed, Mathf.Lerp(LakeWaterY - 8f, LakeWaterY - LakeDepth - 1f, Mathf.InverseLerp(9f, 22f, mound))); // 둔덕 위 집 (높이 약 6.7m) 지붕이 수면 1.2m 아래
+                bed = Mathf.Max(bed, Mathf.Lerp(LakeWaterY - 9.4f, LakeWaterY - LakeDepth - 1f, Mathf.InverseLerp(10f, 24f, mound))); // 둔덕 위 집 (높이 약 8m) 지붕이 수면 1.2m 아래
                 float w = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.6f, 1.25f, t));
                 h[z, x] = Mathf.Lerp(h[z, x], Mathf.Min(h[z, x], Mathf.Max(0.5f, bed)), w);
             });
@@ -381,10 +381,11 @@ namespace Manyworld
                 float sandy = band * Mathf.InverseLerp(0.5f, 0.68f, Mathf.PerlinNoise(wx * 0.09f + 13f, wz * 0.09f + 41f)) * 0.5f;
                 // 호수: 물가는 모래흙, 깊은 바닥은 바위 (목표 샷 05의 물속 돌바닥)
                 float lakeT = LakeT(wx, wz);
-                float shore = Mathf.InverseLerp(1.12f, 1.0f, lakeT) * Mathf.InverseLerp(0.45f, 0.8f, lakeT);
+                // (모래띠가 물속 깊이까지(0.45) 들어가 내려다본 얕은 물이 베이지색 판으로 떠서 물속 집을 덮었다 → 물가 띠만)
+                float shore = Mathf.InverseLerp(1.12f, 1.0f, lakeT) * Mathf.InverseLerp(0.86f, 0.96f, lakeT);
                 float lakeTrack = Mathf.Clamp01(Mathf.InverseLerp(2.6f, 1.3f, LakeTrackDistance(wx, wz)) + jitter * 0.5f) * 0.9f;
                 float dirt = Mathf.Max(Mathf.Max(Mathf.Max(road, sandy), Mathf.Max(trail, floor)), Mathf.Max(shore, lakeTrack));
-                float rock = Mathf.Max(Mathf.InverseLerp(50f, 64f, slope), Mathf.InverseLerp(0.8f, 0.45f, lakeT)) * (1f - dirt); // 산비탈도 대부분 숲 바닥
+                float rock = Mathf.Max(Mathf.InverseLerp(50f, 64f, slope), Mathf.InverseLerp(0.96f, 0.86f, lakeT)) * (1f - dirt); // 산비탈도 대부분 숲 바닥
                 float forest = Sample(forestG, wx, wz);
                 // 마른 풀: 노이즈 얼룩과 길 어깨 (목표 샷 01 초원은 올리브 초록이 주. 길 어깨 0.7·얼룩 0.55부터는 오른쪽 언덕이 노랗게 떴다)
                 float dry = Mathf.Clamp01(Mathf.InverseLerp(0.6f, 0.74f, Sample(dryG, wx, wz)) + Mathf.InverseLerp(6.5f, 3.6f, rd) * 0.4f + band * 0.45f);
@@ -1323,7 +1324,7 @@ namespace Manyworld
         }
 
         /// <summary>물속 집 자리: 호수 가운데에서 전망 쪽으로 (가까워야 반사에 묻히지 않고 물속이 보인다).</summary>
-        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.34f; // 전망대 앞 (차·두 사람과 한 화면에, 목표 샷 05. 0.64·0.5는 가까운 물가 둑이 창 난 벽을 가렸다)
+        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.52f; // 전망대 앞 (차·두 사람과 한 화면에, 목표 샷 05. 0.64는 낮은 카메라에서 가까운 물가 둑이 창 난 벽을 가렸다. 0.34는 호수 한가운데라 작았다)
 
         /// <summary>호수 전망대에서 숲으로 나가는 흙길 (전망대 → 바깥쪽 38m, 조금 북쪽으로 굽는다)까지의 거리.</summary>
         public static float LakeTrackDistance(float x, float z)
@@ -1393,7 +1394,7 @@ namespace Manyworld
             GameObject house = prefab != null ? Object.Instantiate(prefab, go.transform) : Graybox.Box(go.transform, "House", Vector3.zero, new Vector3(9f, 7f, 7f), new Color(0.5f, 0.55f, 0.5f), true);
             house.name = "SubmergedHouse";
             house.transform.rotation = Quaternion.LookRotation(new Vector3(toView.x, 0, toView.y)) * Quaternion.Euler(0, -12f, 0); // 창 난 앞면이 전망대를 본다 (−30°는 옆면만 보였다)
-            house.transform.localScale = Vector3.one * 1.45f; // 목표 샷 05의 물속 집은 화면에서 크다 (원래 크기는 전망대에서 장난감처럼 작았다)
+            house.transform.localScale = Vector3.one * 1.75f; // 목표 샷 05의 물속 집은 화면에서 크다 (원래 크기는 전망대에서 장난감처럼 작았다. 1.45도 작았다)
             var bed = G(housePos);
             var hb = ArtCatalog.RendererBounds(house);
             // 지붕 끝을 수면 1.2m 아래에 맞춘다 (바닥에 맞추면 둔덕이 낮을 때 5m 넘게 잠겨 낮은 시선에선 보이지 않았다)
@@ -1432,7 +1433,7 @@ namespace Manyworld
                     Kill(pane.GetComponent<Collider>());
                     pane.GetComponent<Renderer>().sharedMaterial = glass;
                     pane.transform.SetPositionAndRotation(best.point + best.normal * 0.04f, Quaternion.LookRotation(-best.normal));
-                    pane.transform.localScale = new Vector3(1.4f, 1.6f, 1f);
+                    pane.transform.localScale = new Vector3(1.9f, 2.1f, 1f); // (1.4×1.6은 언덕에서 내려다보면 점처럼 작았다)
                     windows++;
                 }
             }
@@ -1447,7 +1448,7 @@ namespace Manyworld
                 l.transform.position = hb.center + dir * (ext * 0.75f + 0.6f) + Vector3.up * (hb.size.y * (up - 0.5f));
                 l.type = LightType.Point;
                 l.color = warm;
-                l.range = 5f;
+                l.range = 6.5f;
                 l.intensity = 2.5f; // 창 둘레만 은은하게 (9는 집 전체를 청록으로 밝혀 빛나는 창이 묻혔다)
                 l.shadows = LightShadows.None;
             }
@@ -1742,12 +1743,11 @@ namespace Manyworld
             GameObject Pine(Vector3 p, float scale)
             {
                 // 벽은 줄기가 긴 각진 소나무로: 아래는 줄기 기둥, 위는 잎 (목표 샷 03, 기운 숲과 같은 나무)
-                var t = NatureKit.TallPine(go.transform, 11f * scale, rng); // (15m·스케일은 수관 그림자가 방 바닥을 덮어 어두웠다)
+                var t = NatureKit.TallPine(go.transform, 13f * scale, rng, true); // 줄기 기둥이 높고 수관은 위에만 (11m 보통 소나무는 수관이 방 위를 어둡게 덮었다)
                 t.name = "WallPine";
                 t.transform.position = p - Vector3.up * 0.15f;
                 t.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);
-                var ls = t.transform.localScale;
-                t.transform.localScale = new Vector3(ls.x * 1.4f, ls.y, ls.z * 1.4f); // 목표 샷 03의 벽 줄기는 굵은 기둥
+                // (줄기를 1.4배 굵게 하면 두 줄 벽이 빈틈 없는 갈색 벽이 되어 하늘·수관이 가려졌다)
                 return t;
             }
             const float spacing = 1.85f;

@@ -286,7 +286,8 @@ namespace Manyworld
         public static GameObject[] ForestPinePrototypes(bool dark)
         {
             EnsureTallPines();
-            if (forestPines == null)
+            // (배열이 남아도 물체가 파괴됐을 수 있다: 플레이 모드를 다시 들어가면 'Tree prefab missing'이 났다)
+            if (forestPines == null || forestPines[0] == null || forestPines[5] == null)
             {
                 forestPines = new GameObject[6];
                 var leafDark = new[] { LeafSet(new Color(0.12f, 0.17f, 0.12f)), LeafSet(new Color(0.11f, 0.16f, 0.12f)), LeafSet(new Color(0.13f, 0.18f, 0.12f)) };
@@ -315,13 +316,24 @@ namespace Manyworld
             return dark ? new[] { forestPines[3], forestPines[4], forestPines[5] } : new[] { forestPines[0], forestPines[1], forestPines[2] };
         }
 
-        /// <summary>키 큰 소나무 하나 (밑동 기준, 높이 height). 줄기에 기운 캡슐 충돌을 단다.</summary>
-        public static GameObject TallPine(Transform parent, float height, System.Random rng)
+        static Mesh[] highCrownPines;
+
+        /// <summary>
+        /// 키 큰 소나무 하나 (밑동 기준, 높이 height). 줄기에 기운 캡슐 충돌을 단다.
+        /// highCrown: 수관이 위쪽 55%에만 (방 벽: 목표 샷 03은 줄기 기둥이 화면 위까지 서고 수관은 그 위에 있다).
+        /// </summary>
+        public static GameObject TallPine(Transform parent, float height, System.Random rng, bool highCrown = false)
         {
             EnsureTallPines();
+            if (highCrown && highCrownPines == null)
+            {
+                highCrownPines = new Mesh[4];
+                for (int i = 0; i < highCrownPines.Length; i++) highCrownPines[i] = TallPineMesh(733 + i * 41, 0.45f, 0.85f);
+            }
+            var meshes = highCrown ? highCrownPines : tallPines;
             var go = new GameObject("TallPine", typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(parent, false);
-            go.GetComponent<MeshFilter>().sharedMesh = tallPines[rng.Next(tallPines.Length)];
+            go.GetComponent<MeshFilter>().sharedMesh = meshes[rng.Next(meshes.Length)];
             go.GetComponent<MeshRenderer>().sharedMaterials = PineMaterials(tallPineMats[rng.Next(2)], leafSets[rng.Next(3)]);
             go.transform.localScale = Vector3.one * height;
             var col = go.AddComponent<CapsuleCollider>();

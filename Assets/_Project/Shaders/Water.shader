@@ -136,9 +136,15 @@ Shader "Manyworld/Water"
                     // 물결만큼 흔든다 (가까울수록 크게: 멀리는 거울처럼 매끈하다)
                     float2 ruv = float2(uv.x, 1 - uv.y) + n.xz * 0.06 / (1 + waterEye * 0.03);
                     refl = SAMPLE_TEXTURE2D(_PlanarReflectionTex, sampler_PlanarReflectionTex, saturate(ruv)).rgb;
+                    // 반사 텍스처는 노출·톤 매핑 전 HDR: 머리 위 노을 구름이 하얗게 탄다
+                    refl = min(refl, 1.2);
                 }
+                // 내려다볼수록 비친 것이 어둡다 (목표 샷 05: 물속 집 위 물은 짙은 남색).
+                // 선형 공간이라 머리 위 노을 구름(0.6)이 비율 0.3만 섞여도 어두운 물(0.05)을 연보라 판으로 덮었다
+                refl *= lerp(1.0, 0.15, saturate((v.y - 0.08) * 5));
                 half fres = 0.02 + 0.98 * pow(1 - saturate(dot(n, v)), 5);
-                half3 col = lerp(body, refl, saturate(fres * _Reflect + 0.1 * _PlanarReflectionOn + 0.06));
+                // 평면 반사 덧셈은 비스듬히 볼 때만 (내려다보면 물속 집이 보여야 한다)
+                half3 col = lerp(body, refl, saturate(fres * _Reflect + 0.1 * _PlanarReflectionOn * saturate(1 - v.y * 3) + 0.06));
 
                 // 물가 거품: 바닥·물체가 수면에 가까운 곳 (물가 띠와 뜬 바위 둘레 고리). 움직이는 얼룩으로 끊는다
                 float foamBand = 1 - saturate(thick / 0.9);

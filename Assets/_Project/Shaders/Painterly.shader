@@ -22,6 +22,7 @@ Shader "Manyworld/Painterly"
             #pragma fragment Frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 
             float _Radius;
             float _Amount;
@@ -110,7 +111,15 @@ Shader "Manyworld/Painterly"
                 float2 q = float2(dot(pix, along), dot(pix, float2(-along.y, along.x)));
                 float n = ValueNoise(float2(q.x / _StrokeLength, q.y / 3.6)) * 0.7 + ValueNoise(float2(q.x / (_StrokeLength * 0.5), q.y / 2.0) + 17.0) * 0.3;
                 float lum = dot(paint, float3(0.3, 0.59, 0.11));
-                float grainAmt = _Grain * smoothstep(0.02, 0.15, lum) * (1 - smoothstep(0.55, 0.85, lum)); // 하늘처럼 밝은 면은 약하게 (필름 잡티처럼 보였다)
+                // 하늘(깊이 없음)과 아주 먼 산에는 붓결을 넣지 않는다 (고른 하늘에서 필름 잡티처럼 보였다)
+                float rawDepth = SampleSceneDepth(uv);
+                #if UNITY_REVERSED_Z
+                    bool sky = rawDepth <= 1e-5;
+                #else
+                    bool sky = rawDepth >= 1 - 1e-5;
+                #endif
+                float eye = LinearEyeDepth(rawDepth, _ZBufferParams);
+                float grainAmt = sky ? 0 : _Grain * smoothstep(0.02, 0.15, lum) * (1 - smoothstep(600, 1500, eye));
                 n = smoothstep(0.25, 0.75, n); // 붓자국 경계가 또렷하게
                 paint *= 1 + (n - 0.5) * 2 * grainAmt;
                 return half4(lerp(src.rgb, paint, amount), src.a);
