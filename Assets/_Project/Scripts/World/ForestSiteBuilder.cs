@@ -1493,6 +1493,26 @@ namespace Manyworld
                 NatureKit.Boulder(go.transform, G(p), 0.8f + (float)rng.NextDouble() * 1.8f, rng, false, "LakeBedRock");
             }
 
+            // 전망대 앞 비탈 바위: 목표 샷 05는 화면 아래 물가에 회색 바위가 모여 있다 (밝은 풀 비탈만 넓게 떴다).
+            // 따로 쓰는 난수 (다른 배치 그대로). 차·두 사람이 서는 자리와 물속 집 시선은 비운다
+            {
+                var slopeRng = new System.Random(5077);
+                var toLakeDir = (LakeCenter - view).normalized;
+                var sideDir = new Vector2(toLakeDir.y, -toLakeDir.x);
+                int slopeRocks = 0;
+                for (int tries = 0; tries < 80 && slopeRocks < 9; tries++)
+                {
+                    var p = view + toLakeDir * (3f + (float)slopeRng.NextDouble() * 7f) + sideDir * (5f + (float)slopeRng.NextDouble() * 8f);
+                    // 전망 자리(마당 뒤 오른쪽)에서 물속 집을 보는 시선 오른쪽으로만 (집 앞에 놓인 큰 바위가 창을 가렸다)
+                    var seat = view - toLakeDir * 6.5f + sideDir * 4.6f;
+                    var sight = (housePos - seat).normalized;
+                    float right = Vector2.Dot(p - seat, new Vector2(sight.y, -sight.x));
+                    if (LakeT(p.x, p.y) < 1.02f || NatureKit.UnderRock(p.x, p.y) || right < 3.5f) continue;
+                    NatureKit.Boulder(go.transform, G(p), 0.45f + (float)slopeRng.NextDouble() * (slopeRng.NextDouble() < 0.3 ? 0.8f : 0.45f), slopeRng, true, "OverlookRock");
+                    slopeRocks++;
+                }
+            }
+
             // 물가: 바위와 곧은 키 큰 소나무 (목표 샷 05)
             for (int i = 0; i < 70; i++)
             {

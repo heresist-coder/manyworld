@@ -220,7 +220,7 @@ namespace Manyworld.Tests
             hud.enabled = false;
             // 목표 샷 03: 입구 밖 조금 높은 곳에서. 안쪽 벽 소나무 꼭대기와 그 위 하늘·산이 보인다
             // (4.5m 뒤 2.3m 높이는 양옆 벽 수관이 화면 위를 덮어 하늘이 없었다)
-            yield return Shot("t03_room.png", Ground(stand - room.forward * 7.5f - room.right * 0.6f, 3f), room.position + Vector3.up * 4.2f);
+            yield return Shot("t03_room.png", Ground(stand - room.forward * 7.5f - room.right * 0.6f, 3f), room.position + Vector3.up * 3.2f); // (4.2는 하늘이 화면 위 가운데를 다 채웠다: 150 vs 목표 84)
             // t02: 숲길 위에서 방 쪽으로 (길은 가운데서 살짝 꺾인다)
             var th = ForestSiteBuilder.Trailhead;
             var bend = Vector2.Lerp(th, ForestSiteBuilder.RoomEntrance, 0.5f) + new Vector2(-6f, 2f);
