@@ -190,6 +190,7 @@ namespace Manyworld
             var trunk = new List<int>();
             // 잎은 아래·가운데·위 세 묶음 (아래가 어둡고 위가 밝다: 목표 샷의 층진 소나무는 위층이 볕을 받아 밝게 칠해져 있다)
             var leafTiers = new[] { new List<int>(), new List<int>(), new List<int>() };
+            var undersides = new List<int>(); // 층 밑면: 짙은 색으로 따로 (목표 샷의 소나무는 층마다 아래에 짙은 그늘 띠가 진다)
             // outward: 면이 바깥을 보게 하는 방향 (감는 순서를 거기에 맞춘다. 반대로 감겨 잎이 컬링되고 줄기 속만 보였다)
             void Tri(List<int> to, Vector3 a, Vector3 b, Vector3 c, Vector3 outward)
             {
@@ -239,7 +240,7 @@ namespace Manyworld
                     var side = (a + c) * 0.5f; side.y = 0f;
                     var leaves = leafTiers[u < 0.34f ? 0 : u < 0.67f ? 1 : 2];
                     Tri(leaves, a, apex, c, side + Vector3.up * rad * 0.6f);
-                    Tri(leaves, a, c, under, Vector3.down); // 밑면 (아래서 올려다볼 때 속이 비지 않게)
+                    Tri(undersides, a, c, under, Vector3.down); // 밑면 (아래서 올려다볼 때 속이 비지 않게)
                 }
             }
             // 꼭대기 뾰족
@@ -257,9 +258,10 @@ namespace Manyworld
             var uvs = new List<Vector2>(verts.Count);
             foreach (var p in verts) uvs.Add(new Vector2(p.x * 2f + 0.5f, p.y)); // 조명 굽기용
             mesh.SetUVs(0, uvs);
-            mesh.subMeshCount = 4;
+            mesh.subMeshCount = 5;
             mesh.SetTriangles(trunk, 0);
             for (int k = 0; k < 3; k++) mesh.SetTriangles(leafTiers[k], 1 + k);
+            mesh.SetTriangles(undersides, 4);
             mesh.RecalculateBounds();
             return mesh;
         }
@@ -285,7 +287,20 @@ namespace Manyworld
             }
         }
 
-        static Material[] PineMaterials(Material trunk, Material[] leaves) => new[] { trunk, leaves[0], leaves[1], leaves[2] };
+        static readonly Dictionary<Material, Material> underMats = new Dictionary<Material, Material>();
+
+        /// <summary>줄기, 잎 세 층(아래 짙게→위 밝게), 층 밑면(잎 아래층 색의 45%: 층 사이 그늘 띠).</summary>
+        static Material[] PineMaterials(Material trunk, Material[] leaves)
+        {
+            if (!underMats.TryGetValue(leaves[0], out var under) || under == null)
+            {
+                var c = leaves[0].color;
+                under = RockMat(new Color(c.r * 0.45f, c.g * 0.45f, c.b * 0.5f));
+                under.name = "PineUnderside";
+                underMats[leaves[0]] = under;
+            }
+            return new[] { trunk, leaves[0], leaves[1], leaves[2], under };
+        }
 
         static GameObject[] forestPines;
 

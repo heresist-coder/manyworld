@@ -21,7 +21,10 @@ namespace Manyworld
         // 숲길 대비: 목표 샷 02는 볕 든 길과 짙은 줄기의 명암차가 크다 (밝기 표준편차 30 vs 39, it178). 방은 이미 목표보다 대비가 커서 뺀다
         public float contrastBoost = 26f; // (대비를 올리면 어두운 쪽이 더 내려가 평균이 떨어진다 → 숲 노출 내림을 그만큼 줄였다)
         // 호수(노을)는 대비를 낮춘다: 목표 샷 05는 해가 진 뒤의 부드러운 빛 (대비 47 vs 37, it184)
-        public float lakeContrastDrop = 7f; // (12는 채도까지 빠졌다 93→83)
+        public float lakeContrastDrop = 12f; // 대비를 내리면 채도도 빠져(93→83) lakeSaturation으로 되돌린다
+        public float lakeSaturation = 12f;
+        // 방 둘레 대비 내림 (03 대비 40 vs 34), 철제 나무 길가 채도 내림 (04 채도 81 vs 73). it192
+        public float roomContrastDrop = 0f, ironSaturationDrop = 8f; // (방 대비는 밝은 바닥·짙은 줄기 구도에서 나온다: 6을 내려도 40→39에 평균만 밝아졌다)
         // 숲길만 채도를 더 내린다 (02 채도 78 vs 68. 방은 이미 목표와 같다)
         public float pathSaturationDrop = 8f;
         float w = -1f, rw = -1f, iw = -1f, lw = -1f;
@@ -47,8 +50,8 @@ namespace Manyworld
             float lakeTarget = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(170f, 105f, Vector2.Distance(p, ForestSiteBuilder.LakeCenter)));
             lw = lw < 0f || Mathf.Abs(lakeTarget - lw) > 0.5f ? lakeTarget : Mathf.MoveTowards(lw, lakeTarget, Time.deltaTime * 0.5f);
             float path = w * (1f - rw) * (1f - iw); // 숲길 (방 둘레·철제 나무 길가는 뺀다: 04 대비가 목표보다 커졌다 61 vs 53)
-            color.saturation.Override(baseSaturation - saturationDrop * w * (1f - iw) - pathSaturationDrop * path); // 철제 나무 길가는 숲 채도 내림도 뺀다 (04 채도 66 vs 73)
-            color.contrast.Override(baseContrast + contrastBoost * path - lakeContrastDrop * lw);
+            color.saturation.Override(baseSaturation - saturationDrop * w * (1f - iw) - pathSaturationDrop * path - ironSaturationDrop * iw + lakeSaturation * lw); // 철제 나무 길가는 숲 채도 내림 대신 따로
+            color.contrast.Override(baseContrast + contrastBoost * path - lakeContrastDrop * lw - roomContrastDrop * rw);
         }
     }
 }
