@@ -152,7 +152,7 @@ Shader "Manyworld/Water"
                 float blot = frac(sin(dot(floor(fp), float2(12.9898, 78.233))) * 43758.5453);
                 float wave = sin(thick * 9 - _Time.y * 1.6) * 0.5 + 0.5; // 물가로 밀려오는 줄
                 float foam = saturate(foamBand * foamBand * (0.55 + 0.45 * wave) * (0.6 + 0.4 * blot) * 1.6);
-                col = lerp(col, half3(0.93, 0.95, 0.96), foam * 0.8);
+                col = lerp(col, half3(0.8, 0.84, 0.86), foam * 0.45); // (0.8은 물가가 하얀 선으로 그어졌다. 목표 샷 05의 물가는 잔잔하다)
 
                 // 해 반짝임
                 Light sun = GetMainLight();

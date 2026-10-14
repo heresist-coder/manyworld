@@ -1754,7 +1754,7 @@ namespace Manyworld
             GameObject Pine(Vector3 p, float scale)
             {
                 // 벽은 줄기가 긴 각진 소나무로: 아래는 줄기 기둥, 위는 잎 (목표 샷 03, 기운 숲과 같은 나무)
-                var t = NatureKit.TallPine(go.transform, 13f * scale, rng, true); // 줄기 기둥이 높고 수관은 위에만 (11m 보통 소나무는 수관이 방 위를 어둡게 덮었다)
+                var t = NatureKit.TallPine(go.transform, 11f * scale, rng, true); // 줄기 기둥이 높고 수관은 위에만 (11m 보통 소나무는 수관이 방 위를 어둡게 덮었다)
                 t.name = "WallPine";
                 t.transform.position = p - Vector3.up * 0.15f;
                 t.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);

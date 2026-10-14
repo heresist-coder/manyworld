@@ -279,16 +279,26 @@ namespace Manyworld.Tests
             if (rb != null) rb.rotation = carRot;
             mc.Car.transform.rotation = carRot;
             mc.Car.Teleport(Ground(new Vector3(lakeCar.x, 0, lakeCar.y), 0.4f));
-            var standLake = lv + toLake * 3.5f + side * 3.2f; // 물속 집을 가리지 않게 오른쪽으로
+            // 목표 샷 05는 조용히 호수를 보는 장면: 근처 몬스터를 잠깐 치운다 (두 사람이 총을 겨누고 서 있었다)
+            var hiddenMonsters = new System.Collections.Generic.List<GameObject>();
+            foreach (var mo in mc.Monsters)
+                if (mo != null && mo.gameObject.activeSelf && Vector2.Distance(new Vector2(mo.transform.position.x, mo.transform.position.z), lv) < 80f)
+                {
+                    mo.gameObject.SetActive(false);
+                    hiddenMonsters.Add(mo.gameObject);
+                }
+            var standLake = lv + toLake * 4.5f - side * 1.2f; // 목표 샷 05: 차 옆 왼쪽 물가에 서서 호수를 본다
             mc.WarpParty(Ground(new Vector3(standLake.x, 0, standLake.y), 0.1f), Mathf.Atan2(toLake.x, toLake.y) * Mathf.Rad2Deg,
                 Ground(new Vector3(standLake.x - side.x * 1.2f, 0, standLake.y - side.y * 1.2f), 0.1f));
             yield return new WaitForSeconds(0.8f);
-            var lakeCamXZ = lv - toLake * 8.5f - side * 0.8f;
-            // 높이는 전망대 마당 기준 (뒤 언덕이 가팔라 카메라 발밑 기준이면 너무 높아졌다)
-            // 목표 샷 05는 언덕 위에서 호수를 내려다본다 (4.5m·9도는 수면을 스치듯 봐서 반사가 물속 집을 덮었다)
-            var lakeCam = new Vector3(lakeCamXZ.x, Ground(new Vector3(lv.x, 0, lv.y), 0f).y + 6.5f, lakeCamXZ.y);
-            float lakeDist = Vector2.Distance(lakeCamXZ, across);
-            yield return Shot("t05_lake.png", lakeCam, new Vector3(across.x, lakeCam.y - lakeDist * Mathf.Tan(13f * Mathf.Deg2Rad), across.y));
+            // 목표 샷 05 구도: 물가 오른쪽 뒤 약간 높은 곳. 차·두 사람은 왼쪽 앞, 물속 집은 아래 가운데, 위는 노을 하늘과 산
+            // (마당 뒤 8.5m에서 내려다보면 화면 아래 3분의 1이 밝은 흙 마당이었고 하늘이 안 보였다)
+            var lakeCamXZ = lv - toLake * 6.5f + side * 6.5f; // (물가 바로 위 1.5m 뒤는 차가 화면 밖, 두 사람이 왼쪽 아래 귀퉁이에 잘렸다)
+            var lakeCam = new Vector3(lakeCamXZ.x, Ground(new Vector3(lv.x, 0, lv.y), 0f).y + 5.5f, lakeCamXZ.y);
+            var lakeLook = lc + (lv - lc) * 0.3f - side * 11f;
+            float lakeDist = Vector2.Distance(lakeCamXZ, lakeLook);
+            yield return Shot("t05_lake.png", lakeCam, new Vector3(lakeLook.x, lakeCam.y - lakeDist * Mathf.Tan(7f * Mathf.Deg2Rad), lakeLook.y));
+            foreach (var mo in hiddenMonsters) mo.SetActive(true);
             hud.enabled = true;
             pc.target = keep;
             gm.EnterHub();

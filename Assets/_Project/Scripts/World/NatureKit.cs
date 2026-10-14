@@ -266,8 +266,9 @@ namespace Manyworld
                 tallPineMats = new[]
                 {
                     RockMat(new Color(0.3f, 0.22f, 0.17f)), RockMat(new Color(0.26f, 0.2f, 0.16f)), // 볕에 붉게 떠서 채도를 낮췄다
-                    // 잎: 올리브 짙은 초록 (목표 샷 04·05). 0.3대 초록은 초원 볕에서 장난감처럼 떴다
-                    RockMat(new Color(0.18f, 0.24f, 0.14f)), RockMat(new Color(0.16f, 0.22f, 0.14f)), RockMat(new Color(0.21f, 0.26f, 0.15f)),
+                    // 잎: 올리브 짙은 초록 (목표 샷 04·05). 0.3대 초록은 초원 볕에서 장난감처럼 떴다.
+                    // (0.18,0.24,0.14)는 숲 그늘 쪽이 목표의 절반 밝기였다: 02 왼쪽 34 vs 73, 04 가운데 48 vs 83, 05 위 37 vs 68 (it149)
+                    RockMat(new Color(0.21f, 0.27f, 0.16f)), RockMat(new Color(0.19f, 0.25f, 0.16f)), RockMat(new Color(0.24f, 0.29f, 0.17f)),
                 };
                 foreach (var m in tallPineMats) m.name = "TallPine";
                 leafSets = new[] { LeafSet(tallPineMats[2].color), LeafSet(tallPineMats[3].color), LeafSet(tallPineMats[4].color) };
