@@ -116,6 +116,12 @@ namespace Manyworld
                 h[z, x] = Mathf.Lerp(h[z, x], Mathf.Min(h[z, x], Mathf.Max(0.5f, bed)), w);
             });
 
+            // 3c) 호수 전망대: 차를 세울 평평한 흙 마당 (목표 샷 05: 물가 높은 길에 차와 두 사람). 숲으로 흙길이 이어진다
+            {
+                float padY = Sample(h, LakeView.x, LakeView.y);
+                ForCells(LakeView, 14f, (x, z, d) => h[z, x] = Mathf.Lerp(h[z, x], padY, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(14f, 7f, d))));
+            }
+
             // 4) 지형
             var td = new TerrainData { heightmapResolution = Res, size = new Vector3(Size, MaxHeight, Size) };
             var norm = new float[Res, Res];
@@ -151,7 +157,7 @@ namespace Manyworld
             // 물속·철제 나무 자리에 떨어진 바위는 치운다 (뒤 배치의 rng 순서를 바꾸지 않게 놓은 뒤에 거른다)
             var drop = new List<GameObject>();
             foreach (Transform c in root)
-                if ((c.name == "Rock" || c.name == "Pebble") && (LakeT(c.position.x, c.position.z) < 1.03f || Vector2.Distance(new Vector2(c.position.x, c.position.z), IronTree) < 4f))
+                if ((c.name == "Rock" || c.name == "Pebble") && (LakeT(c.position.x, c.position.z) < 1.03f || Vector2.Distance(new Vector2(c.position.x, c.position.z), IronTree) < 4f || LakeTrackDistance(c.position.x, c.position.z) < 3f))
                     drop.Add(c.gameObject);
             foreach (var d in drop) Kill(d);
             PlaceMountains(root, rng);
@@ -365,7 +371,8 @@ namespace Manyworld
                 // 호수: 물가는 모래흙, 깊은 바닥은 바위 (목표 샷 05의 물속 돌바닥)
                 float lakeT = LakeT(wx, wz);
                 float shore = Mathf.InverseLerp(1.12f, 1.0f, lakeT) * Mathf.InverseLerp(0.45f, 0.8f, lakeT);
-                float dirt = Mathf.Max(Mathf.Max(Mathf.Max(road, sandy), Mathf.Max(trail, floor)), shore);
+                float lakeTrack = Mathf.Clamp01(Mathf.InverseLerp(2.6f, 1.3f, LakeTrackDistance(wx, wz)) + jitter * 0.5f) * 0.9f;
+                float dirt = Mathf.Max(Mathf.Max(Mathf.Max(road, sandy), Mathf.Max(trail, floor)), Mathf.Max(shore, lakeTrack));
                 float rock = Mathf.Max(Mathf.InverseLerp(50f, 64f, slope), Mathf.InverseLerp(0.8f, 0.45f, lakeT)) * (1f - dirt); // 산비탈도 대부분 숲 바닥
                 float forest = Sample(forestG, wx, wz);
                 // 마른 풀: 노이즈 얼룩과 길 어깨 (목표 샷 01 초원은 올리브 초록이 주. 길 어깨 0.7·얼룩 0.55부터는 오른쪽 언덕이 노랗게 떴다)
@@ -463,7 +470,7 @@ namespace Manyworld
                     lightmapColor = Color.white,
                 };
                 // 호수·철제 나무·호수 전망 자리는 비운다 (rng를 다 뽑은 뒤에 걸러 다른 배치가 그대로)
-                if (LakeT(px, pz) < 1.12f || Vector2.Distance(p2, IronTree) < 22f || Vector2.Distance(p2, IronView) < 8f || InLakeSight(p2)) continue; // 철제 나무 둘레는 PlaceIronTree가 소나무로 채운다
+                if (LakeT(px, pz) < 1.12f || Vector2.Distance(p2, IronTree) < 22f || Vector2.Distance(p2, IronView) < 8f || InLakeSight(p2) || LakeTrackDistance(px, pz) < 5f) continue; // 철제 나무 둘레는 PlaceIronTree가 소나무로 채운다
                 list.Add(inst);
             }
             td.SetTreeInstances(list.ToArray(), true);
@@ -497,7 +504,7 @@ namespace Manyworld
                 float px = x + (float)(rng.NextDouble() - 0.5) * step, pz = z + (float)(rng.NextDouble() - 0.5) * step;
                 float rd = Sample(roadDist, px, pz);
                 // 방 안은 비우되 벽 밑 1.5m에는 풀이 붙는다
-                if (rd < 4.6f || Sample(trailDist, px, pz) < 2f || InRoom(px, pz, -1.5f) || NatureKit.UnderRock(px, pz) || LakeT(px, pz) < 1.05f) continue;
+                if (rd < 4.6f || Sample(trailDist, px, pz) < 2f || InRoom(px, pz, -1.5f) || NatureKit.UnderRock(px, pz) || LakeT(px, pz) < 1.05f || LakeTrackDistance(px, pz) < 2.4f) continue;
                 float forest = ForestMask(px, pz);
                 // 풀은 고르게 심긴 밭이 아니라 무더기로 뭉친다. 길가 어깨는 빽빽하고 키가 크다
                 float big = Mathf.PerlinNoise(px * 0.04f + 3f, pz * 0.04f + 7f);
@@ -659,6 +666,24 @@ namespace Manyworld
                     var p = c + new Vector2((float)(rng.NextDouble() - 0.5) * 5f, (float)(rng.NextDouble() - 0.5) * 5f);
                     NatureKit.Boulder(root, G(p), (k == 0 ? 0.9f : 0.4f) + (float)rng.NextDouble() * 0.8f, rng, k == 0, "MeadowRock");
                 }
+            }
+
+            // 목표 샷 01: 울타리가 휜 길을 따라 멀리까지 이어지고, 길 오른쪽 초원에도 둥근 나무가 선다 (따로 된 rng: 위 배치는 그대로)
+            var more = new System.Random(seed * 131 + 7);
+            FenceRun(root, terrain, road, 80, Mathf.Min(road.Count - 2, 128), more);
+            for (int i = 0, placed = 0; i < 40 && placed < 8 && art != null && art.meadowTrees != null && art.meadowTrees.Length > 0; i++)
+            {
+                float ahead = 30f + (float)more.NextDouble() * 110f;
+                var p = CarStart + dir * ahead - left * (20f + (float)more.NextDouble() * 50f);
+                if (!Free(p) || Sample(roadDist, p.x, p.y) < 16f) continue;
+                var prefab = ArtCatalog.Pick(art.meadowTrees, more.Next(100));
+                if (prefab == null) continue;
+                var t = Object.Instantiate(prefab, root);
+                t.name = "MeadowTree";
+                t.transform.SetPositionAndRotation(G(p) - Vector3.up * 0.2f, Quaternion.Euler(0, (float)more.NextDouble() * 360f, 0));
+                t.transform.localScale = Vector3.one * (0.8f + (float)more.NextDouble() * 0.5f);
+                NatureKit.Footprints.Add(p.x, p.y, 2.5f);
+                placed++;
             }
         }
 
@@ -1103,12 +1128,22 @@ namespace Manyworld
                 }
             }
 
-            // 나무 울타리: 길 왼쪽을 따라 기둥 + 가로대 두 줄 (군데군데 끊기고 기운다). 신티 울타리는 기둥뿐이라 직접 짠다
+            // 나무 울타리: 길 왼쪽을 따라 (출발점 앞 160m). 더 먼 구간은 PlaceMeadowAccents가 따로 된 rng로 잇는다
+            FenceRun(root, terrain, road, 6, Mathf.Min(road.Count - 2, 80), rng);
+        }
+
+        /// <summary>
+        /// 나무 울타리: 길 왼쪽 8.5m를 따라 기둥 + 가로대 두 줄 (군데군데 끊기고 기운다). 신티 울타리는 기둥뿐이라 직접 짠다.
+        /// road 점 [from, to) 구간.
+        /// </summary>
+        static void FenceRun(Transform root, Terrain terrain, List<Vector2> road, int from, int to, System.Random rng)
+        {
+            Vector3 G(Vector2 p) => new Vector3(p.x, terrain.SampleHeight(new Vector3(p.x, 0, p.y)), p.y);
             var wood = Graybox.Mat(new Color(0.36f, 0.27f, 0.19f));
             Vector3 prev = Vector3.zero;
             bool havePrev = false;
             float acc = 0f;
-            for (int i = 6; i < Mathf.Min(road.Count - 2, 80); i++)
+            for (int i = Mathf.Max(1, from); i < to; i++)
             {
                 acc += Vector2.Distance(road[i], road[i - 1]);
                 if (acc < 2.6f) continue;
@@ -1255,6 +1290,18 @@ namespace Manyworld
         /// <summary>물속 집 자리: 호수 가운데에서 전망 쪽으로 (가까워야 반사에 묻히지 않고 물속이 보인다).</summary>
         static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.42f;
 
+        /// <summary>호수 전망대에서 숲으로 나가는 흙길 (전망대 → 바깥쪽 38m, 조금 북쪽으로 굽는다)까지의 거리.</summary>
+        public static float LakeTrackDistance(float x, float z)
+        {
+            var away = (LakeView - LakeCenter).normalized;
+            var bendDir = new Vector2(away.x * 0.94f - away.y * 0.34f, away.x * 0.34f + away.y * 0.94f); // 20° 돈다
+            var a = LakeView; var b = LakeView + bendDir * 38f;
+            var p = new Vector2(x, z);
+            var ab = b - a;
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+            return Mathf.Min(Vector2.Distance(p, a + ab * t), Vector2.Distance(p, LakeView) - 5f); // 전망대 마당(반지름 약 7m)도 길로 친다
+        }
+
         /// <summary>전망 자리에서 호수로 열린 시야 쐐기 (나무를 심지 않는다).</summary>
         static bool InLakeSight(Vector2 p)
         {
@@ -1399,7 +1446,7 @@ namespace Manyworld
                 float ang = (float)rng.NextDouble() * Mathf.PI * 2f;
                 float tt = 1.04f + (float)rng.NextDouble() * 0.5f;
                 var p = LakeCenter + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * LakeShoreRadius(ang, tt);
-                if (InLakeSight(p)) continue;
+                if (InLakeSight(p) || LakeTrackDistance(p.x, p.y) < 4f) continue;
                 if (i < 34)
                 {
                     var g = G(p);

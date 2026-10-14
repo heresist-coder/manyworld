@@ -247,7 +247,24 @@ namespace Manyworld.Tests
             var lc = ForestSiteBuilder.LakeCenter;
             // (물가 언덕 위 높이 4m에선 수면 반사가 물속 집을 가렸다 → 목표처럼 높이 내려다본다)
             var across = lc + (lc - lv) * 0.25f;
-            yield return Shot("t05_lake.png", Ground(new Vector3(lv.x, 0, lv.y), 8f), new Vector3(across.x, ForestSiteBuilder.LakeWaterY + 1f, across.y));
+            // 전망대 평평한 마당에 차를 세우고 두 사람이 물가 쪽에 서서 호수를 본다 (목표 샷 05)
+            var toLake = (lc - lv).normalized;
+            var side = new Vector2(toLake.y, -toLake.x);
+            var lakeCar = lv + toLake * 1.5f - side * 3.6f;
+            var carRot = Quaternion.LookRotation(new Vector3(side.x, 0, side.y));
+            var rb = mc.Car.GetComponent<Rigidbody>();
+            if (rb != null) rb.rotation = carRot;
+            mc.Car.transform.rotation = carRot;
+            mc.Car.Teleport(Ground(new Vector3(lakeCar.x, 0, lakeCar.y), 0.4f));
+            var standLake = lv + toLake * 3.5f + side * 0.6f;
+            mc.WarpParty(Ground(new Vector3(standLake.x, 0, standLake.y), 0.1f), Mathf.Atan2(toLake.x, toLake.y) * Mathf.Rad2Deg,
+                Ground(new Vector3(standLake.x - side.x * 1.2f, 0, standLake.y - side.y * 1.2f), 0.1f));
+            yield return new WaitForSeconds(0.8f);
+            var lakeCamXZ = lv - toLake * 8.5f - side * 0.8f;
+            // 높이는 전망대 마당 기준 (뒤 언덕이 가팔라 카메라 발밑 기준이면 너무 높아졌다)
+            var lakeCam = new Vector3(lakeCamXZ.x, Ground(new Vector3(lv.x, 0, lv.y), 0f).y + 4.5f, lakeCamXZ.y);
+            float lakeDist = Vector2.Distance(lakeCamXZ, across);
+            yield return Shot("t05_lake.png", lakeCam, new Vector3(across.x, lakeCam.y - lakeDist * Mathf.Tan(9f * Mathf.Deg2Rad), across.y));
             hud.enabled = true;
             pc.target = keep;
             gm.EnterHub();
