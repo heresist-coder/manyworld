@@ -180,7 +180,7 @@ namespace Manyworld.Tests
             // 목표 샷 01 구도: 오른쪽 뒤 높은 곳에서 길을 따라. 차는 왼쪽, 바위 무더기는 오른쪽 앞
             // (길이 차 앞 40m에서 오른쪽으로 휘므로 시선도 길을 따라 오른쪽으로: 차가 화면 왼쪽 아래에 온다)
             // (11m 뒤 6.5m 높이는 차가 너무 작고 멀었다)
-            yield return Shot("t01_road.png", Ground(car.position - car.forward * 7.5f + car.right * 4f, 4.4f), car.position + car.forward * 50f + car.right * 4f + Vector3.up * 2.5f);
+            yield return Shot("t01_road.png", Ground(car.position - car.forward * 5.5f + car.right * 3.2f, 3.4f), car.position + car.forward * 45f + car.right * 7f + Vector3.up * 3f);
             yield return Shot("t01_chase.png", Ground(car.position - car.forward * 7f + car.right * 1.4f, 2.1f), car.position + car.forward * 50f - car.right * 8f + Vector3.up * 6f);
             yield return Shot("t01_wide.png", Ground(car.position - car.forward * 12f - car.right * 3f, 3.5f), car.position + car.forward * 120f + Vector3.up * 20f);
             yield return Shot("aerial.png", new Vector3(170, 250, 120), new Vector3(430, 40, 470));
@@ -252,14 +252,17 @@ namespace Manyworld.Tests
                 if (crb != null) crb.rotation = cr;
                 mc.Car.transform.rotation = cr;
                 mc.Car.Teleport(Ground(new Vector3(carAt.x, 0, carAt.y), 0.4f));
-                var partyAt = spot + toIron * 2.6f + roadDir * 1.4f;
+                var partyAt = carAt - roadDir * 2.4f + toIron * 1.6f; // 차 오른쪽 (카메라에서 보아)
                 mc.WarpParty(Ground(new Vector3(partyAt.x, 0, partyAt.y), 0.1f), Mathf.Atan2(toIron.x, toIron.y) * Mathf.Rad2Deg,
-                    Ground(new Vector3(partyAt.x + roadDir.x * 1.1f, 0, partyAt.y + roadDir.y * 1.1f), 0.1f));
+                    Ground(new Vector3(partyAt.x - roadDir.x * 1.1f, 0, partyAt.y - roadDir.y * 1.1f), 0.1f));
                 yield return new WaitForSeconds(0.8f);
             }
             var ironBase = Ground(new Vector3(iron.x, 0, iron.y), 0f);
-            var camXZ = spot - toIron * 9f - roadDir * 5f;
-            var camIron = new Vector3(camXZ.x, Ground(new Vector3(spot.x, 0, spot.y), 0f).y + 3.2f, camXZ.y);
+            // 목표 샷 04: 차 바로 뒤 오른쪽에서. 차는 왼쪽 아래 크게, 두 사람은 그 오른쪽, 철제 나무는 가운데
+            // (9m 뒤 3.2m 높이는 차가 가운데 작게 나왔다)
+            var carXZ = spot - roadDir * 2.5f + toIron * 0.8f;
+            var camXZ = carXZ - toIron * 6.6f - roadDir * 3.4f;
+            var camIron = new Vector3(camXZ.x, Ground(new Vector3(spot.x, 0, spot.y), 0f).y + 3.1f, camXZ.y);
             yield return Shot("t04_iron.png", camIron, Vector3.Lerp(Ground(new Vector3(spot.x, 0, spot.y), 1f), ironBase + Vector3.up * 13f, 0.7f));
 
             // 목표 샷 05 구도: 남동쪽 물가 언덕에서 호수 너머 북서쪽 산. 물속 집이 앞쪽에 보인다
