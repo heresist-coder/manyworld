@@ -1322,7 +1322,9 @@ namespace Manyworld
             // 프리팹의 충돌 메시(신티 _Collision, 읽기 가능)에만 쏘고 다 쓰면 지운다 (집 본 메시는 읽기 불가)
             var temp = house.GetComponentsInChildren<Collider>();
             Physics.SyncTransforms();
-            var glass = Graybox.Mat(new Color(1f, 0.62f, 0.3f), true);
+            // 창: 물에 먹히고 노을 반사에 덮여도 읽히게 HDR로 밝게 (목표 샷 05의 따뜻한 창 불빛)
+            var glass = new Material(Graybox.Mat(new Color(1f, 0.62f, 0.3f), true)) { name = "WindowGlow" };
+            glass.SetColor("_EmissionColor", new Color(1f, 0.62f, 0.3f) * 7f);
             int windows = 0;
             var faceRight = Vector3.Cross(Vector3.up, house.transform.forward);
             foreach (var face in new[] { house.transform.forward, -house.transform.forward, faceRight, -faceRight })
@@ -1343,7 +1345,7 @@ namespace Manyworld
                     Kill(pane.GetComponent<Collider>());
                     pane.GetComponent<Renderer>().sharedMaterial = glass;
                     pane.transform.SetPositionAndRotation(best.point + best.normal * 0.04f, Quaternion.LookRotation(-best.normal));
-                    pane.transform.localScale = new Vector3(0.9f, 1.1f, 1f);
+                    pane.transform.localScale = new Vector3(1.1f, 1.35f, 1f);
                     windows++;
                 }
             }
@@ -1358,8 +1360,8 @@ namespace Manyworld
                 l.transform.position = hb.center + dir * (ext * 0.75f + 0.6f) + Vector3.up * (hb.size.y * (up - 0.5f));
                 l.type = LightType.Point;
                 l.color = warm;
-                l.range = 8f;
-                l.intensity = 9f; // 물에 먹혀도 창 불빛이 읽히게
+                l.range = 5f;
+                l.intensity = 2.5f; // 창 둘레만 은은하게 (9는 집 전체를 청록으로 밝혀 빛나는 창이 묻혔다)
                 l.shadows = LightShadows.None;
             }
 
