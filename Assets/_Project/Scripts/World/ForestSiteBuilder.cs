@@ -1444,9 +1444,9 @@ namespace Manyworld
             var g = new Vector3(IronTree.x, 0, IronTree.y);
             g.y = terrain.SampleHeight(g) - 0.3f;
             go.transform.SetPositionAndRotation(g, Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0));
-            var steel = new Color(0.3f, 0.31f, 0.33f); // (0.52·0.4는 볕에서 하얀 막대로 떴다)
+            var steel = new Color(0.21f, 0.22f, 0.24f); // (0.52·0.4·0.3은 볕에서 밝은 막대로 떴다. 목표 샷 04의 기둥은 숲 그늘 속 짙은 회색)
             var dark = new Color(0.17f, 0.18f, 0.19f);
-            var paint = new Color(0.55f, 0.56f, 0.53f);
+            var paint = new Color(0.44f, 0.45f, 0.43f);
             // 둘레 소나무 숲 (목표 샷 04: 철제 나무가 곧은 소나무들 사이에 섞여 있다). 길과 길에서 보는 시선은 비운다
             var roadSpot = new Vector2(394f, 330f);
             for (int i = 0, placed = 0; i < 600 && placed < 60; i++)

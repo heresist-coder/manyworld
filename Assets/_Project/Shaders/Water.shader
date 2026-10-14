@@ -12,7 +12,7 @@ Shader "Manyworld/Water"
         _Reflect ("반사 세기", Range(0, 1)) = 0.85
         _WaveScale ("물결 크기 (m)", Float) = 9
         _WaveStrength ("물결 기울기", Float) = 0.022
-        _Refraction ("굴절", Float) = 0.03
+        _Refraction ("굴절", Float) = 0.01
     }
     SubShader
     {
@@ -58,17 +58,19 @@ Shader "Manyworld/Water"
                 return o;
             }
 
-            // 사인파 세 개 (방향·파장·속도 다르게)의 높이 기울기
+            // 사인파 여섯 개 (방향·파장·속도가 서로 어긋나게)의 높이 기울기.
+            // 셋일 땐 큰 물결이 너무 규칙적이라 반사에 등고선 같은 줄무늬가 졌다 → 큰 파는 약하게, 잔물결을 섞는다
             float2 WaveSlope(float2 p, float t)
             {
                 float2 g = 0;
-                float2 d[3] = { float2(0.8, 0.6), float2(-0.45, 0.9), float2(0.2, -1.0) };
-                float l[3] = { 1.0, 0.57, 0.31 };
-                [unroll] for (int k = 0; k < 3; k++)
+                float2 d[6] = { float2(0.8, 0.6), float2(-0.45, 0.89), float2(0.2, -0.98), float2(-0.93, -0.37), float2(0.61, -0.79), float2(-0.1, 0.99) };
+                float l[6] = { 1.0, 0.61, 0.37, 0.23, 0.17, 0.11 };
+                float a[6] = { 0.35, 0.45, 0.5, 0.45, 0.4, 0.35 };
+                [unroll] for (int k = 0; k < 6; k++)
                 {
                     float w = 6.2831 / (_WaveScale * l[k]);
-                    float ph = dot(d[k], p) * w + t * (1.2 + k * 0.7);
-                    g += d[k] * cos(ph) * l[k];
+                    float ph = dot(d[k], p) * w + t * (1.1 + k * 0.53);
+                    g += d[k] * cos(ph) * a[k];
                 }
                 return g * _WaveStrength;
             }
@@ -84,6 +86,7 @@ Shader "Manyworld/Water"
                 float sceneEye = LinearEyeDepth(SampleSceneDepth(uv), _ZBufferParams);
                 float thick = max(0, sceneEye - waterEye);
                 // 굴절: 물보다 앞에 있는 물체를 끌어오지 않게 다시 확인
+                // (깊은 물에서 굴절이 크면 바닥 질감이 물결을 따라 휘어 등고선 같은 줄무늬가 졌다 → 작게, 3m 이상에서 고정)
                 float2 uv2 = uv + n.xz * _Refraction * saturate(thick * 0.3);
                 float sceneEye2 = LinearEyeDepth(SampleSceneDepth(uv2), _ZBufferParams);
                 if (sceneEye2 < waterEye) uv2 = uv; else thick = sceneEye2 - waterEye;
