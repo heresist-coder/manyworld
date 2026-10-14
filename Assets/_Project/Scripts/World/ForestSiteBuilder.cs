@@ -1504,7 +1504,7 @@ namespace Manyworld
                 {
                     var p = view + toLakeDir * (3f + (float)slopeRng.NextDouble() * 7f) + sideDir * (5f + (float)slopeRng.NextDouble() * 8f);
                     // 전망 자리(마당 뒤 오른쪽)에서 물속 집을 보는 시선 오른쪽으로만 (집 앞에 놓인 큰 바위가 창을 가렸다)
-                    var seat = view - toLakeDir * 6.5f + sideDir * 4.6f;
+                    var seat = view - toLakeDir * 8f + sideDir * 4.6f;
                     var sight = (housePos - seat).normalized;
                     float right = Vector2.Dot(p - seat, new Vector2(sight.y, -sight.x));
                     if (LakeT(p.x, p.y) < 1.02f || NatureKit.UnderRock(p.x, p.y) || right < 3.5f) continue;

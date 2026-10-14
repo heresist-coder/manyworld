@@ -313,6 +313,7 @@ namespace Manyworld
             grade.color = WorldLook.LastColor;
             grade.baseExposure = WorldLook.Field.postExposure;
             grade.baseSaturation = WorldLook.Field.saturation;
+            grade.baseContrast = WorldLook.Field.contrast;
             // 공기 원근: 먼 숲과 산이 푸르게 물러난다
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
