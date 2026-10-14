@@ -247,6 +247,14 @@ namespace Manyworld.Tests
             var lc = ForestSiteBuilder.LakeCenter;
             // (물가 언덕 위 높이 4m에선 수면 반사가 물속 집을 가렸다 → 목표처럼 높이 내려다본다)
             var across = lc + (lc - lv) * 0.25f;
+            // 진단: 물속 집을 위에서 (위치·깊이 확인)
+            var sunk = GameObject.Find("SubmergedHouse");
+            if (sunk != null)
+            {
+                var hb = ArtCatalog.RendererBounds(sunk);
+                Debug.Log($"[Diag] 물속 집 중심 {hb.center} 꼭대기 {hb.max.y:F1} 수면 {ForestSiteBuilder.LakeWaterY:F1}");
+                yield return Shot("diag_house.png", hb.center + new Vector3(0, ForestSiteBuilder.LakeWaterY - hb.center.y + 18f, -14f), hb.center);
+            }
             // 전망대 평평한 마당에 차를 세우고 두 사람이 물가 쪽에 서서 호수를 본다 (목표 샷 05)
             var toLake = (lc - lv).normalized;
             var side = new Vector2(toLake.y, -toLake.x);
@@ -256,7 +264,7 @@ namespace Manyworld.Tests
             if (rb != null) rb.rotation = carRot;
             mc.Car.transform.rotation = carRot;
             mc.Car.Teleport(Ground(new Vector3(lakeCar.x, 0, lakeCar.y), 0.4f));
-            var standLake = lv + toLake * 3.5f + side * 0.6f;
+            var standLake = lv + toLake * 3.5f + side * 3.2f; // 물속 집을 가리지 않게 오른쪽으로
             mc.WarpParty(Ground(new Vector3(standLake.x, 0, standLake.y), 0.1f), Mathf.Atan2(toLake.x, toLake.y) * Mathf.Rad2Deg,
                 Ground(new Vector3(standLake.x - side.x * 1.2f, 0, standLake.y - side.y * 1.2f), 0.1f));
             yield return new WaitForSeconds(0.8f);

@@ -111,7 +111,7 @@ namespace Manyworld
                 float bed = t < 1f ? LakeWaterY - 0.7f - LakeDepth * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 1f, t)))
                                    : LakeWaterY - 0.7f + (t - 1f) * LakeRadius * 0.22f;
                 float mound = Vector2.Distance(new Vector2(x * Cell, z * Cell), LakeHousePos);
-                bed = Mathf.Max(bed, Mathf.Lerp(LakeWaterY - 11.5f, LakeWaterY - LakeDepth - 1f, Mathf.InverseLerp(9f, 20f, mound)));
+                bed = Mathf.Max(bed, Mathf.Lerp(LakeWaterY - 8f, LakeWaterY - LakeDepth - 1f, Mathf.InverseLerp(9f, 22f, mound))); // 둔덕 위 집 (높이 약 6.7m) 지붕이 수면 1.2m 아래
                 float w = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.6f, 1.25f, t));
                 h[z, x] = Mathf.Lerp(h[z, x], Mathf.Min(h[z, x], Mathf.Max(0.5f, bed)), w);
             });
@@ -504,7 +504,7 @@ namespace Manyworld
                 float px = x + (float)(rng.NextDouble() - 0.5) * step, pz = z + (float)(rng.NextDouble() - 0.5) * step;
                 float rd = Sample(roadDist, px, pz);
                 // 방 안은 비우되 벽 밑 1.5m에는 풀이 붙는다
-                if (rd < 4.6f || Sample(trailDist, px, pz) < 2f || InRoom(px, pz, -1.5f) || NatureKit.UnderRock(px, pz) || LakeT(px, pz) < 1.05f || LakeTrackDistance(px, pz) < 2.4f) continue;
+                if (rd < 4.6f || Sample(trailDist, px, pz) < 2f || InRoom(px, pz, -1.5f) || NatureKit.UnderRock(px, pz) || LakeT(px, pz) < 1.05f || LakeTrackDistance(px, pz) < 2.4f || (InLakeSight(new Vector2(px, pz)) && LakeT(px, pz) < 1.35f)) continue; // 전망대 앞 물가 풀은 비운다 (물속 집을 가렸다)
                 float forest = ForestMask(px, pz);
                 // 풀은 고르게 심긴 밭이 아니라 무더기로 뭉친다. 길가 어깨는 빽빽하고 키가 크다
                 float big = Mathf.PerlinNoise(px * 0.04f + 3f, pz * 0.04f + 7f);
@@ -1288,7 +1288,7 @@ namespace Manyworld
         }
 
         /// <summary>물속 집 자리: 호수 가운데에서 전망 쪽으로 (가까워야 반사에 묻히지 않고 물속이 보인다).</summary>
-        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.42f;
+        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.5f; // 전망대 앞 (차·두 사람과 한 화면에, 목표 샷 05. 0.64는 물가 풀 뒤에 숨었다)
 
         /// <summary>호수 전망대에서 숲으로 나가는 흙길 (전망대 → 바깥쪽 38m, 조금 북쪽으로 굽는다)까지의 거리.</summary>
         public static float LakeTrackDistance(float x, float z)
@@ -1360,9 +1360,10 @@ namespace Manyworld
             house.transform.rotation = Quaternion.LookRotation(new Vector3(toView.x, 0, toView.y)) * Quaternion.Euler(0, -30f, 0);
             var bed = G(housePos);
             var hb = ArtCatalog.RendererBounds(house);
-            float top = bed.y - 0.4f + hb.size.y;
-            float sinkMore = Mathf.Max(0f, top - (LakeWaterY - 1.6f)); // 지붕 끝이 수면 1.6m 아래가 되도록
-            house.transform.position += new Vector3(bed.x - hb.center.x, bed.y - 0.4f - sinkMore - hb.min.y, bed.z - hb.center.z);
+            // 지붕 끝을 수면 1.2m 아래에 맞춘다 (바닥에 맞추면 둔덕이 낮을 때 5m 넘게 잠겨 낮은 시선에선 보이지 않았다)
+            float baseY = Mathf.Min(bed.y - 0.4f, LakeWaterY - 1.2f - hb.size.y);
+            baseY = Mathf.Max(baseY, LakeWaterY - 1.2f - hb.size.y);
+            house.transform.position += new Vector3(bed.x - hb.center.x, baseY - hb.min.y, bed.z - hb.center.z);
             hb = ArtCatalog.RendererBounds(house);
 
             // 불 켜진 창: 바깥에서 집 가운데로 쏴 벽면을 찾고 그 앞에 빛나는 판을 붙인다.

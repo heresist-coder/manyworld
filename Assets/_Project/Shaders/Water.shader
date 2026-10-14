@@ -8,8 +8,8 @@ Shader "Manyworld/Water"
         _DeepColor ("깊은 물 색", Color) = (0.07, 0.25, 0.33, 1)
         _SkyColor ("비친 하늘 (위)", Color) = (0.45, 0.6, 0.82, 1)
         _HorizonColor ("비친 하늘 (지평)", Color) = (0.7, 0.76, 0.82, 1)
-        _Clarity ("맑기 (m당 흡수)", Float) = 0.06
-        _Reflect ("반사 세기", Range(0, 1)) = 0.85
+        _Clarity ("맑기 (m당 흡수)", Float) = 0.045
+        _Reflect ("반사 세기", Range(0, 1)) = 0.6 // (0.85는 낮은 시선에서 물속 집을 반사로 덮었다. 목표 샷 05는 물속이 비친다)
         _WaveScale ("물결 크기 (m)", Float) = 9
         _WaveStrength ("물결 기울기", Float) = 0.022
         _Refraction ("굴절", Float) = 0.01

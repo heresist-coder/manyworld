@@ -158,6 +158,15 @@ namespace Manyworld
 
         static Mesh[] tallPines;
         static Material[] tallPineMats;
+        static Material[][] leafSets;
+
+        /// <summary>잎 한 색의 세 층 (아래 0.78배·그대로·위 1.18배에 살짝 노랗게).</summary>
+        static Material[] LeafSet(Color c) => new[]
+        {
+            RockMat(new Color(c.r * 0.78f, c.g * 0.78f, c.b * 0.8f)),
+            RockMat(c),
+            RockMat(new Color(Mathf.Min(1f, c.r * 1.22f), Mathf.Min(1f, c.g * 1.18f), c.b * 1.05f)),
+        };
 
         /// <summary>
         /// 목표 샷 02의 기운 숲 소나무: 맨 줄기가 길게 드러나고 위쪽 절반에 각진 원뿔 층이 쌓인다.
@@ -171,7 +180,8 @@ namespace Manyworld
             var verts = new List<Vector3>();
             var norms = new List<Vector3>();
             var trunk = new List<int>();
-            var leaves = new List<int>();
+            // 잎은 아래·가운데·위 세 묶음 (아래가 어둡고 위가 밝다: 목표 샷의 층진 소나무는 위층이 볕을 받아 밝게 칠해져 있다)
+            var leafTiers = new[] { new List<int>(), new List<int>(), new List<int>() };
             // outward: 면이 바깥을 보게 하는 방향 (감는 순서를 거기에 맞춘다. 반대로 감겨 잎이 컬링되고 줄기 속만 보였다)
             void Tri(List<int> to, Vector3 a, Vector3 b, Vector3 c, Vector3 outward)
             {
@@ -219,6 +229,7 @@ namespace Manyworld
                 {
                     var a = ring[i]; var c = ring[(i + 1) % sides];
                     var side = (a + c) * 0.5f; side.y = 0f;
+                    var leaves = leafTiers[u < 0.34f ? 0 : u < 0.67f ? 1 : 2];
                     Tri(leaves, a, apex, c, side + Vector3.up * rad * 0.6f);
                     Tri(leaves, a, c, under, Vector3.down); // 밑면 (아래서 올려다볼 때 속이 비지 않게)
                 }
@@ -230,7 +241,7 @@ namespace Manyworld
                 float a0 = i * 72f * Mathf.Deg2Rad, a1 = (i + 1) * 72f * Mathf.Deg2Rad;
                 var p0 = new Vector3(Mathf.Cos(a0) * 0.03f, topBase, Mathf.Sin(a0) * 0.03f);
                 var p1 = new Vector3(Mathf.Cos(a1) * 0.03f, topBase, Mathf.Sin(a1) * 0.03f);
-                Tri(leaves, p0, new Vector3(0, topBase + 0.09f, 0), p1, (p0 + p1) * 0.5f - Vector3.up * topBase);
+                Tri(leafTiers[2], p0, new Vector3(0, topBase + 0.09f, 0), p1, (p0 + p1) * 0.5f - Vector3.up * topBase);
             }
             var mesh = new Mesh { name = "TallPine" };
             mesh.SetVertices(verts);
@@ -238,9 +249,9 @@ namespace Manyworld
             var uvs = new List<Vector2>(verts.Count);
             foreach (var p in verts) uvs.Add(new Vector2(p.x * 2f + 0.5f, p.y)); // 조명 굽기용
             mesh.SetUVs(0, uvs);
-            mesh.subMeshCount = 2;
+            mesh.subMeshCount = 4;
             mesh.SetTriangles(trunk, 0);
-            mesh.SetTriangles(leaves, 1);
+            for (int k = 0; k < 3; k++) mesh.SetTriangles(leafTiers[k], 1 + k);
             mesh.RecalculateBounds();
             return mesh;
         }
@@ -259,8 +270,12 @@ namespace Manyworld
                     RockMat(new Color(0.18f, 0.24f, 0.14f)), RockMat(new Color(0.16f, 0.22f, 0.14f)), RockMat(new Color(0.21f, 0.26f, 0.15f)),
                 };
                 foreach (var m in tallPineMats) m.name = "TallPine";
+                leafSets = new[] { LeafSet(tallPineMats[2].color), LeafSet(tallPineMats[3].color), LeafSet(tallPineMats[4].color) };
+                foreach (var set in leafSets) foreach (var m in set) m.name = "TallPineLeaf";
             }
         }
+
+        static Material[] PineMaterials(Material trunk, Material[] leaves) => new[] { trunk, leaves[0], leaves[1], leaves[2] };
 
         static GameObject[] forestPines;
 
@@ -274,7 +289,7 @@ namespace Manyworld
             if (forestPines == null)
             {
                 forestPines = new GameObject[6];
-                var leafDark = new[] { RockMat(new Color(0.12f, 0.17f, 0.12f)), RockMat(new Color(0.11f, 0.16f, 0.12f)), RockMat(new Color(0.13f, 0.18f, 0.12f)) };
+                var leafDark = new[] { LeafSet(new Color(0.12f, 0.17f, 0.12f)), LeafSet(new Color(0.11f, 0.16f, 0.12f)), LeafSet(new Color(0.13f, 0.18f, 0.12f)) };
                 for (int i = 0; i < 6; i++)
                 {
                     bool d = i >= 3;
@@ -286,7 +301,7 @@ namespace Manyworld
                     unit.name = "ForestPine";
                     var go = new GameObject(d ? "ForestPineDark" : "ForestPine", typeof(MeshFilter), typeof(MeshRenderer));
                     go.GetComponent<MeshFilter>().sharedMesh = unit;
-                    go.GetComponent<MeshRenderer>().sharedMaterials = new[] { tallPineMats[i % 2], d ? leafDark[i % 3] : tallPineMats[2 + i % 3] };
+                    go.GetComponent<MeshRenderer>().sharedMaterials = PineMaterials(tallPineMats[i % 2], d ? leafDark[i % 3] : leafSets[i % 3]);
                     var col = go.AddComponent<CapsuleCollider>(); // 지형 나무 충돌 (차가 줄기에 막힌다)
                     col.radius = 0.3f;
                     col.height = 6f;
@@ -307,7 +322,7 @@ namespace Manyworld
             var go = new GameObject("TallPine", typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(parent, false);
             go.GetComponent<MeshFilter>().sharedMesh = tallPines[rng.Next(tallPines.Length)];
-            go.GetComponent<MeshRenderer>().sharedMaterials = new[] { tallPineMats[rng.Next(2)], tallPineMats[2 + rng.Next(3)] };
+            go.GetComponent<MeshRenderer>().sharedMaterials = PineMaterials(tallPineMats[rng.Next(2)], leafSets[rng.Next(3)]);
             go.transform.localScale = Vector3.one * height;
             var col = go.AddComponent<CapsuleCollider>();
             col.radius = 0.019f;
