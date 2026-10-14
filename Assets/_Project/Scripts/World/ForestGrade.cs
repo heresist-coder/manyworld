@@ -13,7 +13,7 @@ namespace Manyworld
     {
         public ColorAdjustments color;
         public float baseExposure, baseSaturation;
-        public float exposureDrop = 0.7f, saturationDrop = 7f; // 12는 02 하늘 틈·줄기가 회색으로 죽었다 (it70)
+        public float exposureDrop = 0.15f, saturationDrop = 7f; // 12는 02 하늘 틈·줄기가 회색으로 죽었다 (it70). 노출 −0.7은 신티 숲 때 값: 각진 소나무 숲은 이미 어두워 03 바닥이 목표의 절반(62 vs 122)이었다 (it97)
         float w = -1f;
 
         void LateUpdate()

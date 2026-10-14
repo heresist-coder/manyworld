@@ -55,10 +55,13 @@ namespace Manyworld
             Bears.Add(b);
         }
 
+        // 네 번째 벽 나무를 묻는 깊이: 나무 키(최대 약 19m)보다 깊게 (16m일 땐 각진 소나무 꼭대기가 바닥 위로 솟았다)
+        const float BuryDepth = 24f;
+
         public void AddWallTree(Transform t, Vector3 up)
         {
             wall.Add((t, up));
-            t.position = up - Vector3.up * 16f;
+            t.position = up - Vector3.up * BuryDepth;
         }
 
         public Vector3 Local(Vector3 world) => Quaternion.Inverse(transform.rotation) * (world - transform.position);
@@ -251,7 +254,7 @@ namespace Manyworld
             bool solid = WallRaise > 0.55f;
             foreach (var (tree, up) in wall)
             {
-                tree.position = up - Vector3.up * (16f * (1f - ease));
+                tree.position = up - Vector3.up * (BuryDepth * (1f - ease));
                 foreach (var col in tree.GetComponentsInChildren<Collider>()) col.enabled = solid;
                 var ob = tree.GetComponent<NavMeshObstacle>();
                 if (ob != null) ob.enabled = solid;

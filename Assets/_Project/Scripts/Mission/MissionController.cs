@@ -304,7 +304,8 @@ namespace Manyworld
             WorldLook.Apply(WorldLook.Field, sun, transform, cam);
             // 하늘: 맑은 파란 그라데이션 (목표 샷 01·04 천정 133,173,225 → 지평 회청). 기본 절차 하늘은 한낮이 희뿌옇다. 환경광은 Trilight라 그대로
             var skyMat = Resources.Load<Material>("Materials/SkyGradient");
-            if (skyMat != null) RenderSettings.skybox = skyMat;
+            if (skyMat != null) RenderSettings.skybox = new Material(skyMat); // 사본 (호수 노을이 색을 바꾼다)
+            gameObject.AddComponent<LakeDusk>().sun = sun;
             var grade = gameObject.AddComponent<ForestGrade>();
             grade.color = WorldLook.LastColor;
             grade.baseExposure = WorldLook.Field.postExposure;

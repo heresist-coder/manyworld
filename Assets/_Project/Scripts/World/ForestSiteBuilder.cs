@@ -368,7 +368,8 @@ namespace Manyworld
                 float dirt = Mathf.Max(Mathf.Max(Mathf.Max(road, sandy), Mathf.Max(trail, floor)), shore);
                 float rock = Mathf.Max(Mathf.InverseLerp(50f, 64f, slope), Mathf.InverseLerp(0.8f, 0.45f, lakeT)) * (1f - dirt); // 산비탈도 대부분 숲 바닥
                 float forest = Sample(forestG, wx, wz);
-                float dry = Mathf.Clamp01(Mathf.InverseLerp(0.55f, 0.7f, Sample(dryG, wx, wz)) + Mathf.InverseLerp(6.5f, 3.6f, rd) * 0.7f + band * 0.45f);
+                // 마른 풀: 노이즈 얼룩과 길 어깨 (목표 샷 01 초원은 올리브 초록이 주. 길 어깨 0.7·얼룩 0.55부터는 오른쪽 언덕이 노랗게 떴다)
+                float dry = Mathf.Clamp01(Mathf.InverseLerp(0.6f, 0.74f, Sample(dryG, wx, wz)) + Mathf.InverseLerp(6.5f, 3.6f, rd) * 0.4f + band * 0.45f);
                 float rest = Mathf.Max(0f, 1f - dirt - rock);
                 // 바퀴 자국 두 줄과 닳은 길 가장자리
                 float rut = road * (Mathf.Exp(-(rd - 1.35f) * (rd - 1.35f) * 4f) * 0.6f + Mathf.InverseLerp(3.1f, 4.6f, rd) * 0.45f);
@@ -414,13 +415,14 @@ namespace Manyworld
             var protos = new List<TreePrototype>();
             if (hasArt)
             {
-                foreach (var t in art.pines) if (t != null) protos.Add(new TreePrototype { prefab = t });
+                // 숲은 직접 만든 각진 소나무 (목표 샷의 소나무는 모두 층진 원뿔. 신티 소나무와 섞이면 그림체가 갈렸다). 초원 활엽수는 신티 그대로
+                foreach (var t in NatureKit.ForestPinePrototypes(false)) protos.Add(new TreePrototype { prefab = t });
                 if (art.meadowTrees != null) foreach (var t in art.meadowTrees) if (t != null) protos.Add(new TreePrototype { prefab = t });
             }
             else protos.Add(new TreePrototype { prefab = FallbackPine() });
-            int pineCount = hasArt ? art.pines.Length : 1;
+            int pineCount = hasArt ? 3 : 1; // (신티 소나무도 셋이었다: rng 순서가 그대로)
             int meadowEnd = protos.Count;
-            if (hasArt && art.pinesDark != null) foreach (var t in art.pinesDark) if (t != null) protos.Add(new TreePrototype { prefab = t });
+            if (hasArt) foreach (var t in NatureKit.ForestPinePrototypes(true)) protos.Add(new TreePrototype { prefab = t });
             int darkCount = protos.Count - meadowEnd;
             td.treePrototypes = protos.ToArray();
 
@@ -903,7 +905,7 @@ namespace Manyworld
         static void SolidRidge(Transform root, float inner, float outer, float minH, float maxH, Color color, float seed)
         {
             var center = new Vector3(Size / 2, 0, Size / 2);
-            const int seg = 300, rows = 9;
+            const int seg = 420, rows = 12;
             const float baseY = 60f;
             float HeightAt(float a, float t)
             {
@@ -930,15 +932,21 @@ namespace Manyworld
             }
             var verts = new List<Vector3>();
             var norms = new List<Vector3>();
-            var tris = new List<int>();
+            // 면마다 숲 세 가지 초록 중 하나, 높고 가파른 면은 바위: 먼 비탈에 나무가 점점이 덮인 결 (단색 면은 종이 산 같았다)
+            var subs = new[] { new List<int>(), new List<int>(), new List<int>(), new List<int>() };
+            var faceRng = new System.Random((int)(seed * 1000f));
+            float topY = baseY + maxH;
             void Tri(Vector3 a, Vector3 b, Vector3 c)
             {
                 var n = Vector3.Cross(b - a, c - a).normalized;
                 if (Vector3.Dot(n, Vector3.up) < 0f) { (b, c) = (c, b); n = -n; } // 위(하늘)를 보게
+                float hgt = Mathf.InverseLerp(baseY, topY, (a.y + b.y + c.y) / 3f);
+                bool rock = hgt > 0.62f && (n.y < 0.75f || faceRng.NextDouble() < 0.5) || hgt > 0.85f;
+                var to = rock ? subs[3] : subs[faceRng.Next(3)];
                 int k = verts.Count;
                 verts.Add(a); verts.Add(b); verts.Add(c);
                 norms.Add(n); norms.Add(n); norms.Add(n);
-                tris.Add(k); tris.Add(k + 1); tris.Add(k + 2);
+                to.Add(k); to.Add(k + 1); to.Add(k + 2);
             }
             for (int i = 0; i < seg; i++)
             for (int r = 0; r < rows - 1; r++)
@@ -949,15 +957,20 @@ namespace Manyworld
             var mesh = new Mesh { name = "SolidRidge", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
             mesh.SetVertices(verts);
             mesh.SetNormals(norms);
-            mesh.SetTriangles(tris, 0);
+            mesh.subMeshCount = 4;
+            for (int i = 0; i < 4; i++) mesh.SetTriangles(subs[i], i);
             mesh.RecalculateBounds();
             var go = new GameObject("FarMountain", typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(root, false);
             go.GetComponent<MeshFilter>().sharedMesh = mesh;
             var mr = go.GetComponent<MeshRenderer>();
-            var mat = NatureKit.RockMat(color);
-            mat.name = "SolidRidge";
-            mr.sharedMaterial = mat;
+            var mats = new[]
+            {
+                NatureKit.RockMat(color), NatureKit.RockMat(new Color(color.r * 0.82f, color.g * 0.82f, color.b * 0.82f)), NatureKit.RockMat(new Color(color.r * 1.1f, color.g * 1.12f, color.b * 0.95f)),
+                NatureKit.RockMat(Color.Lerp(color, new Color(0.42f, 0.42f, 0.42f), 0.55f)), // 바위 산마루
+            };
+            foreach (var m in mats) m.name = "SolidRidge";
+            mr.sharedMaterials = mats;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
         }
@@ -1626,14 +1639,11 @@ namespace Manyworld
             // 벽: 세 면은 두 줄로 빽빽하게 (안쪽 줄은 정확한 직선)
             GameObject Pine(Vector3 p, float scale)
             {
-                // 벽은 줄기가 긴 큰 소나무로: 아래는 줄기 기둥, 위는 잎 (목표 샷 03)
-                var prefab = art != null && art.pines != null && art.pines.Length > 2 ? art.pines[2] : art != null ? ArtCatalog.Pick(art.pines, rng.Next(100)) : null;
-                GameObject t = prefab != null ? Object.Instantiate(prefab, go.transform) : Object.Instantiate(FallbackPine(), go.transform);
-                t.SetActive(true);
+                // 벽은 줄기가 긴 각진 소나무로: 아래는 줄기 기둥, 위는 잎 (목표 샷 03, 기운 숲과 같은 나무)
+                var t = NatureKit.TallPine(go.transform, 11f * scale, rng); // (15m·스케일은 수관 그림자가 방 바닥을 덮어 어두웠다)
                 t.name = "WallPine";
                 t.transform.position = p - Vector3.up * 0.15f;
                 t.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);
-                t.transform.localScale = Vector3.one * scale;
                 return t;
             }
             const float spacing = 1.85f;

@@ -162,8 +162,9 @@ namespace Manyworld
         /// <summary>
         /// 목표 샷 02의 기운 숲 소나무: 맨 줄기가 길게 드러나고 위쪽 절반에 각진 원뿔 층이 쌓인다.
         /// 신티 소나무는 가지가 땅까지 내려와 덤불처럼 읽혔다. 높이 1 기준 메시, 하위 메시 0 줄기·1 잎.
+        /// crownStart: 수관이 시작하는 높이 비율 (기운 숲·방 0.38, 일반 숲 0.2: 목표 샷 01·04의 숲 소나무는 수관이 낮다). width: 수관 폭 배율.
         /// </summary>
-        static Mesh TallPineMesh(int seed)
+        static Mesh TallPineMesh(int seed, float crownStart = 0.38f, float width = 1f)
         {
             var rng = new System.Random(seed);
             float R() => (float)rng.NextDouble();
@@ -196,12 +197,12 @@ namespace Manyworld
             }
             // 잎 층: 위쪽 60%에 8~9층, 아래 층이 넓다. 층마다 5~6각, 꼭짓점 반지름을 흔들어 각지게
             int tiers = 8 + rng.Next(2);
-            float start = 0.38f + R() * 0.06f; // 수관이 눈높이 위 화면 위쪽 절반을 채운다
+            float start = crownStart + R() * 0.06f; // 수관이 눈높이 위 화면 위쪽 절반을 채운다
             for (int t = 0; t < tiers; t++)
             {
                 float u = t / (float)(tiers - 1);
                 float y0 = Mathf.Lerp(start, 0.9f, u);
-                float rad = Mathf.Lerp(0.105f, 0.035f, u) * (0.9f + R() * 0.2f); // 목표 샷 02는 좁은 첨탑 (0.17은 우산처럼 덮었다)
+                float rad = Mathf.Lerp(0.105f, 0.035f, u) * (0.9f + R() * 0.2f) * width; // 목표 샷 02는 좁은 첨탑 (0.17은 우산처럼 덮었다)
                 float hgt = Mathf.Lerp(0.12f, 0.09f, u);
                 int sides = 5 + rng.Next(2);
                 float rot = R() * 360f;
@@ -244,8 +245,7 @@ namespace Manyworld
             return mesh;
         }
 
-        /// <summary>키 큰 소나무 하나 (밑동 기준, 높이 height). 줄기에 기운 캡슐 충돌을 단다.</summary>
-        public static GameObject TallPine(Transform parent, float height, System.Random rng)
+        static void EnsureTallPines()
         {
             if (tallPines == null)
             {
@@ -260,6 +260,50 @@ namespace Manyworld
                 };
                 foreach (var m in tallPineMats) m.name = "TallPine";
             }
+        }
+
+        static GameObject[] forestPines;
+
+        /// <summary>
+        /// 지형 나무 원형 (숲 전체를 같은 각진 소나무로: 신티 소나무와 섞이면 그림체가 갈렸다).
+        /// 수관이 낮고 넓은 숲 변형 셋, 높이 13m 메시. dark면 가장자리 산의 짙은 잎. 숨긴 비활성 물체 (TreeField·지형 충돌이 읽는다).
+        /// </summary>
+        public static GameObject[] ForestPinePrototypes(bool dark)
+        {
+            EnsureTallPines();
+            if (forestPines == null)
+            {
+                forestPines = new GameObject[6];
+                var leafDark = new[] { RockMat(new Color(0.12f, 0.17f, 0.12f)), RockMat(new Color(0.11f, 0.16f, 0.12f)), RockMat(new Color(0.13f, 0.18f, 0.12f)) };
+                for (int i = 0; i < 6; i++)
+                {
+                    bool d = i >= 3;
+                    var unit = TallPineMesh(509 + (i % 3) * 71, 0.18f + (i % 3) * 0.04f, 1.3f);
+                    var v = unit.vertices;
+                    for (int k = 0; k < v.Length; k++) v[k] *= 13f;
+                    unit.vertices = v;
+                    unit.RecalculateBounds();
+                    unit.name = "ForestPine";
+                    var go = new GameObject(d ? "ForestPineDark" : "ForestPine", typeof(MeshFilter), typeof(MeshRenderer));
+                    go.GetComponent<MeshFilter>().sharedMesh = unit;
+                    go.GetComponent<MeshRenderer>().sharedMaterials = new[] { tallPineMats[i % 2], d ? leafDark[i % 3] : tallPineMats[2 + i % 3] };
+                    var col = go.AddComponent<CapsuleCollider>(); // 지형 나무 충돌 (차가 줄기에 막힌다)
+                    col.radius = 0.3f;
+                    col.height = 6f;
+                    col.center = new Vector3(0, 3f, 0);
+                    go.SetActive(false);
+                    if (Application.isPlaying) Object.DontDestroyOnLoad(go);
+                    else go.hideFlags = HideFlags.HideAndDontSave;
+                    forestPines[i] = go;
+                }
+            }
+            return dark ? new[] { forestPines[3], forestPines[4], forestPines[5] } : new[] { forestPines[0], forestPines[1], forestPines[2] };
+        }
+
+        /// <summary>키 큰 소나무 하나 (밑동 기준, 높이 height). 줄기에 기운 캡슐 충돌을 단다.</summary>
+        public static GameObject TallPine(Transform parent, float height, System.Random rng)
+        {
+            EnsureTallPines();
             var go = new GameObject("TallPine", typeof(MeshFilter), typeof(MeshRenderer));
             go.transform.SetParent(parent, false);
             go.GetComponent<MeshFilter>().sharedMesh = tallPines[rng.Next(tallPines.Length)];

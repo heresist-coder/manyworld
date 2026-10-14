@@ -123,13 +123,21 @@ Shader "Manyworld/Water"
                 half fres = 0.02 + 0.98 * pow(1 - saturate(dot(n, v)), 5);
                 half3 col = lerp(body, refl, saturate(fres * _Reflect + 0.06));
 
+                // 물가 거품: 바닥·물체가 수면에 가까운 곳 (물가 띠와 뜬 바위 둘레 고리). 움직이는 얼룩으로 끊는다
+                float foamBand = 1 - saturate(thick / 0.9);
+                float2 fp = i.positionWS.xz * 0.9 + float2(_Time.y * 0.15, -_Time.y * 0.11);
+                float blot = frac(sin(dot(floor(fp), float2(12.9898, 78.233))) * 43758.5453);
+                float wave = sin(thick * 9 - _Time.y * 1.6) * 0.5 + 0.5; // 물가로 밀려오는 줄
+                float foam = saturate(foamBand * foamBand * (0.55 + 0.45 * wave) * (0.6 + 0.4 * blot) * 1.6);
+                col = lerp(col, half3(0.93, 0.95, 0.96), foam * 0.8);
+
                 // 해 반짝임
                 Light sun = GetMainLight();
                 float3 hv = normalize(sun.direction + v);
                 col += sun.color * pow(saturate(dot(n, hv)), 600) * 3;
 
                 col = MixFog(col, i.fog);
-                half alpha = saturate(thick * 2.5); // 물가는 부드럽게
+                half alpha = saturate(thick * 2.5 + foam * 0.6); // 물가는 부드럽게 (거품은 남긴다)
                 return half4(col, alpha);
             }
             ENDHLSL
