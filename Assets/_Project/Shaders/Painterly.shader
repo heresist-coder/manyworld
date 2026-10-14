@@ -9,6 +9,8 @@ Shader "Manyworld/Painterly"
         _Sharpness ("Sharpness", Range(1, 16)) = 4
         _Grain ("붓결 세기", Range(0, 0.4)) = 0.13
         _StrokeLength ("붓결 길이 (px)", Range(2, 40)) = 18
+        _Crisp ("면 대비 (언샤프)", Range(0, 1)) = 0.45
+        _Edge ("윤곽 어둡게", Range(0, 0.6)) = 0.22
     }
     SubShader
     {
@@ -30,6 +32,8 @@ Shader "Manyworld/Painterly"
             float _ManyworldPaint;
             float _Grain;
             float _StrokeLength;
+            float _Crisp;
+            float _Edge;
 
             float Hash21(float2 p)
             {
@@ -100,6 +104,13 @@ Shader "Manyworld/Painterly"
                 }
                 float3 paint = acc / max(total, 1e-6);
 
+                // 면 대비: 쿠와하라 결과를 전체 평균(흐린 상)에서 밀어낸다 (목표 샷들은 면 경계가 또렷하고 면끼리 명암차가 크다.
+                // 쿠와하라만으로는 부드럽게 뭉개져 흐릿했다)
+                float3 blurAll = 0; float wAll = 0;
+                [unroll] for (int b2 = 0; b2 < 8; b2++) { blurAll += m[b2]; wAll += w[b2]; }
+                blurAll /= max(wAll, 1e-4);
+                paint = max(0, paint + (paint - blurAll) * _Crisp);
+
                 // 붓결: 화면 결(밝기 기울기에 수직)을 따라 길쭉한 무늬로 밝기를 흔든다 (목표 샷들의 칠한 면 질감.
                 // 쿠와하라만으로는 면이 고르게 뭉개져 단색 판처럼 보였다). 어두운 곳·하늘은 약하게
                 float2 px = _BlitTexture_TexelSize.xy;
@@ -122,6 +133,25 @@ Shader "Manyworld/Painterly"
                 float grainAmt = sky ? 0 : _Grain * smoothstep(0.02, 0.15, lum) * (1 - smoothstep(600, 1500, eye));
                 n = smoothstep(0.25, 0.75, n); // 붓자국 경계가 또렷하게
                 paint *= 1 + (n - 0.5) * 2 * grainAmt;
+
+                // 윤곽: 이웃이 이 점보다 확 멀면(앞 물체의 가장자리) 조금 어둡게 (목표 샷의 나무·바위가 배경에서 또렷이 떨어진다)
+                if (!sky)
+                {
+                    float far = 0;
+                    [unroll] for (int e = 0; e < 4; e++)
+                    {
+                        float2 o = float2(e == 0 ? 1.5 : e == 1 ? -1.5 : 0, e == 2 ? 1.5 : e == 3 ? -1.5 : 0) * px;
+                        float nd = SampleSceneDepth(uv + o);
+                        #if UNITY_REVERSED_Z
+                            float ne = nd <= 1e-5 ? eye * 10 : LinearEyeDepth(nd, _ZBufferParams);
+                        #else
+                            float ne = nd >= 1 - 1e-5 ? eye * 10 : LinearEyeDepth(nd, _ZBufferParams);
+                        #endif
+                        far = max(far, (ne - eye) / eye);
+                    }
+                    float edge = smoothstep(0.06, 0.25, far) * (1 - smoothstep(200, 600, eye)); // 먼 숲은 빼고 (잎마다 선이 생겨 지저분했다)
+                    paint *= 1 - _Edge * edge;
+                }
                 return half4(lerp(src.rgb, paint, amount), src.a);
             }
             ENDHLSL
