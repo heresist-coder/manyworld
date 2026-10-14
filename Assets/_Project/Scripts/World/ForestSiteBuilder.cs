@@ -1636,12 +1636,12 @@ namespace Manyworld
                 if (!collide) Kill(part.GetComponent<Collider>());
                 return part;
             }
-            Part(PrimitiveType.Cube, "Footing", new Vector3(0, 0.3f, 0), new Vector3(1.5f, 0.7f, 1.5f), new Color(0.56f, 0.55f, 0.51f), null, true);
-            Part(PrimitiveType.Cylinder, "Mast", new Vector3(0, 12.5f, 0), new Vector3(0.62f, 12.2f, 0.62f), steel, null, true);
-            Part(PrimitiveType.Cylinder, "Sleeve", new Vector3(0, 3f, 0), new Vector3(0.78f, 3f, 0.78f), steel); // 밑동은 굵게 (나무 줄기처럼)
+            Part(PrimitiveType.Cube, "Footing", new Vector3(0, 0.3f, 0), new Vector3(1.9f, 0.7f, 1.9f), new Color(0.56f, 0.55f, 0.51f), null, true);
+            Part(PrimitiveType.Cylinder, "Mast", new Vector3(0, 12.5f, 0), new Vector3(0.86f, 12.2f, 0.86f), steel, null, true); // (0.62는 두 사람 옆에서 가는 막대로 읽혔다: 목표 샷 04의 기둥은 굵다)
+            Part(PrimitiveType.Cylinder, "Sleeve", new Vector3(0, 3f, 0), new Vector3(1.05f, 3f, 1.05f), steel); // 밑동은 굵게 (나무 줄기처럼)
             Part(PrimitiveType.Cube, "Box", new Vector3(0f, 4.6f, -0.5f), new Vector3(0.55f, 1.1f, 0.4f), paint);
             Part(PrimitiveType.Cube, "Box", new Vector3(0.45f, 11.2f, 0.25f), new Vector3(0.4f, 0.8f, 0.4f), paint);
-            Part(PrimitiveType.Cylinder, "MastTop", new Vector3(0, 25.6f, 0), new Vector3(0.24f, 1.2f, 0.24f), steel);
+            Part(PrimitiveType.Cylinder, "MastTop", new Vector3(0, 25.6f, 0), new Vector3(0.38f, 1.2f, 0.38f), steel);
             Part(PrimitiveType.Cylinder, "Rod", new Vector3(0, 28.3f, 0), new Vector3(0.06f, 1.6f, 0.06f), dark);
             Part(PrimitiveType.Cube, "Cabinet", new Vector3(1.3f, 0.95f, 0.2f), new Vector3(0.6f, 1.5f, 0.8f), paint, null, true);
             Part(PrimitiveType.Cube, "Box", new Vector3(0.38f, 8.8f, 0f), new Vector3(0.36f, 0.95f, 0.32f), paint);
