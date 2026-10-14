@@ -1323,7 +1323,7 @@ namespace Manyworld
         }
 
         /// <summary>물속 집 자리: 호수 가운데에서 전망 쪽으로 (가까워야 반사에 묻히지 않고 물속이 보인다).</summary>
-        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.5f; // 전망대 앞 (차·두 사람과 한 화면에, 목표 샷 05. 0.64는 물가 풀 뒤에 숨었다)
+        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.34f; // 전망대 앞 (차·두 사람과 한 화면에, 목표 샷 05. 0.64·0.5는 가까운 물가 둑이 창 난 벽을 가렸다)
 
         /// <summary>호수 전망대에서 숲으로 나가는 흙길 (전망대 → 바깥쪽 38m, 조금 북쪽으로 굽는다)까지의 거리.</summary>
         public static float LakeTrackDistance(float x, float z)
@@ -1392,7 +1392,7 @@ namespace Manyworld
             var prefab = farms != null && farms.Length > 1 ? farms[1] : farms != null && farms.Length > 0 ? farms[0] : null;
             GameObject house = prefab != null ? Object.Instantiate(prefab, go.transform) : Graybox.Box(go.transform, "House", Vector3.zero, new Vector3(9f, 7f, 7f), new Color(0.5f, 0.55f, 0.5f), true);
             house.name = "SubmergedHouse";
-            house.transform.rotation = Quaternion.LookRotation(new Vector3(toView.x, 0, toView.y)) * Quaternion.Euler(0, -30f, 0);
+            house.transform.rotation = Quaternion.LookRotation(new Vector3(toView.x, 0, toView.y)) * Quaternion.Euler(0, -12f, 0); // 창 난 앞면이 전망대를 본다 (−30°는 옆면만 보였다)
             house.transform.localScale = Vector3.one * 1.45f; // 목표 샷 05의 물속 집은 화면에서 크다 (원래 크기는 전망대에서 장난감처럼 작았다)
             var bed = G(housePos);
             var hb = ArtCatalog.RendererBounds(house);
@@ -1407,16 +1407,19 @@ namespace Manyworld
             var temp = house.GetComponentsInChildren<Collider>();
             Physics.SyncTransforms();
             // 창: 물에 먹히고 노을 반사에 덮여도 읽히게 HDR로 밝게 (목표 샷 05의 따뜻한 창 불빛)
-            var glass = new Material(Graybox.Mat(new Color(1f, 0.62f, 0.3f), true)) { name = "WindowGlow" };
-            glass.SetColor("_EmissionColor", new Color(1f, 0.62f, 0.3f) * 18f);
+            // 물을 그린 뒤에 반투명으로 덧그린다: 물이 먹어 버리지 않고 수면 너머로 불빛이 비친다 (불투명 발광 창은 물 흡수에 묻혔다)
+            var glass = new Material(Graybox.Mat(new Color(0.85f, 0.42f, 0.14f, 0.6f))) { name = "WindowGlow" };
+            glass.EnableKeyword("_EMISSION");
+            glass.SetColor("_EmissionColor", new Color(1f, 0.5f, 0.18f) * 1.3f); // (2.2는 하얗게 떴다)
+            glass.renderQueue = 3010;
             int windows = 0;
             var faceRight = Vector3.Cross(Vector3.up, house.transform.forward);
             foreach (var face in new[] { house.transform.forward, -house.transform.forward, faceRight, -faceRight })
             {
                 var along = Vector3.Cross(Vector3.up, face);
                 float halfW = Mathf.Abs(Vector3.Dot(hb.extents, new Vector3(Mathf.Abs(along.x), 0, Mathf.Abs(along.z))));
-                foreach (float u in new[] { -0.3f, 0.3f })
-                foreach (float vy in new[] { 0.22f, 0.5f })
+                foreach (float u in new[] { -0.32f, 0f, 0.32f })
+                foreach (float vy in new[] { 0.3f, 0.52f }) // (아래층은 둔덕에 묻힌다. 창이 많고 커야 낮은 시선에서도 처마 밑으로 보인다)
                 {
                     var origin = hb.center + face * (hb.extents.magnitude + 2f) + along * (halfW * u * 2f) + Vector3.up * (hb.size.y * (vy - 0.5f));
                     var ray = new Ray(origin, -face);
@@ -1429,7 +1432,7 @@ namespace Manyworld
                     Kill(pane.GetComponent<Collider>());
                     pane.GetComponent<Renderer>().sharedMaterial = glass;
                     pane.transform.SetPositionAndRotation(best.point + best.normal * 0.04f, Quaternion.LookRotation(-best.normal));
-                    pane.transform.localScale = new Vector3(1.1f, 1.35f, 1f);
+                    pane.transform.localScale = new Vector3(1.4f, 1.6f, 1f);
                     windows++;
                 }
             }

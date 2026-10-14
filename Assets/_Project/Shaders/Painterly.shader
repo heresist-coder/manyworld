@@ -7,7 +7,7 @@ Shader "Manyworld/Painterly"
         _Radius ("Radius (px)", Range(1, 8)) = 3
         _Amount ("Amount", Range(0, 1)) = 1
         _Sharpness ("Sharpness", Range(1, 16)) = 4
-        _Grain ("붓결 세기", Range(0, 0.4)) = 0.2
+        _Grain ("붓결 세기", Range(0, 0.4)) = 0.13
         _StrokeLength ("붓결 길이 (px)", Range(2, 40)) = 18
     }
     SubShader
@@ -110,7 +110,7 @@ Shader "Manyworld/Painterly"
                 float2 q = float2(dot(pix, along), dot(pix, float2(-along.y, along.x)));
                 float n = ValueNoise(float2(q.x / _StrokeLength, q.y / 3.6)) * 0.7 + ValueNoise(float2(q.x / (_StrokeLength * 0.5), q.y / 2.0) + 17.0) * 0.3;
                 float lum = dot(paint, float3(0.3, 0.59, 0.11));
-                float grainAmt = _Grain * smoothstep(0.02, 0.15, lum);
+                float grainAmt = _Grain * smoothstep(0.02, 0.15, lum) * (1 - smoothstep(0.55, 0.85, lum)); // 하늘처럼 밝은 면은 약하게 (필름 잡티처럼 보였다)
                 n = smoothstep(0.25, 0.75, n); // 붓자국 경계가 또렷하게
                 paint *= 1 + (n - 0.5) * 2 * grainAmt;
                 return half4(lerp(src.rgb, paint, amount), src.a);
