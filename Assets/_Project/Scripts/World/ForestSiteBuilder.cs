@@ -743,7 +743,7 @@ namespace Manyworld
             for (int k = 0; k < 5; k++)
             {
                 var q = CarStart + dir * (-6f + k * 2.4f + (float)more.NextDouble()) - left * (6.6f + (float)more.NextDouble() * 2.2f);
-                NatureKit.Boulder(root, G(q), (k % 2 == 0 ? 1.25f : 0.8f) + (float)more.NextDouble() * 0.6f, more, true, "RoadRock");
+                Rounder(NatureKit.Boulder(root, G(q), (k % 2 == 0 ? 1.25f : 0.8f) + (float)more.NextDouble() * 0.6f, more, true, "RoadRock"));
             }
 
             // 목표 샷 02: 숲길 한가운데 놓인 작은 검은 장비 상자 (누가 두고 갔다)
@@ -1144,7 +1144,7 @@ namespace Manyworld
             for (int k = 0; k < 7; k++)
             {
                 var p2 = CarStart + startDir * (-3f + k * 2.1f + (float)rng.NextDouble() * 1.2f) + startRight * (6.2f + (float)rng.NextDouble() * 3.5f);
-                NatureKit.Boulder(root, G(p2), 0.8f + (float)rng.NextDouble() * (k % 3 == 0 ? 1.1f : 0.6f), rng, true, "RoadRock");
+                Rounder(NatureKit.Boulder(root, G(p2), 0.8f + (float)rng.NextDouble() * (k % 3 == 0 ? 1.1f : 0.6f), rng, true, "RoadRock"));
             }
             for (int k = 0; k < 4; k++)
             {
@@ -1715,6 +1715,17 @@ namespace Manyworld
         // ---------------- 기운 숲 (목표 샷 02) ----------------
 
         /// <summary>숲길 양옆 띠. 주차 공터 → 방 입구 사이.</summary>
+        /// <summary>
+        /// 출발점 길가 전경 바위를 둥글고 높게 (목표 샷 01의 어깨 높이 둥근 바위). 넓은 바위는 가까이 내려다보면 윗면이 납작한 판으로 읽혔다.
+        /// 크기만 바꾼다 (자리·난수 그대로).
+        /// </summary>
+        static void Rounder(GameObject rock)
+        {
+            if (rock == null) return;
+            var s = rock.transform.localScale;
+            rock.transform.localScale = new Vector3(s.x * 0.72f, s.y * 1.18f, s.z * 0.72f);
+        }
+
         static float SegDist(Vector2 p, Vector2 a, Vector2 b)
         {
             var ab = b - a;
