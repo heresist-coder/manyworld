@@ -685,6 +685,30 @@ namespace Manyworld
                 NatureKit.Footprints.Add(p.x, p.y, 2.5f);
                 placed++;
             }
+
+            // 목표 샷 01 오른쪽 아래 전경: 어깨 높이 큰 각진 바위 무더기 (카메라 바로 앞)
+            for (int k = 0; k < 5; k++)
+            {
+                var q = CarStart + dir * (-6f + k * 2.4f + (float)more.NextDouble()) - left * (6.6f + (float)more.NextDouble() * 2.2f);
+                NatureKit.Boulder(root, G(q), (k % 2 == 0 ? 1.25f : 0.8f) + (float)more.NextDouble() * 0.6f, more, true, "RoadRock");
+            }
+
+            // 목표 샷 02: 숲길 한가운데 놓인 작은 검은 장비 상자 (누가 두고 갔다)
+            {
+                var th = Trailhead; var bend = Vector2.Lerp(Trailhead, RoomEntrance, 0.5f) + new Vector2(-6f, 2f);
+                var c = Vector2.Lerp(th, bend, 0.78f);
+                var g = G(c);
+                var yaw = Quaternion.Euler(0, 23f, 0);
+                var caseGo = new GameObject("TrailCase");
+                caseGo.transform.SetParent(root, false);
+                caseGo.transform.SetPositionAndRotation(g, yaw);
+                var body = Graybox.Prim(PrimitiveType.Cube, caseGo.transform, "Body", new Vector3(0, 0.19f, 0), new Vector3(0.95f, 0.38f, 0.55f), new Color(0.07f, 0.075f, 0.08f));
+                Graybox.Prim(PrimitiveType.Cube, caseGo.transform, "Lid", new Vector3(0, 0.39f, 0), new Vector3(0.97f, 0.04f, 0.57f), new Color(0.12f, 0.12f, 0.13f), false);
+                Graybox.Prim(PrimitiveType.Cube, caseGo.transform, "Handle", new Vector3(0, 0.45f, 0), new Vector3(0.28f, 0.05f, 0.05f), new Color(0.2f, 0.2f, 0.21f), false);
+                foreach (float x in new[] { -0.3f, 0.3f })
+                    Graybox.Prim(PrimitiveType.Cube, caseGo.transform, "Latch", new Vector3(x, 0.33f, -0.285f), new Vector3(0.08f, 0.06f, 0.02f), new Color(0.55f, 0.55f, 0.5f), false);
+                body.transform.SetParent(caseGo.transform, false);
+            }
         }
 
         static void PlantGrass(TerrainData td, float[,] roadDist, float[,] trailDist)
@@ -1016,7 +1040,7 @@ namespace Manyworld
                 var mat = new Material(cloudMat);
                 var toSun = -(Quaternion.Euler(WorldLook.Field.sunPitch, WorldLook.Field.sunYaw, 0) * Vector3.forward);
                 mat.SetVector("_SunDir", toSun);
-                mat.SetFloat("_Cover", 0.46f);    // 뭉게구름이 하늘 절반쯤
+                mat.SetFloat("_Cover", 0.43f);    // 뭉게구름이 하늘 절반쯤 (목표 샷 01은 산 위에 구름 띠가 두껍다)
                 mat.SetFloat("_Softness", 0.07f); // 가장자리가 또렷하게
                 mat.SetFloat("_Scale", 1.6f);
                 // 볕 받은 윗면은 따뜻한 흰색, 밑면은 회보라 (목표 샷 01 구름 201,193,197)
@@ -1358,6 +1382,7 @@ namespace Manyworld
             GameObject house = prefab != null ? Object.Instantiate(prefab, go.transform) : Graybox.Box(go.transform, "House", Vector3.zero, new Vector3(9f, 7f, 7f), new Color(0.5f, 0.55f, 0.5f), true);
             house.name = "SubmergedHouse";
             house.transform.rotation = Quaternion.LookRotation(new Vector3(toView.x, 0, toView.y)) * Quaternion.Euler(0, -30f, 0);
+            house.transform.localScale = Vector3.one * 1.45f; // 목표 샷 05의 물속 집은 화면에서 크다 (원래 크기는 전망대에서 장난감처럼 작았다)
             var bed = G(housePos);
             var hb = ArtCatalog.RendererBounds(house);
             // 지붕 끝을 수면 1.2m 아래에 맞춘다 (바닥에 맞추면 둔덕이 낮을 때 5m 넘게 잠겨 낮은 시선에선 보이지 않았다)
@@ -1372,7 +1397,7 @@ namespace Manyworld
             Physics.SyncTransforms();
             // 창: 물에 먹히고 노을 반사에 덮여도 읽히게 HDR로 밝게 (목표 샷 05의 따뜻한 창 불빛)
             var glass = new Material(Graybox.Mat(new Color(1f, 0.62f, 0.3f), true)) { name = "WindowGlow" };
-            glass.SetColor("_EmissionColor", new Color(1f, 0.62f, 0.3f) * 7f);
+            glass.SetColor("_EmissionColor", new Color(1f, 0.62f, 0.3f) * 18f);
             int windows = 0;
             var faceRight = Vector3.Cross(Vector3.up, house.transform.forward);
             foreach (var face in new[] { house.transform.forward, -house.transform.forward, faceRight, -faceRight })
@@ -1419,9 +1444,10 @@ namespace Manyworld
             var floatMat = NatureKit.RockMat(new Color(0.38f, 0.37f, 0.35f));
             for (int tries = 0; tries < 200 && floats < 5; tries++)
             {
-                float ang = (float)rng.NextDouble() * Mathf.PI * 2f, rr = 0.05f + (float)rng.NextDouble() * 0.33f; // 호수 가운데 (0.5 넘으면 건너편 물가 바위처럼 읽혔다)
+                float ang = (float)rng.NextDouble() * Mathf.PI * 2f, rr = 0.05f + (float)rng.NextDouble() * 0.4f; // 호수 가운데 (0.5 넘으면 건너편 물가 바위처럼 읽혔다)
                 var p = LakeCenter + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * LakeShoreRadius(ang, rr);
-                if (Vector2.Distance(p, housePos) < 12f || Vector2.Dot(p - LakeCenter, toView) > LakeRadius * 0.3f) continue; // 집 위와 전망 바로 앞 물가는 피한다
+                // 집 둘레와 전망 바로 앞 물가는 피하고, 집 너머 오른쪽 가운데에 모은다 (목표 샷 05: 바위가 화면 가운데 오른쪽)
+                if (Vector2.Distance(p, housePos) < 13f || Vector2.Dot(p - LakeCenter, toView) > LakeRadius * 0.4f || Vector2.Dot(p - LakeCenter, toView) < -LakeRadius * 0.25f) continue;
                 bool clash = false;
                 foreach (var q in floated) if (Vector2.Distance(q, p) < 13f) clash = true;
                 if (clash) continue;
