@@ -13,7 +13,7 @@ namespace Manyworld
     {
         public ColorAdjustments color;
         public float baseExposure, baseSaturation;
-        public float exposureDrop = 0.6f, saturationDrop = 7f; // 12는 02 하늘 틈·줄기가 회색으로 죽었다 (it70). 노출 −0.7은 신티 숲 때 값: 각진 소나무 숲은 이미 어두워 03 바닥이 목표의 절반(62 vs 122)이었다 (it97)
+        public float exposureDrop = 0.45f, saturationDrop = 7f; // (0.6은 잎을 밝힌 뒤에도 02 숲 그늘이 목표의 60~80%였다, it159) // 12는 02 하늘 틈·줄기가 회색으로 죽었다 (it70). 노출 −0.7은 신티 숲 때 값: 각진 소나무 숲은 이미 어두워 03 바닥이 목표의 절반(62 vs 122)이었다 (it97)
         // 빈 방 둘레만 다시 밝힌다: 세 면 나무 벽의 그늘로 바닥이 목표 샷 03의 70%였다 (85 vs 122, 숲길은 오히려 밝았다 134 vs 100)
         public float roomLift = 0.95f;
         float w = -1f, rw = -1f;

@@ -127,10 +127,11 @@ namespace Manyworld
                 for (int i = 0; i < boulders.Length; i++) boulders[i] = BoulderMesh(101 + i * 37);
                 rockMats = new[]
                 {
-                    // 목표 샷 01의 바위는 따뜻한 회갈색 (그늘 98,90,70). 차가운 회색은 푸른 그늘에서 슬레이트처럼 떴다
-                    RockMat(new Color(0.53f, 0.5f, 0.44f)),
-                    RockMat(new Color(0.47f, 0.45f, 0.4f)),
-                    RockMat(new Color(0.56f, 0.52f, 0.45f)),
+                    // 목표 샷 01의 바위는 따뜻한 회갈색 (그늘 98,90,70). 차가운 회색은 푸른 그늘에서 슬레이트처럼 떴다.
+                    // (0.53,0.5,0.44)는 볕 받은 면이 거의 흰색으로 떴다 (it158 기운 숲 바닥 바위)
+                    RockMat(new Color(0.47f, 0.44f, 0.39f)),
+                    RockMat(new Color(0.42f, 0.4f, 0.36f)),
+                    RockMat(new Color(0.5f, 0.46f, 0.4f)),
                 };
             }
             var go = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));

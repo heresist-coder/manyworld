@@ -1645,6 +1645,13 @@ namespace Manyworld
         // ---------------- 기운 숲 (목표 샷 02) ----------------
 
         /// <summary>숲길 양옆 띠. 주차 공터 → 방 입구 사이.</summary>
+        static float SegDist(Vector2 p, Vector2 a, Vector2 b)
+        {
+            var ab = b - a;
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+            return Vector2.Distance(p, a + ab * t);
+        }
+
         static float LeaningBandDistance(float x, float z)
         {
             var a = Trailhead + RoomForward * 14f;
@@ -1678,6 +1685,7 @@ namespace Manyworld
             var lean = new Vector3(RoomForward.x, 0, RoomForward.y);
             var axis = Vector3.Cross(Vector3.up, lean);
             int leaning = 0;
+            var trunks = new List<Vector2>();
             // 목표 샷 02는 굵은 줄기가 2~3m 간격으로 길가에 붙어 터널을 만든다 (4.1m 격자·6.5m 비움은 듬성한 공터로 읽혔다)
             // (3.2m는 줄기가 벽처럼 막아 하늘이 안 보였다 → 4.3m)
             for (float x = RoomCenter.x - 120f; x < RoomCenter.x + 60f; x += 4.3f)
@@ -1696,7 +1704,7 @@ namespace Manyworld
                 if (rng.NextDouble() < (side < 12f ? 0.12 : 0.35)) continue; // 길가 두 줄은 빽빽하게, 안쪽은 성기게
                 // 맨 줄기가 길게 드러난 키 큰 소나무 (목표 샷 02). 길가 줄이 가장 크다
                 float height = Mathf.Lerp(18f, 13f, Mathf.InverseLerp(6f, 18f, side)) + (float)rng.NextDouble() * 3f;
-                var t = NatureKit.TallPine(go.transform, height, rng);
+                var t = NatureKit.TallPine(go.transform, height, rng, true); // 좁고 높은 수관 (넓은 수관은 길 위로 모여 하늘 틈을 덮었다: 02 위쪽 30~60 vs 목표 73~97)
                 var p = new Vector3(px, 0, pz);
                 p.y = terrain.SampleHeight(p) - 0.2f;
                 // 길 쪽으로 기울고 조금은 방 쪽으로 (목표 샷 02: 길 위로 V자로 모인다)
@@ -1705,6 +1713,7 @@ namespace Manyworld
                 var tiltAxis = Vector3.Cross(Vector3.up, new Vector3(dir2.x, 0, dir2.y));
                 float tilt = Mathf.Lerp(17f, 12f, Mathf.InverseLerp(6f, 20f, side)) + (float)rng.NextDouble() * 4f; // 길가 줄기가 가장 많이 기운다 (목표 샷 02는 15~20°. 20°+는 수관이 길 위를 덮어 하늘이 막혔다)
                 t.transform.SetPositionAndRotation(p, Quaternion.AngleAxis(tilt, tiltAxis) * Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0));
+                trunks.Add(p2);
                 leaning++;
             }
             // 숲길 가장자리 바위 (목표 샷 02: 길 양옆에 회색 바위가 줄지어 있다)
@@ -1724,7 +1733,29 @@ namespace Manyworld
                 NatureKit.Boulder(go.transform, ground, 0.35f + (float)rng.NextDouble() * (rng.NextDouble() < 0.25 ? 1.1f : 0.5f), rng, true, "PathRock");
                 rocks++;
             }
-            Debug.Log($"[Manyworld] 기운 숲 {leaning}그루, 길가 바위 {rocks}");
+            // 숲 바닥 바위: 목표 샷 02는 줄기 사이 바닥에 회색 바위가 흩어져 있다 (길가 일곱 개로는 맨 풀밭으로 읽혔다).
+            // 따로 쓰는 난수: 기존 배치가 바뀌지 않게
+            var rockRng = new System.Random(4021);
+            int floorRocks = 0;
+            for (int tries = 0; tries < 400 && floorRocks < 46; tries++)
+            {
+                var a = Trailhead + (bendPt - Trailhead).normalized * 10f; var bEnd = RoomEntrance - RoomForward * 2f;
+                var q = Vector2.Lerp(a, bEnd, (float)rockRng.NextDouble());
+                var fwd = (bEnd - a).normalized;
+                var pr = new Vector2(fwd.y, -fwd.x);
+                q += pr * ((rockRng.NextDouble() < 0.5 ? -1f : 1f) * (3.2f + (float)rockRng.NextDouble() * 14f));
+                if (!InLeaningBand(q.x, q.y, 2f) || InRoom(q.x, q.y, 3f) || NatureKit.UnderRock(q.x, q.y)) continue;
+                if (SegDist(q, Trailhead, bendPt) < 3f || SegDist(q, bendPt, RoomEntrance) < 3f) continue; // 길 위는 비운다
+                bool nearTrunk = false;
+                foreach (var tp in trunks) if ((tp - q).sqrMagnitude < 2.2f * 2.2f) { nearTrunk = true; break; }
+                if (nearTrunk) continue;
+                var ground = new Vector3(q.x, 0, q.y);
+                ground.y = terrain.SampleHeight(ground);
+                float hgt = rockRng.NextDouble() < 0.22 ? 0.9f + (float)rockRng.NextDouble() * 0.8f : 0.3f + (float)rockRng.NextDouble() * 0.45f;
+                NatureKit.Boulder(go.transform, ground, hgt, rockRng, true, "ForestFloorRock");
+                floorRocks++;
+            }
+            Debug.Log($"[Manyworld] 기운 숲 {leaning}그루, 길가 바위 {rocks}, 바닥 바위 {floorRocks}");
         }
 
         // ---------------- 빈 방 ----------------

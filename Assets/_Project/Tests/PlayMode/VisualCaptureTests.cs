@@ -218,7 +218,9 @@ namespace Manyworld.Tests
             yield return new WaitForSeconds(1f);
             pc.target = null;
             hud.enabled = false;
-            yield return Shot("t03_room.png", Ground(stand - room.forward * 4.5f + room.right * 1.6f, 2.3f), room.position + Vector3.up * 1.4f);
+            // 목표 샷 03: 입구 밖 조금 높은 곳에서. 안쪽 벽 소나무 꼭대기와 그 위 하늘·산이 보인다
+            // (4.5m 뒤 2.3m 높이는 양옆 벽 수관이 화면 위를 덮어 하늘이 없었다)
+            yield return Shot("t03_room.png", Ground(stand - room.forward * 7.5f - room.right * 0.6f, 3f), room.position + Vector3.up * 4.2f);
             // t02: 숲길 위에서 방 쪽으로 (길은 가운데서 살짝 꺾인다)
             var th = ForestSiteBuilder.Trailhead;
             var bend = Vector2.Lerp(th, ForestSiteBuilder.RoomEntrance, 0.5f) + new Vector2(-6f, 2f);
@@ -233,7 +235,10 @@ namespace Manyworld.Tests
             mc.WarpParty(Ground(new Vector3(walk.x, 0, walk.y) - new Vector3(trailRight.x, 0, trailRight.y) * 0.7f, 0.1f), trailYaw,
                 Ground(new Vector3(walk.x, 0, walk.y) + new Vector3(trailRight.x + trailDir.x * 0.8f, 0, trailRight.y + trailDir.y * 0.8f) * 1f, 0.1f));
             yield return new WaitForSeconds(0.5f);
-            yield return Shot("t02_path.png", Ground(new Vector3(onTrail.x, 0, onTrail.y), 3.2f), Ground(new Vector3(ent.x, 0, ent.y), 2.5f));
+            // 목표 샷 02: 두 사람 바로 뒤 4~5m 높이에서 숲길을 내려다본다 (15m 뒤 3.2m는 사람이 작고 가까운 수관이 화면 위를 덮었다)
+            var t02Cam = walk - trailDir * 8.5f - trailRight * 0.4f;
+            var t02Look = walk + trailDir * 22f;
+            yield return Shot("t02_path.png", Ground(new Vector3(t02Cam.x, 0, t02Cam.y), 3.9f), Ground(new Vector3(t02Look.x, 0, t02Look.y), 0.6f));
 
             // 목표 샷 04 구도: 길가 평평한 어깨에 차를 세우고 두 사람이 내려 비탈 숲의 철제 나무를 본다. 카메라는 그 뒤 길 위
             var iron = ForestSiteBuilder.IronTree;
