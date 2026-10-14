@@ -306,6 +306,9 @@ namespace Manyworld
             var skyMat = Resources.Load<Material>("Materials/SkyGradient");
             if (skyMat != null) RenderSettings.skybox = new Material(skyMat); // 사본 (호수 노을이 색을 바꾼다)
             gameObject.AddComponent<LakeDusk>().sun = sun;
+            var mirror = gameObject.AddComponent<PlanarReflection>();
+            mirror.waterY = ForestSiteBuilder.LakeWaterY;
+            mirror.center = ForestSiteBuilder.LakeCenter;
             var grade = gameObject.AddComponent<ForestGrade>();
             grade.color = WorldLook.LastColor;
             grade.baseExposure = WorldLook.Field.postExposure;

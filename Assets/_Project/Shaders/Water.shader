@@ -9,7 +9,7 @@ Shader "Manyworld/Water"
         _SkyColor ("비친 하늘 (위)", Color) = (0.45, 0.6, 0.82, 1)
         _HorizonColor ("비친 하늘 (지평)", Color) = (0.7, 0.76, 0.82, 1)
         _Clarity ("맑기 (m당 흡수)", Float) = 0.045
-        _Reflect ("반사 세기", Range(0, 1)) = 0.6 // (0.85는 낮은 시선에서 물속 집을 반사로 덮었다. 목표 샷 05는 물속이 비친다)
+        _Reflect ("반사 세기", Range(0, 1)) = 0.9 // 평면 반사라 깨끗하다 (화면 공간 반사 때는 0.6: 얼룩이 물속 집을 덮었다)
         _WaveScale ("물결 크기 (m)", Float) = 9
         _WaveStrength ("물결 기울기", Float) = 0.022
         _Refraction ("굴절", Float) = 0.01
@@ -38,6 +38,11 @@ Shader "Manyworld/Water"
                 half4 _ShallowColor, _DeepColor, _SkyColor, _HorizonColor;
                 float _Clarity, _Reflect, _WaveScale, _WaveStrength, _Refraction;
             CBUFFER_END
+
+            // 평면 반사 (PlanarReflection: 수면 아래 뒤집은 카메라가 그린 장면, 위아래 뒤집힌 화면 좌표)
+            TEXTURE2D(_PlanarReflectionTex);
+            SAMPLER(sampler_PlanarReflectionTex);
+            float _PlanarReflectionOn;
 
             struct Attributes { float4 positionOS : POSITION; };
             struct Varyings
@@ -126,8 +131,14 @@ Shader "Manyworld/Water"
                 half3 scene = SampleSceneColor(lastUv);
                 float edge = saturate(min(min(lastUv.x, 1 - lastUv.x), min(lastUv.y, 1 - lastUv.y)) * 12);
                 refl = lerp(sky, scene, hit ? edge : edge * 0.85);
+                if (_PlanarReflectionOn > 0.5)
+                {
+                    // 물결만큼 흔든다 (가까울수록 크게: 멀리는 거울처럼 매끈하다)
+                    float2 ruv = float2(uv.x, 1 - uv.y) + n.xz * 0.06 / (1 + waterEye * 0.03);
+                    refl = SAMPLE_TEXTURE2D(_PlanarReflectionTex, sampler_PlanarReflectionTex, saturate(ruv)).rgb;
+                }
                 half fres = 0.02 + 0.98 * pow(1 - saturate(dot(n, v)), 5);
-                half3 col = lerp(body, refl, saturate(fres * _Reflect + 0.06));
+                half3 col = lerp(body, refl, saturate(fres * _Reflect + 0.1 * _PlanarReflectionOn + 0.06));
 
                 // 물가 거품: 바닥·물체가 수면에 가까운 곳 (물가 띠와 뜬 바위 둘레 고리). 움직이는 얼룩으로 끊는다
                 float foamBand = 1 - saturate(thick / 0.9);

@@ -1408,9 +1408,9 @@ namespace Manyworld
             Physics.SyncTransforms();
             // 창: 물에 먹히고 노을 반사에 덮여도 읽히게 HDR로 밝게 (목표 샷 05의 따뜻한 창 불빛)
             // 물을 그린 뒤에 반투명으로 덧그린다: 물이 먹어 버리지 않고 수면 너머로 불빛이 비친다 (불투명 발광 창은 물 흡수에 묻혔다)
-            var glass = new Material(Graybox.Mat(new Color(0.85f, 0.42f, 0.14f, 0.6f))) { name = "WindowGlow" };
+            var glass = new Material(Graybox.Mat(new Color(0.95f, 0.36f, 0.07f, 0.68f))) { name = "WindowGlow" };
             glass.EnableKeyword("_EMISSION");
-            glass.SetColor("_EmissionColor", new Color(1f, 0.5f, 0.18f) * 1.3f); // (2.2는 하얗게 떴다)
+            glass.SetColor("_EmissionColor", new Color(1f, 0.42f, 0.1f) * 1.6f); // (2.2는 하얗게, 연한 주황은 노랗게 떴다)
             glass.renderQueue = 3010;
             int windows = 0;
             var faceRight = Vector3.Cross(Vector3.up, house.transform.forward);
