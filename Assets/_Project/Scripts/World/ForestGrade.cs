@@ -17,10 +17,14 @@ namespace Manyworld
         // 빈 방 둘레만 다시 밝힌다: 세 면 나무 벽의 그늘로 바닥이 목표 샷 03의 70%였다 (85 vs 122, 숲길은 오히려 밝았다 134 vs 100)
         public float roomLift = 0.4f; // 숲 노출 내림을 없앤 만큼 덜 (방 순노출 +0.4)
         // 철제 나무 길가: 차 세우는 어깨가 비탈 숲 그늘이라 목표 샷 04보다 한 단 어두웠다 (밝기 94 vs 112, it174)
-        public float ironLift = 0.3f;
+        public float ironLift = 0.2f;
         // 숲길 대비: 목표 샷 02는 볕 든 길과 짙은 줄기의 명암차가 크다 (밝기 표준편차 30 vs 39, it178). 방은 이미 목표보다 대비가 커서 뺀다
         public float contrastBoost = 26f; // (대비를 올리면 어두운 쪽이 더 내려가 평균이 떨어진다 → 숲 노출 내림을 그만큼 줄였다)
-        float w = -1f, rw = -1f, iw = -1f;
+        // 호수(노을)는 대비를 낮춘다: 목표 샷 05는 해가 진 뒤의 부드러운 빛 (대비 47 vs 37, it184)
+        public float lakeContrastDrop = 7f; // (12는 채도까지 빠졌다 93→83)
+        // 숲길만 채도를 더 내린다 (02 채도 78 vs 68. 방은 이미 목표와 같다)
+        public float pathSaturationDrop = 8f;
+        float w = -1f, rw = -1f, iw = -1f, lw = -1f;
 
         void LateUpdate()
         {
@@ -40,8 +44,11 @@ namespace Manyworld
             float ironTarget = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(90f, 50f, Vector2.Distance(p, ForestSiteBuilder.IronTree)));
             iw = iw < 0f || Mathf.Abs(ironTarget - iw) > 0.5f ? ironTarget : Mathf.MoveTowards(iw, ironTarget, Time.deltaTime * 0.5f);
             color.postExposure.Override(baseExposure - exposureDrop * w + roomLift * rw + ironLift * iw);
-            color.saturation.Override(baseSaturation - saturationDrop * w);
-            color.contrast.Override(baseContrast + contrastBoost * w * (1f - rw));
+            float lakeTarget = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(170f, 105f, Vector2.Distance(p, ForestSiteBuilder.LakeCenter)));
+            lw = lw < 0f || Mathf.Abs(lakeTarget - lw) > 0.5f ? lakeTarget : Mathf.MoveTowards(lw, lakeTarget, Time.deltaTime * 0.5f);
+            float path = w * (1f - rw) * (1f - iw); // 숲길 (방 둘레·철제 나무 길가는 뺀다: 04 대비가 목표보다 커졌다 61 vs 53)
+            color.saturation.Override(baseSaturation - saturationDrop * w * (1f - iw) - pathSaturationDrop * path); // 철제 나무 길가는 숲 채도 내림도 뺀다 (04 채도 66 vs 73)
+            color.contrast.Override(baseContrast + contrastBoost * path - lakeContrastDrop * lw);
         }
     }
 }

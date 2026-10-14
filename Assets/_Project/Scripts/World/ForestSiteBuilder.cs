@@ -543,7 +543,48 @@ namespace Manyworld
             }
             var field = root.gameObject.AddComponent<GrassField>();
             for (int i = 0; i < kinds.Count; i++) field.Add(kinds[i].mesh, kinds[i].mat, lists[i]);
-            Debug.Log($"[Manyworld] 풀 {field.InstanceCount}포기");
+
+            // 각진 넓은 잎 풀 포기: 바위 둘레와 길·숲길 어깨 (목표 샷마다 앞쪽 바위 곁에 뾰족한 풀이 크게 있다.
+            // 부드러운 가는 풀만으로는 앞쪽이 밋밋했다). 따로 쓰는 난수: 다른 배치는 그대로
+            var trng = new System.Random(9137);
+            GrassField.Tufts(out var tuftLo, out var tuftHi, out var tuftBase, out var tuftTip);
+            var tlists = new List<Matrix4x4>[tuftLo.Length];
+            for (int i = 0; i < tlists.Length; i++) tlists[i] = new List<Matrix4x4>();
+            int tufts = 0;
+            void PutTuft(float x, float z, float s)
+            {
+                if (x < lo || x > hi || z < lo || z > hi) return;
+                if (Sample(roadDist, x, z) < 4.4f || Sample(trailDist, x, z) < 2.1f || InRoom(x, z, 0.5f) || NatureKit.UnderRock(x, z)) return;
+                if (LakeT(x, z) < 1.04f || LakeTrackDistance(x, z) < 2.4f || (InLakeSight(new Vector2(x, z)) && LakeT(x, z) < 1.35f)) return;
+                tlists[trng.Next(tlists.Length)].Add(Matrix4x4.TRS(new Vector3(x, Sample(h, x, z) - 0.04f, z), Quaternion.Euler(0, (float)trng.NextDouble() * 360f, 0), Vector3.one * s));
+                tufts++;
+            }
+            foreach (var f in NatureKit.Footprints.All())
+            {
+                int n = 2 + trng.Next(3);
+                for (int i = 0; i < n; i++)
+                {
+                    float ang = (float)trng.NextDouble() * Mathf.PI * 2f, r = f.z * (1.05f + (float)trng.NextDouble() * 0.6f) + 0.15f;
+                    PutTuft(f.x + Mathf.Cos(ang) * r, f.y + Mathf.Sin(ang) * r, 0.7f + (float)trng.NextDouble() * 0.6f); // (0.45~0.95는 부드러운 풀에 묻혀 안 보였다)
+                }
+            }
+            for (float z = lo; z < hi; z += 2.5f)
+            for (float x = lo; x < hi; x += 2.5f)
+            {
+                float px = x + (float)(trng.NextDouble() - 0.5) * 2.5f, pz = z + (float)(trng.NextDouble() - 0.5) * 2.5f;
+                float rd = Sample(roadDist, px, pz), td = Sample(trailDist, px, pz);
+                bool verge = (rd > 4.4f && rd < 9f) || (td > 2.1f && td < 5.5f);
+                if (!verge) continue;
+                float clump = Mathf.PerlinNoise(px * 0.09f + 31f, pz * 0.09f + 17f);
+                if (trng.NextDouble() > 0.7f * Mathf.InverseLerp(0.32f, 0.65f, clump)) continue;
+                PutTuft(px, pz, 0.6f + (float)trng.NextDouble() * 0.5f);
+            }
+            for (int i = 0; i < tuftLo.Length; i++)
+            {
+                field.Add(tuftLo[i], tuftBase, tlists[i]);
+                field.Add(tuftHi[i], tuftTip, tlists[i]);
+            }
+            Debug.Log($"[Manyworld] 풀 {field.InstanceCount}포기 (각진 풀 포기 {tufts})");
         }
 
         /// <summary>

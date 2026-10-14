@@ -100,6 +100,82 @@ namespace Manyworld
             return mesh;
         }
 
+        // ---------------- 각진 넓은 잎 풀 포기 (목표 샷마다 앞쪽 바위 둘레·길가에 크게 있는 뾰족한 풀) ----------------
+
+        static Mesh[] tuftLower, tuftUpper;
+        static Material tuftBase, tuftTip;
+
+        /// <summary>
+        /// 넓은 잎 6~9장이 바깥으로 기운 포기 (높이 1 기준). 잎 가운데에 골이 솟아 양쪽 반쪽 면의 밝기가 달라 각져 보인다.
+        /// 아래 마디(짙은 색)와 위 마디(볕 받은 연두)를 따로 된 메시로 나눠 색을 다르게 그린다.
+        /// 법선은 위쪽 반구로 맞춘다 (양면으로 그릴 때 앞뒤 밝기가 뒤집히지 않게).
+        /// </summary>
+        static void TuftMesh(int seed, out Mesh lower, out Mesh upper)
+        {
+            var rng = new System.Random(seed);
+            var lv = new List<Vector3>(); var ln = new List<Vector3>(); var lt = new List<int>();
+            var uvv = new List<Vector3>(); var un = new List<Vector3>(); var ut = new List<int>();
+            void Tri(List<Vector3> v, List<Vector3> n, List<int> t, Vector3 a, Vector3 b, Vector3 c)
+            {
+                var nn = Vector3.Cross(b - a, c - a).normalized;
+                if (nn.y < 0f) { (b, c) = (c, b); nn = -nn; }
+                int k = v.Count;
+                v.Add(a); v.Add(b); v.Add(c);
+                n.Add(nn); n.Add(nn); n.Add(nn);
+                t.Add(k); t.Add(k + 1); t.Add(k + 2);
+            }
+            int leaves = 6 + rng.Next(4);
+            for (int i = 0; i < leaves; i++)
+            {
+                float ang = i / (float)leaves * Mathf.PI * 2f + (float)rng.NextDouble() * 0.7f;
+                var dir = new Vector3(Mathf.Cos(ang), 0, Mathf.Sin(ang));
+                var side = new Vector3(-dir.z, 0, dir.x);
+                float h = 0.55f + (float)rng.NextDouble() * 0.45f;
+                float lean = h * (0.25f + (float)rng.NextDouble() * 0.5f);
+                float w = 0.075f + (float)rng.NextDouble() * 0.05f;
+                var b = dir * 0.03f;
+                var mid = b + dir * lean * 0.35f + Vector3.up * h * 0.5f;
+                var tip = b + dir * lean + Vector3.up * h + side * (float)(rng.NextDouble() - 0.5) * 0.05f;
+                var ridge = (dir * 0.6f + Vector3.up * 0.4f).normalized;
+                Vector3 bl = b - side * w, br = b + side * w, bc = b + ridge * w * 0.35f;
+                Vector3 ml = mid - side * w * 0.8f, mr = mid + side * w * 0.8f, mc = mid + ridge * w * 0.3f;
+                Tri(lv, ln, lt, bl, bc, ml); Tri(lv, ln, lt, bc, mc, ml);
+                Tri(lv, ln, lt, bc, br, mr); Tri(lv, ln, lt, bc, mr, mc);
+                Tri(uvv, un, ut, ml, mc, tip); Tri(uvv, un, ut, mc, mr, tip);
+            }
+            Mesh Build(List<Vector3> v, List<Vector3> n, List<int> t, string name)
+            {
+                var m = new Mesh { name = name };
+                m.SetVertices(v); m.SetNormals(n); m.SetTriangles(t, 0); m.RecalculateBounds();
+                return m;
+            }
+            lower = Build(lv, ln, lt, "TuftLower");
+            upper = Build(uvv, un, ut, "TuftUpper");
+        }
+
+        /// <summary>각진 풀 포기 메시 3종(아래·위 마디)과 머티리얼 (짙은 밑동, 볕 받은 잎끝).</summary>
+        public static void Tufts(out Mesh[] lower, out Mesh[] upper, out Material baseMat, out Material tipMat)
+        {
+            if (tuftLower == null)
+            {
+                tuftLower = new Mesh[3]; tuftUpper = new Mesh[3];
+                for (int i = 0; i < 3; i++) TuftMesh(501 + i * 29, out tuftLower[i], out tuftUpper[i]);
+                Material Mat(Color c, string name)
+                {
+                    var m = new Material(Graybox.Mat(c)) { name = name };
+                    m.SetFloat("_Smoothness", 0f);
+                    m.SetFloat("_Cull", 0f); // 양면
+                    m.doubleSidedGI = true;
+                    m.enableInstancing = true;
+                    return m;
+                }
+                // 목표 샷의 뾰족한 풀: 밑동은 짙은 올리브, 잎끝은 볕 받은 노란 연두
+                tuftBase = Mat(new Color(0.22f, 0.27f, 0.14f), "TuftBase");
+                tuftTip = Mat(new Color(0.4f, 0.44f, 0.22f), "TuftTip"); // (0.42,0.48,0.19는 볕에서 라임색으로 떴다)
+            }
+            lower = tuftLower; upper = tuftUpper; baseMat = tuftBase; tipMat = tuftTip;
+        }
+
         /// <summary>덤불 메시 3종과 머티리얼 3종 (볕 받은 연두, 올리브, 마른 기운이 많은 것).</summary>
         public static void Clumps(out Mesh[] meshes, out Material[] materials)
         {

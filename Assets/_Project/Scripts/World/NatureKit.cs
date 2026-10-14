@@ -22,6 +22,13 @@ namespace Manyworld
             readonly Dictionary<Vector2Int, List<Vector3>> cells = new Dictionary<Vector2Int, List<Vector3>>();
             public void Clear() => cells.Clear();
 
+            /// <summary>놓인 바위 전부 (x, z, 반지름).</summary>
+            public IEnumerable<Vector3> All()
+            {
+                foreach (var list in cells.Values)
+                    foreach (var f in list) yield return f;
+            }
+
             public void Add(float x, float z, float r)
             {
                 var key = new Vector2Int(Mathf.FloorToInt(x / CellSize), Mathf.FloorToInt(z / CellSize));
