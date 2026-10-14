@@ -137,6 +137,8 @@ namespace Manyworld
             var p = cam.transform.position;
             GeometryUtility.CalculateFrustumPlanes(cam, planes);
             float d2 = drawDistance * drawDistance, k2 = shadowKeepDistance * shadowKeepDistance, c2 = shadowCastDistance * shadowCastDistance;
+            // 호수 반사 카메라: 시야 밖은 그리지 않고 그림자도 없다 (가까운 칸을 다 그리면 반사가 본 화면만큼 비쌌다)
+            if (cam == PlanarReflection.ReflectionCamera) { k2 = 0f; c2 = 0f; d2 = Mathf.Min(d2, 900f * 900f); }
             foreach (var b in batches)
             {
                 float sq = b.bounds.SqrDistance(p);

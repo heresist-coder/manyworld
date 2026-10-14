@@ -182,7 +182,7 @@ namespace Manyworld
 
         void Draw(ScriptableRenderContext ctx, Camera cam)
         {
-            if (cam.cameraType == CameraType.Preview || cam.cameraType == CameraType.Reflection) return;
+            if (cam.cameraType == CameraType.Preview || cam.cameraType == CameraType.Reflection || cam == PlanarReflection.ReflectionCamera) return;
             var p = cam.transform.position;
             GeometryUtility.CalculateFrustumPlanes(cam, planes);
             float d2 = drawDistance * drawDistance;

@@ -68,6 +68,7 @@ namespace Manyworld
             var steps = new (string name, System.Action off, System.Action on)[]
             {
                 ("모두 켬", () => { }, () => { }),
+                ("호수 반사 끔", () => { foreach (var r in FindObjectsByType<PlanarReflection>(FindObjectsSortMode.None)) r.enabled = false; }, () => { foreach (var r in FindObjectsByType<PlanarReflection>(FindObjectsSortMode.None)) r.enabled = true; }),
                 ("간접광 끔", () => { if (ScreenSpaceGI.Enabled) ScreenSpaceGI.Toggle(); }, () => { if (!ScreenSpaceGI.Enabled) ScreenSpaceGI.Toggle(); }),
                 ("연무 끔", () => { if (fog != null) fog.gameObject.SetActive(false); }, () => { if (fog != null) fog.gameObject.SetActive(true); }),
                 ("필터 끔", () => { GameManager.PaintFilter = false; gm.ApplyPaint(); }, () => { GameManager.PaintFilter = true; gm.ApplyPaint(); }),
@@ -79,6 +80,13 @@ namespace Manyworld
             foreach (var shot in shots)
             {
                 cam.transform.SetPositionAndRotation(shot.pos, Quaternion.LookRotation(shot.look - shot.pos));
+                // 구도마다 2초 길들이기 (처음 보이는 물체의 셰이더 준비 끊김이 첫 단계 평균에 섞였다)
+                for (float end0 = Time.realtimeSinceStartup + 2f; Time.realtimeSinceStartup < end0;)
+                {
+                    if (pc != null) pc.target = null;
+                    cam.transform.SetPositionAndRotation(shot.pos, Quaternion.LookRotation(shot.look - shot.pos));
+                    yield return null;
+                }
                 foreach (var step in steps)
                 {
                     step.off();
