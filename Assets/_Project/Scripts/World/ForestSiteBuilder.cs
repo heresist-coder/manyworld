@@ -1370,7 +1370,7 @@ namespace Manyworld
         }
 
         /// <summary>물속 집 자리: 호수 가운데에서 전망 쪽으로 (가까워야 반사에 묻히지 않고 물속이 보인다).</summary>
-        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.5f; // (0.6은 가까운 둑이 집을 가렸다. 크기는 2.2배로 키웠다) 전망대 앞 (차·두 사람과 한 화면에, 목표 샷 05. 0.64는 낮은 카메라에서 가까운 물가 둑이 창 난 벽을 가렸다. 0.34는 호수 한가운데라 작았다)
+        static Vector2 LakeHousePos => LakeCenter + (LakeView - LakeCenter).normalized * LakeRadius * 0.42f; // (0.6·0.5는 가까운 둑이 집 아랫부분을 가렸다. 크기는 2.2배) 전망대 앞 (차·두 사람과 한 화면에, 목표 샷 05. 0.64는 낮은 카메라에서 가까운 물가 둑이 창 난 벽을 가렸다. 0.34는 호수 한가운데라 작았다)
 
         /// <summary>호수 전망대에서 숲으로 나가는 흙길 (전망대 → 바깥쪽 38m, 조금 북쪽으로 굽는다)까지의 거리.</summary>
         public static float LakeTrackDistance(float x, float z)
