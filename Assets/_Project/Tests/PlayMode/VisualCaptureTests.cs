@@ -238,7 +238,7 @@ namespace Manyworld.Tests
             // 목표 샷 02: 두 사람 바로 뒤 4~5m 높이에서 숲길을 내려다본다 (15m 뒤 3.2m는 사람이 작고 가까운 수관이 화면 위를 덮었다)
             var t02Cam = walk - trailDir * 8.5f - trailRight * 0.4f;
             var t02Look = walk + trailDir * 22f;
-            yield return Shot("t02_path.png", Ground(new Vector3(t02Cam.x, 0, t02Cam.y), 3.9f), Ground(new Vector3(t02Look.x, 0, t02Look.y), 0.6f));
+            yield return Shot("t02_path.png", Ground(new Vector3(t02Cam.x, 0, t02Cam.y), 3.9f), Ground(new Vector3(t02Look.x, 0, t02Look.y), 2.6f)); // (0.6은 숲길 위 하늘 틈이 화면 밖이었다)
 
             // 목표 샷 04 구도: 길가 평평한 어깨에 차를 세우고 두 사람이 내려 비탈 숲의 철제 나무를 본다. 카메라는 그 뒤 길 위
             var iron = ForestSiteBuilder.IronTree;

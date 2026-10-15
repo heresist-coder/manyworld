@@ -237,7 +237,25 @@ namespace Manyworld
             float edge = Mathf.Min(Mathf.Min(x, Size - x), Mathf.Min(z, Size - z));
             float rimT = Mathf.Clamp01(1f - edge / 240f); // 넓고 완만하게: 가파르면 바위색으로 칠해져 산이 회색이 된다
             float rim = Mathf.Pow(rimT, 1.6f) * 95f + WorldTerrainBuilder.Fbm(x * 0.008f + 40f, z * 0.008f + 11f, 3) * 40f * rimT;
-            return 10f + hills + ne + detail + rim;
+            return 10f + hills + ne + detail + rim - IronValley(x, z);
+        }
+
+        /// <summary>
+        /// 철제 나무 너머 골짜기: 길가 어깨에서 철탑을 보는 방향으로 땅이 내려가 숲 너머 먼 산이 트인다 (목표 샷 04).
+        /// 쐐기 안에서 최대 38m 깎고, 분지 가장자리 바로 앞에서는 다시 원래 높이로 (바깥 땅과 단차가 생기지 않게).
+        /// 철탑 뒤쪽(시선 반대편)에 있는 길·방·호수는 그대로다.
+        /// </summary>
+        static float IronValley(float x, float z)
+        {
+            var toI = (IronTree - IronRoadSpot).normalized;
+            var rel = new Vector2(x, z) - IronTree;
+            float along = Vector2.Dot(rel, toI);
+            if (along <= 0f) return 0f;
+            float lat = Mathf.Abs(rel.x * toI.y - rel.y * toI.x);
+            float width = 40f + along * 0.5f;
+            float wedge = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(width, width * 0.35f, lat));
+            float depth = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(10f, 140f, along)) * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(250f, 320f, along))) * 38f;
+            return wedge * depth;
         }
 
         static float RoadDistance(float x, float z)
@@ -1815,7 +1833,7 @@ namespace Manyworld
                 var inward = (onPath - p2).normalized;
                 var dir2 = (inward + RoomForward * 0.45f).normalized;
                 var tiltAxis = Vector3.Cross(Vector3.up, new Vector3(dir2.x, 0, dir2.y));
-                float tilt = Mathf.Lerp(17f, 12f, Mathf.InverseLerp(6f, 20f, side)) + (float)rng.NextDouble() * 4f; // 길가 줄기가 가장 많이 기운다 (목표 샷 02는 15~20°. 20°+는 수관이 길 위를 덮어 하늘이 막혔다)
+                float tilt = Mathf.Lerp(14f, 10f, Mathf.InverseLerp(6f, 20f, side)) + (float)rng.NextDouble() * 4f; // (17~12°는 양쪽 수관이 길 위에서 모여 목표 샷 02의 하늘 틈을 덮었다) // 길가 줄기가 가장 많이 기운다 (목표 샷 02는 15~20°. 20°+는 수관이 길 위를 덮어 하늘이 막혔다)
                 t.transform.SetPositionAndRotation(p, Quaternion.AngleAxis(tilt, tiltAxis) * Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0));
                 trunks.Add(p2);
                 leaning++;
