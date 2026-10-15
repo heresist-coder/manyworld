@@ -1098,7 +1098,7 @@ namespace Manyworld
                 var mat = new Material(cloudMat);
                 var toSun = -(Quaternion.Euler(WorldLook.Field.sunPitch, WorldLook.Field.sunYaw, 0) * Vector3.forward);
                 mat.SetVector("_SunDir", toSun);
-                mat.SetFloat("_Cover", 0.43f);    // 뭉게구름이 하늘 절반쯤 (목표 샷 01은 산 위에 구름 띠가 두껍다)
+                mat.SetFloat("_Cover", 0.36f);    // 문턱값 (낮을수록 구름이 많다). 0.43은 01·04 하늘에 구름이 한두 점뿐이었다 (목표 샷은 산 위에 뭉게구름이 많다)
                 mat.SetFloat("_Softness", 0.07f); // 가장자리가 또렷하게
                 mat.SetFloat("_Scale", 1.6f);
                 // 볕 받은 윗면은 따뜻한 흰색, 밑면은 회보라 (목표 샷 01 구름 201,193,197)
@@ -1502,11 +1502,12 @@ namespace Manyworld
                 // 지붕 위 물빛: 노을 그늘 속 짙은 지붕이 물에 묻혀 집 윤곽이 안 읽혔다 (목표 샷 05의 물속 집은 청록 윤곽이 또렷하다)
                 var l = new GameObject("RoofWaterLight").AddComponent<Light>();
                 l.transform.SetParent(house.transform, true);
-                l.transform.position = new Vector3(hb.center.x, hb.max.y + 1.5f, hb.center.z) + new Vector3(toView.x, 0, toView.y) * hb.extents.magnitude * 0.4f;
+                // 전망대 쪽 긴 벽 앞, 벽 높이 위쪽 (지붕 위 1.6은 벽이 노을 그늘에 묻혀 목표 샷 05의 청록 벽이 안 보였다)
+                l.transform.position = new Vector3(hb.center.x, hb.center.y + hb.extents.y * 0.6f, hb.center.z) + new Vector3(toView.x, 0, toView.y) * hb.extents.magnitude * 0.8f;
                 l.type = LightType.Point;
                 l.color = new Color(0.45f, 0.78f, 0.82f);
                 l.range = hb.extents.magnitude * 1.8f;
-                l.intensity = 1.6f;
+                l.intensity = 3f;
                 l.shadows = LightShadows.None;
             }
 
